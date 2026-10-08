@@ -148,6 +148,12 @@ public class BspConvertOptionsTests
         Assert.Contains(options, x => x.Attribute.Advanced);
         Assert.Contains(options, x => !x.Attribute.Advanced);
         Assert.Equal(PathKind.Folder, options.Single(x => x.Name == nameof(BspConvertOptions.OutputDirectory)).Attribute.Path);
+
+        // The bhop block fix is on unless it's turned off in the form's GoldSrc options
+        PortOptionInfo blockFix = options.Single(x => x.Name == nameof(BspConvertOptions.FixBhopBlocks));
+        Assert.Equal(BspConvertOptions.GoldSrcGroup, blockFix.Attribute.Group);
+        Assert.False(blockFix.Attribute.Advanced);
+        Assert.True(new BspConvertOptions().FixBhopBlocks);
     }
 
     [Theory]

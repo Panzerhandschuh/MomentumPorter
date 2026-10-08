@@ -139,6 +139,10 @@ public sealed class BspConvertOptions
     [PortOption("Copy clip hulls from", BspConvertHelp.GoldSrcHulls, Group = GoldSrcGroup, Order = 20, Advanced = true, Path = PathKind.File)]
     public string? GoldSrcHulls { get; set; }
 
+    // Not a BSPConvert option, see BhopBlockFixStep
+    [PortOption("Fix bhop blocks", BspConvertHelp.FixBhopBlocks, Group = GoldSrcGroup, Order = 30)]
+    public bool FixBhopBlocks { get; set; } = true;
+
     /// <summary>The <see cref="Maps"/> names, or null to convert every map in the input.</summary>
     public string[]? MapFilter => SplitList(Maps);
 

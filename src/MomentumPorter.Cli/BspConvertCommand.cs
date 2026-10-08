@@ -99,6 +99,7 @@ internal static class BspConvertCommand
             Wads = cli.Wads,
             Studiomdl = cli.Studiomdl,
             GoldSrcHulls = cli.GoldSrcHulls,
+            FixBhopBlocks = !cli.NoBlockFix,
         };
 
         options.Subdiv = cli.Subdiv ?? options.Subdiv;

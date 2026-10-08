@@ -104,10 +104,18 @@ What BSPConvert would otherwise need to be told is filled in from Steam:
   described in its `readme.txt`.
 - In the app, the output folder defaults to Momentum's `momentum` folder.
 
+GoldSrc bhop maps make their blocks touch-activated `func_door`s (or `func_button`s) that drop the player into a
+teleport. After converting a GoldSrc map, the porter turns those into `func_bhop`s that teleport the player to the same
+destination once they've stood on the block too long, keeping the teleport's angle and velocity settings (`Fix bhop
+blocks` in the app's GoldSrc options, `--noblockfix` to turn it off). A block counts when the player can fall from it
+into a `trigger_teleport` without landing on anything solid first, so this also finds blocks over a pit, which
+Momentum's runtime block fix (and the entity tools' Stripper export of it) misses because it only looks for teleports
+the block dips into as it drops. Named blocks lose their name and outputs, which the report warns about.
+
 In code, `BspConvertOptions` (`src/MomentumPorter.Core/BspConvert/`) mirrors BSPConvert's options with the same defaults,
 with `[PortOption]` metadata grouped General / Quake 3 / GoldSrc / Animated textures for the generated options form, and
 `ToConverterOptions` maps them onto BSPConvert's `BSPConverterOptions` as its command line does. `BspConvertJobs.Create`
-builds the job (`BspConvertStep`, then `CopyConvertedFilesStep`); `BspConvertState` lists the converted maps and zone
+builds the job (`BspConvertStep`, `BhopBlockFixStep`, then `CopyConvertedFilesStep`); `BspConvertState` lists the converted maps and zone
 files. `Pk3Inspector.ListMaps` lists the maps in an archive for a map picker (`BspConvertOptions.Maps`).
 
 BSPConvert can't be cancelled midway: a cancelled job stops before the next map of an archive, and a map that has started

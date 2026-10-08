@@ -86,4 +86,7 @@ internal sealed partial class CliOptions
 
     [Option("goldsrchulls", HelpText = BspConvertHelp.GoldSrcHulls)]
     public string? GoldSrcHulls { get; set; }
+
+    [Option("noblockfix", HelpText = "Leave GoldSrc bhop blocks as they are. Otherwise: " + BspConvertHelp.FixBhopBlocks)]
+    public bool NoBlockFix { get; set; }
 }

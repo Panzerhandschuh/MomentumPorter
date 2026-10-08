@@ -20,6 +20,8 @@ public static class BspConvertJobs
     {
         var state = new BspConvertState(inputPath, options);
         var steps = new List<IPortStep> { new BspConvertStep(steam) };
+        if (options.FixBhopBlocks)
+            steps.Add(new BhopBlockFixStep());
         if (copyToOutput)
             steps.Add(new CopyConvertedFilesStep());
 

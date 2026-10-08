@@ -92,7 +92,7 @@ public sealed class BspConvertJobTests : IDisposable
 
         (PortJob job, object state) = PortJobFactory.CreateMapJob(input, Path.Combine(_root, "momentum"), new MapPortOptions());
         Assert.IsType<BspConvertState>(state);
-        Assert.Equal(["Convert map", "Copy to game folder"], job.Steps.Select(x => x.Name));
+        Assert.Equal(["Convert map", "Fix bhop blocks", "Copy to game folder"], job.Steps.Select(x => x.Name));
     }
 
     [Fact]
