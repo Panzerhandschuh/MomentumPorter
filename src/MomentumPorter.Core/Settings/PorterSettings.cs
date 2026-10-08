@@ -1,0 +1,114 @@
+namespace MomentumPorter.Settings;
+
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using MomentumPorter.Steam;
+using MomentumPorter.Tools;
+
+/// <summary>
+/// Machine-specific settings shared by the desktop app and the CLI: where the tools and games are.
+/// Null paths mean "find it automatically".
+/// </summary>
+public sealed class PorterSettings
+{
+    public static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+        Converters = { new JsonStringEnumConverter() },
+    };
+
+    /// <summary>%AppData%/MomentumPorter/settings.json</summary>
+    public static string DefaultPath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MomentumPorter", "settings.json");
+
+    /// <summary>
+    /// Momentum Mod's install folder (the one holding <c>momentum/</c>). Null to find it in the Steam libraries.
+    /// </summary>
+    public string? MomentumDirectory { get; set; }
+
+    /// <summary>bspPack.exe. Null to use <see cref="BspPackTool.FindDefault"/>.</summary>
+    public string? BspPackPath { get; set; }
+
+    /// <summary>
+    /// Command run (through the shell) before each bspPack run, e.g. a script that updates ResourceConfig.ini.
+    /// See <see cref="BspPackTool.ExpandPrePackCommand"/> for the placeholders it may use.
+    /// </summary>
+    public string? PrePackCommand { get; set; }
+
+    /// <summary>Folder for jobs' temporary files. Null for the system temp folder.</summary>
+    public string? WorkDirectory { get; set; }
+
+    /// <summary>Where finished maps go when they aren't installed into Momentum. Null for <see cref="DefaultOutputDirectory"/>.</summary>
+    public string? OutputDirectory { get; set; }
+
+    /// <summary>Default for the map options' "Install into Momentum".</summary>
+    public bool InstallByDefault { get; set; } = true;
+
+    public static string DefaultOutputDirectory =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MomentumPorter", "maps");
+
+    public string ResolveOutputDirectory() => string.IsNullOrWhiteSpace(OutputDirectory) ? DefaultOutputDirectory : OutputDirectory;
+
+    public string? ResolveBspPackPath() => string.IsNullOrWhiteSpace(BspPackPath) ? BspPackTool.FindDefault() : BspPackPath;
+
+    /// <summary>
+    /// Momentum's maps folder (<c>&lt;install&gt;/momentum/maps</c>), or null if Momentum can't be found.
+    /// </summary>
+    public string? ResolveMomentumMapsDirectory(SteamLocator? steam = null)
+    {
+        string? content = ResolveMomentumContentDirectory(steam);
+        return content is null ? null : Path.Combine(content, "maps");
+    }
+
+    /// <summary>
+    /// Momentum's content folder (<c>&lt;install&gt;/momentum</c>), or null if Momentum can't be found.
+    /// The override may point at the install folder, the content folder or its maps folder.
+    /// </summary>
+    public string? ResolveMomentumContentDirectory(SteamLocator? steam = null)
+    {
+        if (!string.IsNullOrWhiteSpace(MomentumDirectory))
+        {
+            string dir = Path.GetFullPath(MomentumDirectory.Trim());
+            if (Directory.Exists(Path.Combine(dir, "momentum")))
+                return Path.Combine(dir, "momentum");
+
+            string name = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (name.Equals("maps", StringComparison.OrdinalIgnoreCase))
+                return Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+
+            return Directory.Exists(dir) ? dir : null;
+        }
+
+        return (steam ?? new SteamLocator()).FindMomentum()?.ContentDirectory;
+    }
+
+    public PorterSettings Clone()
+    {
+        return JsonSerializer.Deserialize<PorterSettings>(JsonSerializer.Serialize(this, JsonOptions), JsonOptions)!;
+    }
+
+    /// <summary>
+    /// Reads settings, falling back to defaults when the file is missing. A file that can't be parsed throws.
+    /// </summary>
+    public static PorterSettings Load(string path)
+    {
+        if (!File.Exists(path))
+            return new PorterSettings();
+
+        using FileStream stream = File.OpenRead(path);
+        return JsonSerializer.Deserialize<PorterSettings>(stream, JsonOptions) ?? new PorterSettings();
+    }
+
+    public void Save(string path)
+    {
+        string? directory = Path.GetDirectoryName(Path.GetFullPath(path));
+        if (directory is not null)
+            Directory.CreateDirectory(directory);
+
+        // Write then swap, so a crash mid-write doesn't lose the old settings
+        string temp = path + ".tmp";
+        File.WriteAllText(temp, JsonSerializer.Serialize(this, JsonOptions));
+        File.Move(temp, path, overwrite: true);
+    }
+}
