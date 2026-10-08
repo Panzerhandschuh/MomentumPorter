@@ -1,5 +1,6 @@
 namespace MomentumPorter.Assets.Models;
 
+using System.Numerics;
 using System.Text;
 using BSPConvert.Lib.GoldSrc;
 using MomentumPorter.Assets.Vpk;
@@ -105,8 +106,11 @@ public sealed class GoldSrcWeaponConverter
                 }
 
                 string smd = $"body{part}_{sub}.smd";
-                IEnumerable<SmdTriangle> triangles = subModel.Triangles.Select(x => new SmdTriangle(
-                    MaterialFor(model, x.SkinRef, materialNames), ToSmd(x.A), ToSmd(x.B), ToSmd(x.C)));
+                IEnumerable<SmdTriangle> triangles = subModel.Triangles.Select(x =>
+                {
+                    bool chrome = IsChrome(model, x.SkinRef);
+                    return new SmdTriangle(MaterialFor(model, x.SkinRef, materialNames), ToSmd(x.A, chrome), ToSmd(x.B, chrome), ToSmd(x.C, chrome));
+                });
                 await File.WriteAllTextAsync(Path.Combine(sourceFolder, smd), SmdWriter.WriteReference(bones, referencePose, triangles), cancellation).ConfigureAwait(false);
                 choices.Add(smd);
                 hasTriangles = true;
@@ -157,7 +161,24 @@ public sealed class GoldSrcWeaponConverter
         return new ConvertedModel(compiled.GamePath, files, sounds.Distinct().ToList());
     }
 
-    private static SmdVertex ToSmd(GoldSrcModel.Vertex vertex) => new(vertex.Bone, vertex.Position, vertex.Normal, vertex.TexCoord);
+    // GoldSrc ignored a chrome texture's stored coordinates and mapped it as a sphere map from each vertex's normal
+    // against the view every frame (R_StudioChrome: (n . right + 1) / 2, (n . up + 1) / 2). Source has no such mode,
+    // so the map is fixed against the model's own right (-y) and up (+z): the look of the chrome, without the shimmer.
+    private static SmdVertex ToSmd(GoldSrcModel.Vertex vertex, bool chrome)
+    {
+        Vector2 texCoord = chrome
+            ? new Vector2((1f - vertex.Normal.Y) * 0.5f, (1f - vertex.Normal.Z) * 0.5f)
+            : vertex.TexCoord;
+        return new SmdVertex(vertex.Bone, vertex.Position, vertex.Normal, texCoord);
+    }
+
+    private const int StudioChromeFlag = 0x0002;
+
+    private static bool IsChrome(GoldSrcModel model, int skinRef)
+    {
+        int texture = model.SkinFamilies.Length > 0 && skinRef >= 0 && skinRef < model.SkinFamilies[0].Length ? model.SkinFamilies[0][skinRef] : skinRef;
+        return texture >= 0 && texture < model.Textures.Count && (model.Textures[texture].Flags & StudioChromeFlag) != 0;
+    }
 
     private string GetModelName(string modelPath)
     {

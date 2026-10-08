@@ -298,7 +298,9 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
 - **GoldSrc** (BSPConvert's `GoldSrcModel` and material converter): v_ models keep their sequences, which get the
   activities Momentum plays from their names (idle, shoot, reload, draw, slash/stab, pullpin/throw), and their sound
   events, which play the waves copied to `sound/porter/<game>/`. Unsilenced sequences are used for the M4A1 and USP.
-  Muzzle flash events are dropped, `p_` models aren't used (Momentum's player rig differs) and the view model FOV differs.
+  Chrome textures get GoldSrc's sphere-map coordinates from the vertex normals (fixed against the model, so no
+  shimmer). Muzzle flash events are dropped, `p_` models aren't used (Momentum's player rig differs) and the view
+  model FOV differs.
 - **Quake 3**: the weapon and its barrel become one model. The view model hangs it from the hand model's
   `tag_weapon`, and the hand's frames give it idle, fire (recoil) and draw sequences; the barrel rides its own bone,
   which the fire sequence spins a full turn (Quake 3 spins it while firing), and `<weapon>_flash.md3` is a body group
