@@ -1,0 +1,141 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MomentumPorter.UI.ViewModels.Pages"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="MomentumPorter.UI.Views.Pages.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="StackPanel.setting">
+      <Setter Property="Spacing" Value="4" />
+    </Style>
+    <Style Selector="StackPanel.setting > TextBlock.label">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="StackPanel.setting > TextBlock.hint">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <ScrollViewer>
+    <StackPanel Margin="16 14 16 16" Spacing="18" MaxWidth="900" HorizontalAlignment="Left">
+      <StackPanel Spacing="2">
+        <TextBlock Text="Settings" Classes="h1" />
+        <TextBlock Classes="muted" TextWrapping="Wrap">
+          <Run Text="Saved automatically to" />
+          <Run Text="{Binding SettingsFile}" />
+        </TextBlock>
+        <TextBlock Text="{Binding SaveError}" Classes="error" TextWrapping="Wrap"
+                   IsVisible="{Binding SaveError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      </StackPanel>
+
+      <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="16">
+          <TextBlock Text="Momentum Mod" Classes="h2" />
+          <StackPanel Classes="setting">
+            <TextBlock Classes="label" Text="Install folder" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Margin="6 0 0 0" Command="{Binding BrowseMomentumCommand}" ToolTip.Tip="Browse">
+                <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
+              </Button>
+              <TextBox Text="{Binding MomentumDirectory, UpdateSourceTrigger=LostFocus}"
+                       Watermark="{Binding DetectedMomentum, TargetNullValue='Not found in your Steam libraries', StringFormat='Detected: {0}'}" />
+            </DockPanel>
+            <TextBlock Classes="hint" Text="{Binding MomentumStatus}" />
+            <TextBlock Classes="hint" Text="Leave empty to use the install found in your Steam libraries." />
+          </StackPanel>
+          <CheckBox IsChecked="{Binding InstallByDefault}"
+                    Content="Install ported maps into Momentum by default"
+                    ToolTip.Tip="The starting value of the Maps page's &quot;Install into Momentum&quot; option" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="16">
+          <TextBlock Text="bspPack" Classes="h2" />
+          <StackPanel Classes="setting">
+            <TextBlock Classes="label" Text="Executable" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Margin="6 0 0 0" Command="{Binding BrowseBspPackCommand}" ToolTip.Tip="Browse">
+                <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
+              </Button>
+              <TextBox Text="{Binding BspPackPath, UpdateSourceTrigger=LostFocus}"
+                       Watermark="{Binding DefaultBspPackPath, TargetNullValue='Path to bspPack.exe', StringFormat='Default: {0}'}" />
+            </DockPanel>
+            <TextBlock Classes="hint" Text="{Binding BspPackStatus}" />
+            <TextBlock Classes="hint"
+                       Text="bspPack reads config.ini (the game folder it packs assets from) and ResourceConfig.ini from its own folder. For KZ maps, point config.ini at a stub game folder that only mounts KZ's content." />
+          </StackPanel>
+          <StackPanel Classes="setting">
+            <TextBlock Classes="label" Text="Pre-pack command (optional)" />
+            <TextBox Text="{Binding PrePackCommand, UpdateSourceTrigger=LostFocus}" FontFamily="{StaticResource Monospace}"
+                     Watermark="python &quot;C:\path\to\kz_shadowed_excludes.py&quot; &quot;{resourceconfig}&quot;" />
+            <TextBlock Classes="hint"
+                       Text="Run through the shell before every bspPack run, e.g. to update ResourceConfig.ini. Placeholders: {resourceconfig}, {bsppack}, {bsppackdir}, {bsp}. Quote paths with spaces." />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="16">
+          <TextBlock Text="Folders" Classes="h2" />
+          <StackPanel Classes="setting">
+            <TextBlock Classes="label" Text="Output folder" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Margin="6 0 0 0" Command="{Binding BrowseOutputDirectoryCommand}" ToolTip.Tip="Browse">
+                <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
+              </Button>
+              <TextBox Text="{Binding OutputDirectory, UpdateSourceTrigger=LostFocus}" Watermark="{Binding DefaultOutputDirectory, StringFormat='Default: {0}'}" />
+            </DockPanel>
+            <TextBlock Classes="hint" Text="Where finished maps are saved when they aren't installed into Momentum." />
+          </StackPanel>
+          <StackPanel Classes="setting">
+            <TextBlock Classes="label" Text="Work folder" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Margin="6 0 0 0" Command="{Binding BrowseWorkDirectoryCommand}" ToolTip.Tip="Browse">
+                <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
+              </Button>
+              <TextBox Text="{Binding WorkDirectory, UpdateSourceTrigger=LostFocus}" Watermark="{Binding DefaultWorkDirectory, StringFormat='Default: {0}'}" />
+            </DockPanel>
+            <TextBlock Classes="hint" Text="Maps are ported and packed here, and only moved to Momentum or the output folder once everything succeeded." />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="10">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Command="{Binding RescanCommand}" ToolTip.Tip="Look for the games again">
+              <StackPanel>
+                <materialIcons:MaterialIcon Kind="Refresh" />
+                <TextBlock Text="Rescan" />
+              </StackPanel>
+            </Button>
+            <TextBlock Text="Detected games" Classes="h2" VerticalAlignment="Center" />
+          </DockPanel>
+          <TextBlock Text="Looking for games..." Classes="muted" IsVisible="{Binding IsScanning}" />
+          <ItemsControl ItemsSource="{Binding Games}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:DetectedGame">
+                <Grid ColumnDefinitions="24, 240, *" Margin="0 3">
+                  <materialIcons:MaterialIcon Grid.Column="0" Width="16" Height="16" HorizontalAlignment="Left"
+                                              Kind="CheckCircle" Foreground="{StaticResource SuccessBrush}"
+                                              IsVisible="{Binding Found}" />
+                  <materialIcons:MaterialIcon Grid.Column="0" Width="16" Height="16" HorizontalAlignment="Left"
+                                              Kind="MinusCircleOutline" Foreground="{StaticResource MutedBrush}"
+                                              IsVisible="{Binding !Found}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                  <SelectableTextBlock Grid.Column="2" Text="{Binding PathText}" Classes.muted="{Binding !Found}"
+                                       TextTrimming="CharacterEllipsis" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

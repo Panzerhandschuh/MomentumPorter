@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MomentumPorter.UI.ViewModels.Shared"
+             x:Class="MomentumPorter.UI.Views.Shared.LogView"
+             x:DataType="vm:LogViewModel">
+
+  <ListBox Name="Lines" ItemsSource="{Binding Lines}" Background="#33000000" SelectionMode="Multiple"
+           ScrollViewer.HorizontalScrollBarVisibility="Auto">
+    <ListBox.Styles>
+      <Style Selector="ListBoxItem">
+        <Setter Property="Padding" Value="10 0" />
+        <Setter Property="MinHeight" Value="0" />
+      </Style>
+    </ListBox.Styles>
+    <ListBox.ItemTemplate>
+      <DataTemplate DataType="vm:LogLine">
+        <TextBlock Text="{Binding Text}" FontFamily="{StaticResource Monospace}" FontSize="12"
+                   Classes.warning="{Binding IsWarning}" Classes.error="{Binding IsError}" />
+      </DataTemplate>
+    </ListBox.ItemTemplate>
+    <ListBox.ContextMenu>
+      <ContextMenu>
+        <MenuItem Header="Copy selected lines" Click="CopySelected_OnClick" />
+        <MenuItem Header="Copy whole log" Click="CopyAll_OnClick" />
+      </ContextMenu>
+    </ListBox.ContextMenu>
+  </ListBox>
+
+</UserControl>

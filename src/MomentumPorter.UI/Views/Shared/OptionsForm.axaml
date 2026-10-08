@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MomentumPorter.UI.ViewModels.Shared"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="MomentumPorter.UI.Views.Shared.OptionsForm">
+
+  <!-- One template per field type; OptionFieldViewModel.Create picks the type from the property -->
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="vm:BoolOptionViewModel">
+      <CheckBox IsChecked="{Binding Value}" ToolTip.Tip="{Binding Help}">
+        <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+      </CheckBox>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:NumberOptionViewModel">
+      <StackPanel Spacing="4" ToolTip.Tip="{Binding Help}" Background="Transparent">
+        <TextBlock Text="{Binding Label}" />
+        <NumericUpDown Value="{Binding Value}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
+                       Increment="{Binding Increment}" FormatString="{Binding FormatString}"
+                       HorizontalAlignment="Stretch" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:TextOptionViewModel">
+      <StackPanel Spacing="4" ToolTip.Tip="{Binding Help}" Background="Transparent">
+        <TextBlock Text="{Binding Label}" />
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Margin="6 0 0 0" IsVisible="{Binding CanBrowse}" Click="Browse_OnClick"
+                  ToolTip.Tip="Browse">
+            <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
+          </Button>
+          <TextBox Text="{Binding Value}" />
+        </DockPanel>
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:EnumOptionViewModel">
+      <StackPanel Spacing="4" ToolTip.Tip="{Binding Help}" Background="Transparent">
+        <TextBlock Text="{Binding Label}" />
+        <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Value}" HorizontalAlignment="Stretch" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:ChoiceOptionViewModel">
+      <StackPanel Spacing="4" ToolTip.Tip="{Binding Help}" Background="Transparent">
+        <TextBlock Text="{Binding Label}" />
+        <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate DataType="vm:OptionChoice">
+              <TextBlock Text="{Binding Display}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <ItemsControl Name="Root" x:DataType="vm:OptionsFormViewModel" ItemsSource="{Binding Groups}">
+    <ItemsControl.ItemTemplate>
+      <DataTemplate DataType="vm:OptionGroupViewModel">
+        <StackPanel Spacing="10" Margin="0 0 0 18">
+          <TextBlock Text="{Binding Name}" Classes="h2" />
+          <ItemsControl ItemsSource="{Binding Fields}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="10" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+          <Expander Header="Advanced" IsVisible="{Binding HasAdvanced}" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch">
+            <ItemsControl ItemsSource="{Binding AdvancedFields}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Spacing="10" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </Expander>
+        </StackPanel>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+
+</UserControl>
