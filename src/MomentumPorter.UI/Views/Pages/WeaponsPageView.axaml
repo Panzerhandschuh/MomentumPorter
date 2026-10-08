@@ -92,20 +92,24 @@
           <TextBlock Text="{Binding SlotAssignments}" IsVisible="{Binding SlotAssignments, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                      Classes="muted" FontSize="12" TextWrapping="Wrap" />
           <TextBlock Text="Game modes" Classes="h2" Margin="0 8 0 0" />
-          <CheckBox Content="Every mode" IsChecked="{Binding AllModes}" />
-          <ItemsControl ItemsSource="{Binding ModeChoices}" IsEnabled="{Binding !AllModes}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <WrapPanel />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" Margin="0 0 10 0" FontSize="12" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <TextBlock Text="Ticked modes get their own script (scripts/&lt;mode&gt;/), which needs the engine change in docs/engine-patches; other modes keep what the pack has" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+          <DropDownButton Content="{Binding ModesSummary}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                          ToolTip.Tip="Ticked modes get their own script (scripts/&lt;mode&gt;/), which needs the engine change in docs/engine-patches; other modes keep what the pack has">
+            <DropDownButton.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Spacing="2" MinWidth="200">
+                  <CheckBox Content="Every mode" IsChecked="{Binding AllModes}" />
+                  <Separator Margin="0 2" />
+                  <ItemsControl ItemsSource="{Binding ModeChoices}" IsEnabled="{Binding !AllModes}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Flyout>
+            </DropDownButton.Flyout>
+          </DropDownButton>
           <TextBlock Text="Options" Classes="h2" Margin="0 8 0 0" />
         </StackPanel>
         <ScrollViewer Padding="12 0 12 4">

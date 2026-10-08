@@ -36,7 +36,11 @@ public sealed class WeaponsPageViewModel : PageViewModel
         OptionsForm = new OptionsFormViewModel(_options, exclude: [nameof(WeaponPackOptions.Game), nameof(WeaponPackOptions.Weapon), nameof(WeaponPackOptions.Slot), nameof(WeaponPackOptions.GameModes)]);
         Games = Catalog.Games;
         foreach (GameMode mode in GameModes.All)
-            ModeChoices.Add(new GameModeChoice(mode));
+        {
+            var choice = new GameModeChoice(mode);
+            choice.WhenAnyValue(x => x.IsSelected).Subscribe(_ => this.RaisePropertyChanged(nameof(ModesSummary)));
+            ModeChoices.Add(choice);
+        }
 
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);
         IObservable<bool> canBuild = this.WhenAnyValue(x => x.SelectedWeapon, x => x.Runner.IsRunning, (weapon, isRunning) => weapon is not null && !isRunning);
@@ -74,7 +78,24 @@ public sealed class WeaponsPageViewModel : PageViewModel
     public bool AllModes
     {
         get => _allModes;
-        set => this.RaiseAndSetIfChanged(ref _allModes, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _allModes, value);
+            this.RaisePropertyChanged(nameof(ModesSummary));
+        }
+    }
+
+    /// <summary>The mode picker's face: "Every mode", or the ticked modes' names.</summary>
+    public string ModesSummary
+    {
+        get
+        {
+            if (AllModes)
+                return "Every mode";
+
+            var picked = ModeChoices.Where(x => x.IsSelected).Select(x => x.Name).ToList();
+            return picked.Count == 0 ? "No mode: tick some" : string.Join(", ", picked);
+        }
     }
 
     /// <summary>The ticked modes as the option's list, or null for every mode.</summary>

@@ -39,11 +39,13 @@ public class WeaponsPageTests
         // Every mode by default; ticked modes become the option's list
         Assert.True(page.AllModes);
         Assert.Null(page.SelectedModes);
+        Assert.Equal("Every mode", page.ModesSummary);
         Assert.Equal(GameModes.All.Count, page.ModeChoices.Count);
         page.AllModes = false;
         page.ModeChoices.First(x => x.Mode.Id == "kz16").IsSelected = true;
         page.ModeChoices.First(x => x.Mode.Id == "kzt").IsSelected = true;
         Assert.Equal("kzt,kz16", page.SelectedModes);
+        Assert.Equal("Climb (KZT), Climb (1.6)", page.ModesSummary);
     }
 
     [Fact]
