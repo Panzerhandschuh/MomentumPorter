@@ -1,0 +1,7 @@
+﻿bones: reference 61, port 61
+rest pose: max position difference 0.0000, max rotation difference 0.040 deg, max poseToBone difference 0.0001
+parent/missing problems: 0
+includemodels: reference [models/player/mom_player_animations.mdl], port [models/player/mom_player_animations.mdl]
+  attachment player_forward: bone spine.006 (reference spine.006), max matrix difference 0.0000
+hitboxes: reference 29, port 34
+bone flags differing: f_pinky.01.L 0x400->0x0, f_pinky.02.L 0x400->0x0, f_pinky.03.L 0x400->0x0, f_ring.01.L 0x400->0x0, f_ring.02.L 0x400->0x0, f_middle.01.L 0x400->0x500, f_middle.02.L 0x400->0x500, f_index.01.L 0x400->0x500, thumb.01.helper.L 0x400->0x500, thumb.02.L 0x400->0x500, thumb.03.L 0x400->0x500, f_ring.03.L 0x400->0x0, thumb.01.helper.R 0x400->0x500, thumb.02.R 0x400->0x500, thumb.03.R 0x400->0x500, f_index.01.R 0x400->0x500, f_middle.01.R 0x400->0x500, f_middle.02.R 0x400->0x500, f_ring.01.R 0x400->0x0, f_ring.02.R 0x400->0x0, f_ring.03.R 0x400->0x0, f_pinky.01.R 0x400->0x0, f_pinky.02.R 0x400->0x0, f_pinky.03.R 0x400->0x0

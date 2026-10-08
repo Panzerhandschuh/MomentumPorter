@@ -1,0 +1,54 @@
+// GoldSrc 3ds Max Biped ("Bip01 ...") -> Momentum's mom_player rig. Covers both namings seen in GoldSrc player models:
+// CS 1.6 (Thigh/Calf, Clavicle/UpperArm/Forearm, "-- ..." helper bones) and Half-Life 1 (Leg/Leg1, Arm/Arm1/Arm2).
+// Names with spaces are quoted. Unlisted bones ("-- L Knee", "Bone01", "Dummy08", ...) fold into their parents.
+// GoldSrc vertices have exactly one bone each, so the result is rigidly skinned (as it was in GoldSrc).
+
+"Bip01"                 -
+"Bip01 Pelvis"          spine           aim=-
+// "Bip01 Spine" sits 2 units above the pelvis: folded into the pelvis
+"Bip01 Spine1"          spine.001
+"Bip01 Spine2"          spine.002
+"Bip01 Spine3"          spine.003
+"Bip01 Neck"            spine.004       aim=-
+"Bip01 Head"            spine.006       aim=-
+
+"Bip01 L Thigh"         thigh.L
+"Bip01 L Calf"          shin.L
+"Bip01 L Leg"           thigh.L         // HL1
+"Bip01 L Leg1"          shin.L          // HL1
+"Bip01 L Foot"          foot.L
+"Bip01 L Toe0"          toe.L
+"Bip01 R Thigh"         thigh.R
+"Bip01 R Calf"          shin.R
+"Bip01 R Leg"           thigh.R
+"Bip01 R Leg1"          shin.R
+"Bip01 R Foot"          foot.R
+"Bip01 R Toe0"          toe.R
+
+"Bip01 L Clavicle"      shoulder.L
+"Bip01 L UpperArm"      upper_arm.L
+"Bip01 L Forearm"       forearm.L
+"Bip01 L Arm"           shoulder.L      // HL1
+"Bip01 L Arm1"          upper_arm.L     // HL1
+"Bip01 L Arm2"          forearm.L       // HL1
+"Bip01 L Hand"          hand.L          aim="Bip01 L Finger1"
+"Bip01 L Finger0"       thumb.01.L
+"Bip01 L Finger01"      thumb.02.L
+"Bip01 L Finger02"      thumb.03.L
+"Bip01 L Finger1"       f_middle.01.L
+"Bip01 L Finger11"      f_middle.02.L
+"Bip01 L Finger12"      f_middle.03.L
+
+"Bip01 R Clavicle"      shoulder.R
+"Bip01 R UpperArm"      upper_arm.R
+"Bip01 R Forearm"       forearm.R
+"Bip01 R Arm"           shoulder.R
+"Bip01 R Arm1"          upper_arm.R
+"Bip01 R Arm2"          forearm.R
+"Bip01 R Hand"          hand.R          aim="Bip01 R Finger1"
+"Bip01 R Finger0"       thumb.01.R
+"Bip01 R Finger01"      thumb.02.R
+"Bip01 R Finger02"      thumb.03.R
+"Bip01 R Finger1"       f_middle.01.R
+"Bip01 R Finger11"      f_middle.02.R
+"Bip01 R Finger12"      f_middle.03.R

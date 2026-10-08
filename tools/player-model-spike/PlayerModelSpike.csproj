@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Phase 6a spike tooling (see docs/player-models.md). Not part of MomentumPorter.slnx on purpose.
+       Run with: dotnet run (double dash)project tools/player-model-spike (double dash) <command> ... -->
+  <!-- Directory.Build.props at the repo root supplies TargetFramework, RepoRoot and BspConvertDir. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PlayerModelSpike</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ValvePak" Version="6.0.0.182" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reused as source files so the spike doesn't need LibBSP / BSPConvert.Lib built -->
+    <Compile Include="$(RepoRoot)src\MomentumPorter.Core\Assets\Models\StudioModelHeader.cs" Link="Shared\StudioModelHeader.cs" />
+    <Compile Include="$(BspConvertDir)BSPConvert.Lib\Source\GoldSrc\GoldSrcModel.cs" Link="Shared\GoldSrcModel.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,75 @@
+﻿target skeleton: 61 bones (Euler vs quaternion rest pose differ by at most 0.0000 units)
+folded weighted bone Bip01 Spine into Bip01 Pelvis -> spine
+folded weighted bone Bone01 into Bip01 Head -> spine.006
+folded weighted bone -- L knuckle into Bip01 L Finger1 -> f_middle.01.L
+folded weighted bone -- L wrist into Bip01 L Forearm -> forearm.L
+folded weighted bone -- L Elbow into Bip01 L UpperArm -> upper_arm.L
+folded weighted bone -- L bicep twist into Bip01 L UpperArm -> upper_arm.L
+folded weighted bone -- L shoulder outside into Bip01 L Clavicle -> shoulder.L
+folded weighted bone -- L Shoulder inside into Bip01 L Clavicle -> shoulder.L
+folded weighted bone -- R knuckle into Bip01 R Finger1 -> f_middle.01.R
+folded weighted bone -- R wrist into Bip01 R Forearm -> forearm.R
+folded weighted bone -- R Elbow into Bip01 R UpperArm -> upper_arm.R
+folded weighted bone -- R bicep twist into Bip01 R UpperArm -> upper_arm.R
+folded weighted bone -- R Shoulder inside into Bip01 R Clavicle -> shoulder.R
+folded weighted bone -- R shoulder outside into Bip01 R Clavicle -> shoulder.R
+folded weighted bone -- Neck smooth into Bip01 Spine3 -> spine.003
+folded weighted bone -- R Butt into Bip01 Pelvis -> spine
+folded weighted bone -- L butt into Bip01 Pelvis -> spine
+folded weighted bone -- L ankle into Bip01 L Calf -> shin.L
+folded weighted bone -- L Knee into Bip01 L Thigh -> thigh.L
+folded weighted bone -- R Ankle into Bip01 R Calf -> shin.R
+folded weighted bone -- R Knee into Bip01 R Thigh -> thigh.R
+mapped Bip01 Pelvis -> spine
+mapped Bip01 Spine1 -> spine.001
+mapped Bip01 Spine2 -> spine.002
+mapped Bip01 Spine3 -> spine.003
+mapped Bip01 Head -> spine.006
+mapped Bip01 L Clavicle -> shoulder.L
+mapped Bip01 L UpperArm -> upper_arm.L
+mapped Bip01 L Forearm -> forearm.L
+mapped Bip01 L Hand -> hand.L
+mapped Bip01 L Finger0 -> thumb.01.L
+mapped Bip01 L Finger01 -> thumb.02.L
+mapped Bip01 L Finger11 -> f_middle.02.L
+mapped Bip01 R Clavicle -> shoulder.R
+mapped Bip01 R UpperArm -> upper_arm.R
+mapped Bip01 R Forearm -> forearm.R
+mapped Bip01 R Hand -> hand.R
+mapped Bip01 R Finger0 -> thumb.01.R
+mapped Bip01 R Finger01 -> thumb.02.R
+mapped Bip01 R Finger11 -> f_middle.02.R
+mapped Bip01 L Thigh -> thigh.L
+mapped Bip01 L Calf -> shin.L
+mapped Bip01 L Foot -> foot.L
+mapped Bip01 L Toe0 -> toe.L
+mapped Bip01 R Thigh -> thigh.R
+mapped Bip01 R Calf -> shin.R
+mapped Bip01 R Foot -> foot.R
+mapped Bip01 R Toe0 -> toe.R
+target bones with no source bone (left unweighted): rootTransform, shoulder_helper.L, shoulder_helper.R, weapon_bone.R, palm.02.L, f_pinky.01.L, f_pinky.02.L, f_pinky.03.L, f_ring.01.L, f_ring.02.L, f_middle.03.L, f_index.01.L, f_index.02.L, f_index.03.L, spine.005, thumb.01.helper.L, thumb.03.L, f_ring.03.L, thumb.01.helper.R, thumb.03.R, palm.02.R, f_index.01.R, f_index.02.R, f_index.03.R, f_middle.03.R, f_ring.01.R, f_ring.02.R, f_ring.03.R, f_pinky.01.R, f_pinky.02.R, f_pinky.03.R
+source turned 90 degrees about z to face the target's way
+source scale: 1.052
+segment                                         source len  target len  ratio  bend (deg)
+  Bip01 L Thigh -> Bip01 L Calf                       17.43      17.43   1.00      5.1
+  Bip01 R Thigh -> Bip01 R Calf                       17.43      17.43   1.00      5.1
+  Bip01 Spine1 -> Bip01 Spine2                         4.33       3.92   0.90      6.6
+  Bip01 L Calf -> Bip01 L Foot                        15.91      16.45   1.03      7.4
+  Bip01 R Calf -> Bip01 R Foot                        15.91      16.45   1.03      7.4
+  Bip01 Spine2 -> Bip01 Spine3                         4.33       5.93   1.37      0.0
+  Bip01 L Foot -> Bip01 L Toe0                         7.52       4.97   0.66     14.0
+  Bip01 R Foot -> Bip01 R Toe0                         7.52       4.97   0.66     14.0
+  Bip01 Spine3 -> Bip01 Neck                           4.33       6.82   1.57      8.8
+  Bip01 L Clavicle -> Bip01 L UpperArm                 6.72       7.40   1.10     10.2
+  Bip01 R Clavicle -> Bip01 R UpperArm                 6.72       7.40   1.10     10.2
+  Bip01 L UpperArm -> Bip01 L Forearm                 10.77      11.38   1.06     71.3
+  Bip01 R UpperArm -> Bip01 R Forearm                 10.77      11.38   1.06     71.3
+  Bip01 L Forearm -> Bip01 L Hand                     11.96       8.73   0.73     69.9
+  Bip01 R Forearm -> Bip01 R Hand                     11.96       8.73   0.73     69.9
+  Bip01 L Hand -> Bip01 L Finger1                      3.41       4.81   1.41     78.8
+  Bip01 R Hand -> Bip01 R Finger1                      3.41       4.81   1.41     78.8
+  Bip01 L Finger0 -> Bip01 L Finger01                  2.25       1.27   0.56     75.4
+  Bip01 L Finger1 -> Bip01 L Finger11                  2.12       1.16   0.55     63.6
+  Bip01 R Finger0 -> Bip01 R Finger01                  2.25       1.27   0.56     75.4
+  Bip01 R Finger1 -> Bip01 R Finger11                  2.12       1.16   0.55     63.6
+wrote gs_urban_fit.smd: 61 bones, 790 triangles
