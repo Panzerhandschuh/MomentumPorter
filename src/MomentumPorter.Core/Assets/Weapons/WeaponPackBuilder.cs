@@ -1,5 +1,6 @@
 namespace MomentumPorter.Assets.Weapons;
 
+using MomentumPorter.Assets.Models;
 using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Steam;
@@ -63,6 +64,12 @@ public sealed class WeaponPackState(WeaponPackOptions options) : IDisposable
     /// </summary>
     public Dictionary<string, KeyValuesNode> RedefinedSoundEntries { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// A world model converted from a game Momentum doesn't mount, not yet in the pack: <see cref="FitWorldModelStep"/>
+    /// adds it, fitted to Momentum's player or as it is.
+    /// </summary>
+    public ConvertedModel? ConvertedWorldModel { get; set; }
+
     /// <summary>The arms model Momentum should bone-merge onto the view model (ModelData "arms"), if any.</summary>
     public string? ArmsModel { get; set; }
 
@@ -91,6 +98,7 @@ public static class WeaponPackBuilder
             new LoadWeaponStep(),
             new CheckMountedAssetsStep(),
             new ConvertModelsStep(),
+            new FitWorldModelStep(),
             new ResolveWeaponSoundsStep(),
             new WriteWeaponPackStep(),
         };

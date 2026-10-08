@@ -200,8 +200,17 @@ public sealed class ConvertModelsStep : IPortStep
             try
             {
                 ConvertedModel world = await convert(weapon.World, null).ConfigureAwait(false);
-                Add(context, state, world);
                 state.WorldModel = world.GamePath;
+                if (info.Engine == ContentEngine.Quake3)
+                {
+                    // FitWorldModelStep adds it, recompiled to sit in Momentum's player's hand
+                    state.ConvertedWorldModel = world;
+                    context.Report.Change("Converted models");
+                }
+                else
+                {
+                    Add(context, state, world);
+                }
             }
             catch (PortStepException ex)
             {

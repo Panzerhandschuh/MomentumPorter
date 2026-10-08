@@ -37,11 +37,14 @@ public sealed class WeaponPackOptions
     [PortOption("Sounds", "Replace the weapon's sounds with the source game's.", Group = "Weapon", Order = 0)]
     public bool Sounds { get; set; } = true;
 
-    [PortOption("Arms", "Whether Momentum's arms are drawn on the view model. Auto keeps the arms the source game's models have (CS:GO's have none, so Momentum's are used).", Group = "Weapon", Order = 10)]
+    [PortOption("Arms", "Which arms are drawn on the view model. Auto keeps the arms the source game's models have, and gives CS:GO's armless view models CS:GO's arms. Momentum draws Momentum's arms, which only fit Momentum's own view models.", Group = "Weapon", Order = 10)]
     public WeaponArms Arms { get; set; } = WeaponArms.Auto;
 
     [PortOption("Projectile model", "Use the source game's projectile model (rocket, stickybomb, grenade) where it has one.", Group = "Weapon", Order = 20)]
     public bool Projectile { get; set; } = true;
+
+    [PortOption("Fit world model", "Recompile the source game's world (third person) model so it attaches to Momentum's player's hand. Other games' world models are rigged to their own player skeletons and otherwise sit at the player's feet.", Group = "Weapon", Order = 25)]
+    public bool FitWorldModel { get; set; } = true;
 
     [PortOption("Particles", "Use the source game's particle effects (explosions, trails) where the catalog lists them.", Group = "Weapon", Order = 30)]
     public bool Particles { get; set; } = true;

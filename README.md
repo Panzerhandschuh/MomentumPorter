@@ -258,10 +258,20 @@ The pack's `scripts/weapon_momentum_<slot>.txt` is Momentum's script with its `M
 spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/Overrides` and `ParticleData` replaced.
 
 - **Mounted games**: every model is checked in the VPKs Momentum's `gameinfo.txt` mounts (not loose files of the game).
-  The game's own paths are used. `attach_to_hands` is 0 (the view models have arms), except CS:GO, whose view models
-  have none, so Momentum's are bone-merged on (1). CS:S and CS 1.6 models are left handed (`BuiltRightHanded 0`).
+  The game's own view model paths are used. `attach_to_hands` is 0 (the view models have arms), except CS:GO, whose view
+  models have none: the script names CS:GO's `ct_arms.mdl` as `ModelData` `arms`, which needs the engine change in
+  `docs/engine-patches` (without it Momentum's arms are attached, and they share no bones with CS:GO's view models). CS:S
+  and CS 1.6 models are left handed (`BuiltRightHanded 0`).
+- **World models** (third person, replays, spawners): held weapons are bone-merged onto the player by bone name, and
+  other games' world models are rigged to their own player skeletons, so they'd sit at the player's feet. The porter
+  recompiles them onto Momentum's `weapon_bone.R` (`models/porter/<game>/`), placed like the Momentum model they replace.
+  Momentum's world models are all laid out level in model space (barrel -y, top +z), which gives the target; the source
+  model's barrel, top and tilt come from its muzzle, shell ejection, slide and top line, and the two triggers are lined
+  up when both models have one. CS:GO, CS:S, TF2, HL2 and Quake 3 world models are fitted; GoldSrc's are ground pickups
+  with nothing marking where they're held and stay as they are. "Fit world model" turns this off.
 - **Sounds**: Momentum only loads the soundscripts in its `game_sounds_manifest.txt`, and the first definition of a
-  name wins. Overrides point at the game's entries where Momentum loads them (CS:S, TF2, HL2). Entries Momentum doesn't
+  name wins. Bullet weapons (pistol, machine gun, shotgun, sniper) play their shot from the player, where a weapon
+  script's `Overrides` don't apply, so for those the pack redefines the shot's entry (e.g. `Weapon_Pistol.Single`) in place. Overrides point at the game's entries where Momentum loads them (CS:S, TF2, HL2). Entries Momentum doesn't
   load (CS:GO), or that a Momentum entry of the same name hides (Momentum's `Weapon_Pistol.Single`, `Weapon_Scout.Single`,
   `Weapon_Shotgun.Single`, `Weapon_Knife.*`), are copied (wave, channel, volume, pitch, level; no operator stacks), hidden
   ones as `Porter_<game>.<name>`. The manifest isn't overridden, so the pack ships a full copy of

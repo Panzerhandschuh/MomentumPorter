@@ -122,8 +122,10 @@ public class WeaponPackTests
 
             WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_machinegun.txt")));
             Assert.Equal("models/weapons/v_rif_ak47.mdl", script.GetModel("view"));
-            Assert.Equal("models/weapons/w_rif_ak47.mdl", script.GetModel("world"));
-            Assert.Equal("models/weapons/w_rif_ak47.mdl", script.GetModel("spawner"));
+            // The world model is recompiled to sit in Momentum's player's hand
+            Assert.Equal("models/porter/css/w_rif_ak47.mdl", script.GetModel("world"));
+            Assert.Equal("models/porter/css/w_rif_ak47.mdl", script.GetModel("spawner"));
+            Assert.True(File.Exists(Path.Combine(pack, "models", "porter", "css", "w_rif_ak47.mdl")));
             Assert.Equal(0, script.AttachToHands);
             Assert.False(script.BuiltRightHanded);
             Assert.Equal("Weapon_AK47.Single", script.SoundOverrides["Weapon_SMG1.Single"]);
