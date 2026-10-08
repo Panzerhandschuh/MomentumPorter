@@ -20,6 +20,45 @@ The output is written as a new file, uncompressed unless `--compress` is given, 
 and anything it couldn't. Pack assets afterwards (e.g. with bspPack) as usual. Packed files named after the map, such as
 cubemap materials, aren't renamed, so keep the map's name or rename it with Lumper afterwards.
 
+## Quake 3 and GoldSrc maps
+
+Quake 3 (`.bsp`/`.pk3`) and GoldSrc (Half-Life, CS 1.6; `.bsp`/`.zip`) maps are converted in process with
+[BSPConvert](https://github.com/Panzerhandschuh/BSPConvert), which has to be checked out next to this repo
+(`../BSPConvert`, or set `BspConvertDir` in `Directory.Build.local.props`). The CLI takes BSPConvert's options under the
+same names (`--wads`, `--subdiv`, `--scale`, `--nopak`, `--prefix`, `--maps`...; see `--help` or BSPConvert's README):
+
+```
+MomentumPorter <map.pk3|map.bsp|maps.zip> <outputGameDir> [BSPConvert options]
+MomentumPorter "...aseq3\pak0.pk3" "...\Momentum Mod Playtest\momentum" --maps q3dm1
+MomentumPorter "...\Half-Life\cstrike\maps\kz_persia.bsp" "...\Momentum Mod Playtest\momentum"
+```
+
+The output is a game folder: the map goes into `maps/<prefix><name>.bsp`, Quake 3 timer zones into
+`maps/zones/local/`, and with `--nopak` materials (and GoldSrc sounds and models) into their folders. BSPConvert writes
+into the job's temp folder first and the files are copied over at the end, replacing existing ones like BSPConv.exe does
+(the app asks instead). The log is BSPConvert's own, and its warnings are repeated in the report at the end.
+
+What BSPConvert would otherwise need to be told is filled in from Steam:
+
+- `--wads`: the Half-Life install's folders, the map's own mod first (when it's in one), then `cstrike` and `valve`,
+  each followed by its `_downloads` folder.
+- `--studiomdl`: Momentum Mod's `bin/win64/studiomdl.exe`, which compiles the models GoldSrc entities use.
+- Quake 3's base content: BSPConvert reads the textures, shaders and sounds maps share with the base game from a
+  `Q3Content` folder next to the program. When it's empty, the porter extracts Quake 3's `baseq3/pak*.pk3` into it
+  first (about 650 MB, once). `--noq3content` turns that off. Third-party map dependencies go in `CustomContent` as
+  described in its `readme.txt`.
+- In the app, the output folder defaults to Momentum's `momentum` folder.
+
+In code, `BspConvertOptions` (`src/MomentumPorter.Core/BspConvert/`) mirrors BSPConvert's options with the same defaults,
+with `[PortOption]` metadata grouped General / Quake 3 / GoldSrc / Animated textures for the generated options form, and
+`ToConverterOptions` maps them onto BSPConvert's `BSPConverterOptions` as its command line does. `BspConvertJobs.Create`
+builds the job (`BspConvertStep`, then `CopyConvertedFilesStep`); `BspConvertState` lists the converted maps and zone
+files. `Pk3Inspector.ListMaps` lists the maps in an archive for a map picker (`BspConvertOptions.Maps`).
+
+BSPConvert can't be cancelled midway: a cancelled job stops before the next map of an archive, and a map that has started
+converting finishes first. Conversions run one at a time, since BSPConvert extracts each input to `%TEMP%\<input name>`.
+GoldSrc maps don't get timer zones, and `--scale` isn't supported for them.
+
 ## Games
 
 | `--game` | Game |
