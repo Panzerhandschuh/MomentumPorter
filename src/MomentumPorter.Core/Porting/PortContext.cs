@@ -5,6 +5,12 @@ using MomentumPorter.Bsp;
 using SharpCompress.Archives;
 using SharpCompress.Archives.Zip;
 
+/// <summary>
+/// A text file to write alongside the ported map.
+/// </summary>
+/// <param name="RelativePath">Path relative to the output BSP's folder, with forward slashes (e.g. "zones/local/kz_x.json")</param>
+public sealed record ExtraOutput(string RelativePath, string Content);
+
 /// <param name="mapName">The ported map's name, which map specific files (e.g. its soundscapes) are named after</param>
 /// <param name="gameDirectory">The game's folder that the map came from (holding gameinfo.txt), if known</param>
 /// <param name="report">Where to count changes and warnings; a job passes its own so every step shares one</param>
@@ -29,6 +35,11 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
     public string MapName { get; } = mapName;
 
     public string? GameDirectory { get; } = gameDirectory;
+
+    /// <summary>
+    /// Files the conversion produced besides the BSP (e.g. a zone file), written next to the output BSP.
+    /// </summary>
+    public List<ExtraOutput> ExtraOutputs { get; } = [];
 
     /// <summary>
     /// Reads a text file packed in the map, or returns null if it isn't packed.
