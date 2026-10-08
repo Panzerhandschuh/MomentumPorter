@@ -267,9 +267,9 @@
       "attachToHands": 0,
       "builtRightHanded": true,
       "limitations": [
-        "MD3 weapons are converted to a single-bone model: the weapon and its barrel, hung from the hand model's tag_weapon for the view model. Barrels don't spin and the muzzle flash isn't drawn",
+        "MD3 weapons become one model: the weapon and its barrel, hung from the hand model's tag_weapon for the view model, which spins the barrel while firing and shows the muzzle flash model for a frame (the whole swing for the gauntlet and lightning gun); the flash has no light and doesn't roll at random",
         "The view model's idle, fire and raise animations come from the hand model's frames; Quake 3 has no reload or other animations",
-        "Shaders become plain VertexLitGeneric (or additive UnlitGeneric) materials from their first stage; scrolling, environment maps and glow stages aren't converted",
+        "Shaders become plain VertexLitGeneric (or additive UnlitGeneric) materials from their first stage, with animmap frames as an animated texture; scrolling, environment maps and later stages aren't converted",
         "Quake 3 has no arms on its view weapons, so none are drawn"
       ],
       "weapons": [

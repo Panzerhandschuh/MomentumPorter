@@ -299,9 +299,12 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   activities Momentum plays from their names (idle, shoot, reload, draw, slash/stab, pullpin/throw), and their sound
   events, which play the waves copied to `sound/porter/<game>/`. Unsilenced sequences are used for the M4A1 and USP.
   Muzzle flash events are dropped, `p_` models aren't used (Momentum's player rig differs) and the view model FOV differs.
-- **Quake 3**: the weapon and its barrel become a one-bone model. The view model hangs it from the hand model's
-  `tag_weapon`, and the hand's frames give it idle, fire (recoil) and draw sequences. Barrels don't spin, the muzzle
-  flash isn't drawn, and shaders become plain materials from their first stage (additive if it's blended so).
+- **Quake 3**: the weapon and its barrel become one model. The view model hangs it from the hand model's
+  `tag_weapon`, and the hand's frames give it idle, fire (recoil) and draw sequences; the barrel rides its own bone,
+  which the fire sequence spins a full turn (Quake 3 spins it while firing), and `<weapon>_flash.md3` is a body group
+  the fire sequence shows for a frame (the whole swing for the gauntlet and lightning gun). Shaders become plain
+  materials from their first stage (additive if it's blended so); an `animmap` stage becomes a multi-frame VTF with
+  an `AnimatedTexture` proxy, which is the gauntlet's glow. No flash light, scrolling or environment maps.
 - **Quake 3 effects**: rocket, grenade, plasma and BFG explosions, the rocket and grenade smoke trails and the plasma
   ball are rebuilt as particle systems in `particles/porter_q3.pcf` from Quake 3's own textures, timed as cgame draws
   them (explosion sprites 16 units off the wall growing from 30 to 72 units through the animmap frames, a smoke puff

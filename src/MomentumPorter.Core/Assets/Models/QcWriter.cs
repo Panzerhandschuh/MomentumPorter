@@ -4,7 +4,12 @@ using System.Globalization;
 using System.Text;
 
 /// <summary>An animation event, e.g. a sound (5004) at a frame.</summary>
-public sealed record QcEvent(int Event, int Frame, string Options);
+public sealed record QcEvent(string Event, int Frame, string Options)
+{
+    public QcEvent(int eventId, int frame, string options) : this(eventId.ToString(CultureInfo.InvariantCulture), frame, options)
+    {
+    }
+}
 
 /// <param name="Activity">e.g. ACT_VM_PRIMARYATTACK, or null</param>
 public sealed record QcSequence(string Name, string Smd, float Fps, bool Loop, string? Activity = null, IReadOnlyList<QcEvent>? Events = null);
