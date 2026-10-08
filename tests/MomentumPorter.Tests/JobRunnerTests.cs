@@ -12,11 +12,47 @@ public class JobRunnerTests
         public override string Title { get; } = title;
     }
 
-    private sealed class Step(string name, Func<PortJobContext, Task> run) : IPortStep
+    private sealed class Step(string name, Func<PortJobContext, Task> run, double weight = 1) : IPortStep
     {
         public string Name { get; } = name;
 
+        public double Weight { get; } = weight;
+
         public Task RunAsync(PortJobContext context) => run(context);
+    }
+
+    private sealed class ListProgress : IProgress<StepProgress>
+    {
+        public List<StepProgress> Reports { get; } = [];
+
+        public void Report(StepProgress value) => Reports.Add(value);
+    }
+
+    [Fact]
+    public async Task StepsReportTheirProgressAsPartOfTheJobsByWeight()
+    {
+        using var temp = new TempFolder();
+        var progress = new ListProgress();
+        var job = new PortJob("test",
+        [
+            new Step("Convert", context =>
+            {
+                context.ReportStepProgress(0.5, "Converting textures 1/2");
+                return Task.CompletedTask;
+            }, weight: 3),
+            new Step("Copy", context =>
+            {
+                context.ReportStepProgress(0.5);
+                return Task.CompletedTask;
+            }),
+        ]);
+
+        PortJobResult result = await job.RunAsync(new PortJobContext { Log = NullLog.Instance, WorkDirectory = temp.Path, Progress = progress });
+
+        Assert.True(result.Succeeded);
+        Assert.Equal([0, 0.375, 0.75, 0.875, 1], progress.Reports.Select(x => x.JobFraction!.Value));
+        Assert.Equal("Converting textures 1/2", progress.Reports[1].Message);
+        Assert.Equal(("Copy", 1, 0.5), (progress.Reports[3].Step, progress.Reports[3].StepIndex, progress.Reports[3].Fraction!.Value));
     }
 
     // Everything runs inline: there's no UI thread in tests
@@ -134,6 +170,11 @@ public class JobRunnerTests
         item.ReportProgress(new StepProgress("Pack assets", 3, 5, null));
         Assert.Equal(60, item.Progress);
         Assert.Equal("4/5 Pack assets", item.StepText);
+
+        // A step reporting its own progress, in a job whose steps are weighted
+        item.ReportProgress(new StepProgress("Convert map", 0, 3, 0.5, "Converting textures 12/67", JobFraction: 0.45));
+        Assert.Equal(45, item.Progress, 3);
+        Assert.Equal("1/3 Convert map: Converting textures 12/67", item.StepText);
 
         item.Report.Add(new ReportLine("1 x x", false));
         Assert.True(item.HasReport);

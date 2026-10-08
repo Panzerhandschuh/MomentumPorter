@@ -10,8 +10,8 @@ using MomentumPorter.Steam;
 /// a game-folder-shaped staging folder in the job's work directory. <see cref="BspConvertState"/> lists what it wrote.
 /// </summary>
 /// <remarks>
-/// BSPConvert has no cancellation token. Cancelling stops it between two maps of an archive (see
-/// <see cref="PortLogAdapter"/>); a map that has started converting runs to the end, and the job then stops.
+/// Reports BSPConvert's progress as the step's. Cancelling stops BSPConvert at its next stage or item (texture, model),
+/// which can take a few seconds.
 /// </remarks>
 public sealed class BspConvertStep(SteamLocator? steam = null) : IPortStep
 {
@@ -20,6 +20,9 @@ public sealed class BspConvertStep(SteamLocator? steam = null) : IPortStep
     private static readonly SemaphoreSlim OneAtATime = new(1, 1);
 
     public string Name => "Convert map";
+
+    // Converting takes minutes, the steps after it seconds
+    public double Weight => 20;
 
     public async Task RunAsync(PortJobContext context)
     {
@@ -54,12 +57,13 @@ public sealed class BspConvertStep(SteamLocator? steam = null) : IPortStep
         BSPConverterOptions converterOptions = options.ToConverterOptions(input, staging);
         context.Log.Info($"BSPConvert {string.Join(' ', options.ToCommandLine().Append(input).Select(Quote))}");
 
-        var logger = new PortLogAdapter(context.Log, context.Report, context.Cancellation);
+        var logger = new PortLogAdapter(context.Log, context.Report);
+        var progress = new StepProgressAdapter(context);
         await OneAtATime.WaitAsync(context.Cancellation).ConfigureAwait(false);
         try
         {
             await Task.Factory.StartNew(
-                () => new BSPConverter(converterOptions, logger).Convert(),
+                () => new BSPConverter(converterOptions, logger, progress, context.Cancellation).Convert(),
                 CancellationToken.None,
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default).ConfigureAwait(false);
@@ -127,6 +131,23 @@ public sealed class BspConvertStep(SteamLocator? steam = null) : IPortStep
         }
 
         return maps;
+    }
+
+    /// <summary>
+    /// What BSPConvert is doing, as the step's progress message: "Converting textures 12/67", with the map in front
+    /// when the input has several ("map2 (2/3): ...").
+    /// </summary>
+    public static string Describe(ConversionProgress progress)
+    {
+        string stage = progress.Total > 0 ? $"{progress.Stage} {progress.Done}/{progress.Total}" : progress.Stage;
+        return progress.MapCount > 1 ? $"{progress.MapName} ({progress.MapIndex + 1}/{progress.MapCount}): {stage}" : stage;
+    }
+
+    // Reports on BSPConvert's thread as it goes, rather than posting to the thread pool like Progress<T> would, so
+    // reports arrive in order
+    private sealed class StepProgressAdapter(PortJobContext context) : IProgress<ConversionProgress>
+    {
+        public void Report(ConversionProgress value) => context.ReportStepProgress(value.Fraction, Describe(value));
     }
 
     // ContentManager's folder: %TEMP%\<input file name without extension>

@@ -2,6 +2,7 @@ namespace MomentumPorter.Tests;
 
 using System.IO.Compression;
 using System.Text;
+using BSPConvert.Lib;
 using MomentumPorter.BspConvert;
 using MomentumPorter.Detection;
 using MomentumPorter.Pipeline;
@@ -186,26 +187,28 @@ public sealed class BspConvertHelpersTests : IDisposable
     }
 
     [Fact]
-    public void ForwardsBspConvertsLogAndStopsBetweenMaps()
+    public void ForwardsBspConvertsLog()
     {
         var lines = new List<(LogLevel, string)>();
         var report = new PortReport();
-        using var cancellation = new CancellationTokenSource();
-        var logger = new PortLogAdapter(new DelegateLog((level, message) => lines.Add((level, message))), report, cancellation.Token);
+        var logger = new PortLogAdapter(new DelegateLog((level, message) => lines.Add((level, message))), report);
 
         logger.Log("Converting a.bsp...");
         logger.Log("Warning: WAD not found: flash.wad");
-        logger.Log("Error: Input BSP file does not exist");
+        logger.Log("Error: a.bsp doesn't exist");
 
-        Assert.Equal([(LogLevel.Info, "Converting a.bsp..."), (LogLevel.Warning, "Warning: WAD not found: flash.wad"), (LogLevel.Error, "Error: Input BSP file does not exist")], lines);
-        Assert.Equal(["Input BSP file does not exist"], logger.Errors);
+        Assert.Equal([(LogLevel.Info, "Converting a.bsp..."), (LogLevel.Warning, "Warning: WAD not found: flash.wad"), (LogLevel.Error, "Error: a.bsp doesn't exist")], lines);
+        Assert.Equal(["a.bsp doesn't exist"], logger.Errors);
         using var writer = new StringWriter();
         report.Print(writer);
         Assert.Contains("warning: WAD not found: flash.wad", writer.ToString());
+    }
 
-        cancellation.Cancel();
-        logger.Log("Converted 3/3 models");
-        Assert.Throws<OperationCanceledException>(() => logger.Log("Converting b.bsp..."));
-        Assert.Throws<OperationCanceledException>(() => logger.Log("Skipping c.bsp (not in --maps filter)"));
+    [Fact]
+    public void DescribesBspConvertsProgress()
+    {
+        Assert.Equal("Converting textures 12/67", BspConvertStep.Describe(new ConversionProgress(0.5f, "Converting textures", "a", 0, 1, 12, 67)));
+        Assert.Equal("Extracting a.pk3", BspConvertStep.Describe(new ConversionProgress(0f, "Extracting a.pk3", null, 0, 0, 0, 0)));
+        Assert.Equal("b (2/3): Writing BSP", BspConvertStep.Describe(new ConversionProgress(0.6f, "Writing BSP", "b", 1, 3, 0, 0)));
     }
 }

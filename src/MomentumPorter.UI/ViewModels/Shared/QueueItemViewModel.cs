@@ -109,11 +109,13 @@ public abstract class QueueItemViewModel : ViewModel
         if (Status != QueueStatus.Running)
             return;
 
-        double fraction = progress.StepCount == 0 ? 1 : (progress.StepIndex + (progress.Fraction ?? 0)) / progress.StepCount;
+        double fraction = progress.JobFraction
+            ?? (progress.StepCount == 0 ? 1 : (progress.StepIndex + (progress.Fraction ?? 0)) / progress.StepCount);
         Progress = Math.Clamp(fraction * 100, 0, 100);
+        string step = progress.Message is null ? progress.Step : $"{progress.Step}: {progress.Message}";
         StepText = progress.StepIndex < progress.StepCount
-            ? $"{progress.StepIndex + 1}/{progress.StepCount} {progress.Step}"
-            : progress.Step;
+            ? $"{progress.StepIndex + 1}/{progress.StepCount} {step}"
+            : step;
     }
 
     public void Finish(QueueStatus status, string? message)
