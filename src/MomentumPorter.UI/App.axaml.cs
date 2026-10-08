@@ -20,6 +20,7 @@ public partial class App : Application
 
         ViewLocator.Register<MapsPageViewModel, MapsPageView>();
         ViewLocator.Register<SettingsPageViewModel, SettingsPageView>();
+        ViewLocator.Register<PlayerSoundsPageViewModel, PlayerSoundsPageView>();
         ViewLocator.Register<PlaceholderPageViewModel, PlaceholderPageView>();
     }
 
@@ -39,6 +40,7 @@ public partial class App : Application
             RxApp.DefaultExceptionHandler = Observer.Create<Exception>(ex => post(() => viewModel.StatusMessage = ex.Message));
 
             _ = viewModel.Settings.ScanAsync();
+            _ = viewModel.PlayerSounds.ScanAsync();
             if (desktop.Args is { Length: > 0 } args)
                 viewModel.OpenFiles(args);
         }

@@ -3,3 +3,4 @@ obj/
 .vs/
 *.user
 Directory.Build.local.props
+.claude/

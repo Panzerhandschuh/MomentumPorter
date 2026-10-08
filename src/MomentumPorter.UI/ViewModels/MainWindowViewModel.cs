@@ -17,13 +17,14 @@ public sealed class MainWindowViewModel : ViewModel
     {
         Maps = new MapsPageViewModel(settings, dialogs, runner, post);
         Settings = new SettingsPageViewModel(settings, dialogs, post);
+        // Its own runner, so building a sound pack doesn't wait for the map queue
+        PlayerSounds = new PlayerSoundsPageViewModel(settings, new JobRunnerService(post), post);
         Pages =
         [
             Maps,
             new PlaceholderPageViewModel("Weapons", MaterialIconKind.Pistol,
                 "Weapon packs from CS:S, TF2, CS:GO, Half-Life, Counter-Strike 1.6 and Quake 3 are coming in a later phase."),
-            new PlaceholderPageViewModel("Player Sounds", MaterialIconKind.VolumeHigh,
-                "Movement sound packs (jump, land, footsteps), starting with Quake 3 characters, are coming in a later phase."),
+            PlayerSounds,
             new PlaceholderPageViewModel("Player Models", MaterialIconKind.HumanHandsdown,
                 "Player models for ghosts, replays and third person are coming in a later phase."),
             Settings,
@@ -39,6 +40,8 @@ public sealed class MainWindowViewModel : ViewModel
     public MapsPageViewModel Maps { get; }
 
     public SettingsPageViewModel Settings { get; }
+
+    public PlayerSoundsPageViewModel PlayerSounds { get; }
 
     public PageViewModel SelectedPage
     {
