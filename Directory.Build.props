@@ -1,0 +1,20 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- BSPConvert.Lib targets net10.0, so everything that references it has to as well -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+    <!-- Sibling checkouts. Override these in Directory.Build.local.props (git ignored) if yours live elsewhere. -->
+    <LibBspDir>$(RepoRoot)..\LibBSP\</LibBspDir>
+    <BspConvertDir>$(RepoRoot)..\BSPConvert\</BspConvertDir>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)Directory.Build.local.props" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.local.props')" />
+
+  <PropertyGroup>
+    <LibBspDll Condition="'$(LibBspDll)' == ''">$(LibBspDir)LibBSP\bin\Release\libBSP.dll</LibBspDll>
+  </PropertyGroup>
+
+</Project>

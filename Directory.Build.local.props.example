@@ -1,0 +1,7 @@
+<!-- Copy to Directory.Build.local.props (git ignored) to point at sibling checkouts that aren't next to this repo -->
+<Project>
+  <PropertyGroup>
+    <LibBspDir>C:\Users\you\Code\LibBSP\</LibBspDir>
+    <BspConvertDir>C:\Users\you\Code\BSPConvert\</BspConvertDir>
+  </PropertyGroup>
+</Project>

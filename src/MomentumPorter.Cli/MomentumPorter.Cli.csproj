@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>MomentumPorter.Cli</RootNamespace>
+    <!-- Keep the executable's name, scripts such as pack_for_momentum.bat call MomentumPorter.exe -->
+    <AssemblyName>MomentumPorter</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MomentumPorter.Core\MomentumPorter.Core.csproj" />
+  </ItemGroup>
+
+</Project>

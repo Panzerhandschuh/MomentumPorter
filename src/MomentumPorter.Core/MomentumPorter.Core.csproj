@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>MomentumPorter</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- LibBSP's own dependency, for compressed lumps and the pakfile. Keep in step with BSPConvert.Lib's version. -->
+    <PackageReference Include="SharpCompress" Version="0.39.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- LibBSP (github.com/Panzerhandschuh/LibBSP) is expected to be checked out and built (Release) next to this repo.
+         See Directory.Build.props for how to point at another location. -->
+    <Reference Include="libBSP">
+      <HintPath>$(LibBspDll)</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

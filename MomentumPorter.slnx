@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/lumper/">
+    <Project Path="../lumper/src/Lumper.Generators/FGDGenerator/FGDGenerator.csproj" />
+    <Project Path="../lumper/src/Lumper.Lib/Lumper.Lib.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/MomentumPorter.Cli/MomentumPorter.Cli.csproj" />
+    <Project Path="src/MomentumPorter.Core/MomentumPorter.Core.csproj" />
+    <Project Path="src/MomentumPorter.UI/MomentumPorter.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MomentumPorter.Tests/MomentumPorter.Tests.csproj" />
+  </Folder>
+</Solution>
