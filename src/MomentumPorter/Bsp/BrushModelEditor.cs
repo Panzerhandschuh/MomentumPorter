@@ -41,6 +41,8 @@ internal sealed class BrushModelEditor
         AddPerLeafLump("LUMP_LEAFMINDISTTOWATER", minDistToWater, x => x);
         AddPerLeafLump("LUMP_LEAF_AMBIENT_INDEX", bsp.LeafAmbientIndices, x => new LeafAmbientIndex(x, bsp.LeafAmbientIndices));
         AddPerLeafLump("LUMP_LEAF_AMBIENT_INDEX_HDR", bsp.LeafAmbientIndicesHDR, x => new LeafAmbientIndex(x, bsp.LeafAmbientIndicesHDR));
+        AddAmbientLightingLump("LUMP_LEAF_AMBIENT_LIGHTING", bsp.LeafAmbientLighting, bsp.LeafAmbientIndices);
+        AddAmbientLightingLump("LUMP_LEAF_AMBIENT_LIGHTING_HDR", bsp.LeafAmbientLightingHDR, bsp.LeafAmbientIndicesHDR);
     }
 
     public int ModelCount => _models.Count;
@@ -118,6 +120,16 @@ internal sealed class BrushModelEditor
             throw new InvalidDataException($"{name} has {lump.Count} entries but there are {_leaves.Count} leaves");
 
         _copyPerLeafEntry.Add(leaf => lump.Add(copy(lump[leaf])));
+    }
+
+    // The engine only goes through the index lump for version 1 ambient lighting with a non-empty index lump.
+    // Otherwise (e.g. older maps) there's one sample per leaf.
+    private void AddAmbientLightingLump(string name, Lump<LeafAmbientLighting>? lighting, Lump<LeafAmbientIndex>? indices)
+    {
+        if (lighting is null || (lighting.LumpInfo.version == 1 && indices is { Count: > 0 }))
+            return;
+
+        AddPerLeafLump(name, lighting, x => new LeafAmbientLighting(x, lighting));
     }
 
     // A single node whose sides both lead to a leaf holding only the brush. The node's plane doesn't matter then.

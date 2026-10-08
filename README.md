@@ -10,8 +10,11 @@ the LZMA support in this fork.
 ## Usage
 
 ```
-MomentumPorter <input.bsp> <output.bsp> [--game kzmod] [--compress]
+MomentumPorter <input.bsp> <output.bsp> [--game kzmod] [--compress] [--game-dir <folder>]
 ```
+
+`--game-dir` is the source game's folder (the one with `gameinfo.txt`), for game files the map relies on, such as
+shared soundscapes. It defaults to the folder above the input's `maps` folder.
 
 The output is written as a new file, uncompressed unless `--compress` is given, and the tool prints what it converted
 and anything it couldn't. Pack assets afterwards (e.g. with bspPack) as usual. Packed files named after the map, such as
@@ -42,6 +45,13 @@ a `PortContext`, which provides the entities and generic operations such as `Spl
   allowed players"), it starts disabled unless 4096 is also set.
 - Inputs that allow players to use those entities (`AddAllowedPlayer`, `RemoveAllowedPlayer`, `TogglePlayer`,
   `ResetPlayer`) become `Enable`, `Disable` and `Toggle`, since Momentum is single player. Team inputs are left alone.
+- On maps with HDR lighting, a `logic_auto` sets KZ's (Source 2013's) tonemap defaults on the `env_tonemap_controller`,
+  adding one if needed, unless the map sets them itself on spawn. Bloom scales are doubled, since Momentum draws bloom
+  at half strength.
+- KZ loads the soundscape files in its manifest for every map, but Momentum only loads its own and the map's
+  `scripts/soundscapes_<map>.txt`. The soundscapes a map uses from KZ-only files (e.g. `soundscapes_soul4.txt`) are
+  copied into its packed soundscape file, after the map's own soundscapes. Upstream bspPack replaces a packed
+  soundscape file with the game's loose one and doesn't pack its sounds, so pack with a bspPack that keeps it.
 
 ## Splitting brush entities
 

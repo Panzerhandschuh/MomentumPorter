@@ -2,8 +2,12 @@ namespace MomentumPorter.Porting;
 
 using LibBSP;
 using MomentumPorter.Bsp;
+using SharpCompress.Archives;
+using SharpCompress.Archives.Zip;
 
-internal sealed class PortContext(BSP bsp)
+/// <param name="mapName">The ported map's name, which map specific files (e.g. its soundscapes) are named after</param>
+/// <param name="gameDirectory">The game's folder that the map came from (holding gameinfo.txt), if known</param>
+internal sealed class PortContext(BSP bsp, string mapName, string? gameDirectory)
 {
     // Precache table size (MAX_MODELS), shared by brush models and studio models
     private const int MaxModels = 4096;
@@ -20,6 +24,50 @@ internal sealed class PortContext(BSP bsp)
     public BrushModelEditor BrushModels => _brushModels ??= new BrushModelEditor(Bsp);
 
     public PortReport Report { get; } = new();
+
+    public string MapName { get; } = mapName;
+
+    public string? GameDirectory { get; } = gameDirectory;
+
+    /// <summary>
+    /// Reads a text file packed in the map, or returns null if it isn't packed.
+    /// </summary>
+    public string? ReadPakFile(string path)
+    {
+        if (Bsp.PakFile is not { Data.Length: > 0 } pak)
+            return null;
+
+        using ZipArchive zip = ZipArchive.Open(new MemoryStream(pak.Data));
+        ZipArchiveEntry? entry = FindEntry(zip, path);
+        if (entry is null)
+            return null;
+
+        using var reader = new StreamReader(entry.OpenEntryStream(), Entity.TextEncoding);
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>
+    /// Packs a text file into the map, replacing any packed file with the same path.
+    /// </summary>
+    public void WritePakFile(string path, string text)
+    {
+        PakFile pak = Bsp.PakFile ?? throw new InvalidDataException("BSP has no pak file lump");
+        using ZipArchive zip = pak.Data.Length > 0 ? ZipArchive.Open(new MemoryStream(pak.Data)) : ZipArchive.Create();
+
+        // Keep the files compressed the way they were. The writer re-zips them if the output is compressed.
+        bool compress = zip.Entries.Any(x => x.CompressionType == SharpCompress.Common.CompressionType.LZMA);
+
+        if (FindEntry(zip, path) is { } existing)
+            zip.RemoveEntry(existing);
+
+        zip.AddEntry(path, new MemoryStream(Entity.TextEncoding.GetBytes(text)), closeStream: true);
+        pak.SetZipArchive(zip, compress);
+    }
+
+    private static ZipArchiveEntry? FindEntry(ZipArchive zip, string path)
+    {
+        return zip.Entries.FirstOrDefault(x => !x.IsDirectory && string.Equals(x.Key?.Replace('\\', '/'), path, StringComparison.OrdinalIgnoreCase));
+    }
 
     public IEnumerable<Entity> OfClass(string className)
     {

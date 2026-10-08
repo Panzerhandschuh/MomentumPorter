@@ -17,6 +17,9 @@ internal sealed class Options
 
     [Option('c', "compress", HelpText = "LZMA compress the output")]
     public bool Compress { get; set; }
+
+    [Option("game-dir", HelpText = "The game's folder holding gameinfo.txt, for game files the map uses (e.g. shared soundscapes). Defaults to the folder above the input's maps folder.")]
+    public string? GameDirectory { get; set; }
 }
 
 internal static class Program
@@ -48,7 +51,14 @@ internal static class Program
             return 1;
         }
 
-        var context = new PortContext(bsp);
+        string? gameDirectory = options.GameDirectory ?? FindGameDirectory(options.Input);
+        if (gameDirectory is not null && !File.Exists(Path.Combine(gameDirectory, "gameinfo.txt")))
+        {
+            Console.Error.WriteLine($"{gameDirectory} has no gameinfo.txt");
+            return 1;
+        }
+
+        var context = new PortContext(bsp, Path.GetFileNameWithoutExtension(options.Output), gameDirectory);
         profile.Apply(context);
         context.CheckLimits();
 
@@ -60,5 +70,12 @@ internal static class Program
         Console.WriteLine($"Ported {Path.GetFileName(options.Input)} from {profile.Description} to {options.Output}");
         context.Report.Print(Console.Out);
         return 0;
+    }
+
+    // <game>/maps/<map>.bsp
+    private static string? FindGameDirectory(string input)
+    {
+        string? game = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(input)));
+        return game is not null && File.Exists(Path.Combine(game, "gameinfo.txt")) ? game : null;
     }
 }

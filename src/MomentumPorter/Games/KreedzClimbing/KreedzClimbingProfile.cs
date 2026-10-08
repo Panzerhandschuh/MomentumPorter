@@ -26,6 +26,8 @@ internal sealed partial class KreedzClimbingProfile : IGameProfile
         ConvertFuncBrushes(context, allowList);
         ConvertTeleports(context, allowList);
         ConvertAllowListInputs(context, allowList);
+        ConvertTonemap(context);
+        ConvertSoundscapes(context);
     }
 
     private static readonly Dictionary<string, string> PlayerInputs = new(StringComparer.OrdinalIgnoreCase)
