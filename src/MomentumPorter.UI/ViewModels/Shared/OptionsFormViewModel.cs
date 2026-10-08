@@ -60,13 +60,13 @@ public sealed class OptionsFormViewModel : ViewModel
             field.Load();
     }
 
-    // General first, then the rest in the order Describe sorts them
+    // General first, groups of nothing but advanced fields (an expander alone) last, the rest in the order Describe sorts them
     private List<OptionGroupViewModel> BuildGroups(Func<OptionFieldViewModel, bool> show)
     {
         return _fields
             .Where(show)
             .GroupBy(x => x.Info.Attribute.Group)
-            .OrderBy(x => x.Key == DefaultGroup ? 0 : 1)
+            .OrderBy(x => x.Key == DefaultGroup ? 0 : x.All(f => f.Info.Attribute.Advanced) ? 2 : 1)
             .Select(x => new OptionGroupViewModel(
                 x.Key,
                 x.Where(f => !f.Info.Attribute.Advanced).ToList(),
@@ -84,6 +84,12 @@ public sealed class OptionGroupViewModel(string name, IReadOnlyList<OptionFieldV
     public IReadOnlyList<OptionFieldViewModel> AdvancedFields { get; } = advancedFields;
 
     public bool HasAdvanced => AdvancedFields.Count > 0;
+
+    /// <summary>A group with nothing but advanced fields is shown as its expander alone, named after the group.</summary>
+    public bool ShowHeader => Fields.Count > 0;
+
+    /// <summary>The expander's title: "Advanced" under a group's fields, the group's name when it's all the group has.</summary>
+    public string AdvancedHeader => Fields.Count > 0 ? "Advanced" : Name;
 }
 
 /// <summary>

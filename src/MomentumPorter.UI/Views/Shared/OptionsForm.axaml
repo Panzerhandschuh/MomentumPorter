@@ -58,16 +58,16 @@
   <ItemsControl Name="Root" x:DataType="vm:OptionsFormViewModel" ItemsSource="{Binding Groups}">
     <ItemsControl.ItemTemplate>
       <DataTemplate DataType="vm:OptionGroupViewModel">
-        <StackPanel Spacing="10" Margin="0 0 0 18">
-          <TextBlock Text="{Binding Name}" Classes="h2" />
-          <ItemsControl ItemsSource="{Binding Fields}">
+        <StackPanel Spacing="10" Margin="0 0 0 16">
+          <TextBlock Text="{Binding Name}" Classes="h3" IsVisible="{Binding ShowHeader}" />
+          <ItemsControl ItemsSource="{Binding Fields}" IsVisible="{Binding ShowHeader}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
                 <StackPanel Spacing="10" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
           </ItemsControl>
-          <Expander Header="Advanced" IsVisible="{Binding HasAdvanced}" HorizontalAlignment="Stretch"
+          <Expander Header="{Binding AdvancedHeader}" IsVisible="{Binding HasAdvanced}" HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Stretch">
             <ItemsControl ItemsSource="{Binding AdvancedFields}">
               <ItemsControl.ItemsPanel>

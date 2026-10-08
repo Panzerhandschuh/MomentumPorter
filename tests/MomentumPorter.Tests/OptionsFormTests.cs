@@ -61,6 +61,8 @@ public class OptionsFormTests
         Assert.Equal(["Scale", "Mode"], textures.Fields.Select(x => x.Name));
         Assert.Equal(["WadFolder"], textures.AdvancedFields.Select(x => x.Name));
         Assert.True(textures.HasAdvanced);
+        Assert.True(textures.ShowHeader);
+        Assert.Equal("Advanced", textures.AdvancedHeader);
         Assert.False(form.Groups[0].HasAdvanced);
     }
 

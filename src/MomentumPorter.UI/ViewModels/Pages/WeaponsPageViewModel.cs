@@ -120,6 +120,8 @@ public sealed class WeaponsPageViewModel : PageViewModel
                 return;
 
             _options.Game = value.Id;
+            bool quake3 = value.Id.Equals("q3", StringComparison.OrdinalIgnoreCase);
+            OptionsForm.SetFilter(x => quake3 || x.Info.Attribute.Group != WeaponPackOptions.Quake3Group);
             foreach (CatalogWeapon weapon in value.Weapons.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
                 Weapons.Add(weapon);
 

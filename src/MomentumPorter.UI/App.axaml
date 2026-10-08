@@ -32,6 +32,11 @@
       <Setter Property="FontSize" Value="15" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
+    <Style Selector="TextBlock.h3">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </Style>
     <Style Selector="TextBlock.muted, SelectableTextBlock.muted">
       <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
     </Style>

@@ -58,6 +58,16 @@ public class WeaponsPageTests
         Assert.Null(page.OptionsForm.Find(nameof(WeaponPackOptions.Weapon)));
         Assert.Null(page.OptionsForm.Find(nameof(WeaponPackOptions.Slot)));
 
+        // The Quake 3 group only shows for Quake 3, and the folder settings are an expander of their own
+        Assert.DoesNotContain(page.OptionsForm.Groups, x => x.Name == WeaponPackOptions.Quake3Group);
+        page.SelectedGame = page.Games.First(x => x.Id == "q3");
+        Assert.Contains(page.OptionsForm.Groups, x => x.Name == WeaponPackOptions.Quake3Group);
+        var advanced = Assert.Single(page.OptionsForm.Groups, x => x.Name == WeaponPackOptions.AdvancedGroup);
+        Assert.Same(advanced, page.OptionsForm.Groups[^1]);
+        Assert.False(advanced.ShowHeader);
+        Assert.Equal(WeaponPackOptions.AdvancedGroup, advanced.AdvancedHeader);
+        Assert.Contains(advanced.AdvancedFields, x => x.Name == nameof(WeaponPackOptions.OutputDirectory));
+
         foreach (string game in new[] { "q3", "tf2", "cs16", "css" })
         {
             page.SelectedGame = page.Games.First(x => x.Id == game);
