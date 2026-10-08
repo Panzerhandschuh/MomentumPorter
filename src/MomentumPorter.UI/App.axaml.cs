@@ -21,6 +21,7 @@ public partial class App : Application
         ViewLocator.Register<MapsPageViewModel, MapsPageView>();
         ViewLocator.Register<SettingsPageViewModel, SettingsPageView>();
         ViewLocator.Register<PlayerSoundsPageViewModel, PlayerSoundsPageView>();
+        ViewLocator.Register<WeaponsPageViewModel, WeaponsPageView>();
         ViewLocator.Register<PlaceholderPageViewModel, PlaceholderPageView>();
     }
 

@@ -64,27 +64,36 @@ public sealed class SteamLocator
 
     public GameLocation? Find(KnownGame game)
     {
-        foreach (string library in Libraries)
+        // Steam's manifest says where the game really is. Only when no library has one (games without an app id,
+        // or a copy Steam doesn't know about) fall back to a folder of the expected name, which may be a leftover.
+        if (game.AppId > 0)
         {
-            string common = Path.Combine(library, "steamapps", "common");
-
-            string? install = null;
-            if (game.AppId > 0)
+            foreach (string library in Libraries)
             {
                 string manifest = Path.Combine(library, "steamapps", $"appmanifest_{game.AppId}.acf");
-                if (File.Exists(manifest) && ParseVdfPairs(File.ReadAllText(manifest)).TryGetValue("installdir", out string? installDir))
-                    install = Path.Combine(common, installDir);
+                if (!File.Exists(manifest) || !ParseVdfPairs(File.ReadAllText(manifest)).TryGetValue("installdir", out string? installDir))
+                    continue;
+
+                string install = Path.Combine(library, "steamapps", "common", installDir);
+                if (Directory.Exists(install))
+                    return Locate(game, install);
             }
+        }
 
-            install ??= Path.Combine(common, game.InstallFolder);
-            if (!Directory.Exists(install))
-                continue;
-
-            string content = Path.Combine(install, game.ContentFolder);
-            return new GameLocation(game, install, Directory.Exists(content) ? content : null);
+        foreach (string library in Libraries)
+        {
+            string install = Path.Combine(library, "steamapps", "common", game.InstallFolder);
+            if (Directory.Exists(install))
+                return Locate(game, install);
         }
 
         return null;
+    }
+
+    private static GameLocation Locate(KnownGame game, string install)
+    {
+        string content = Path.Combine(install, game.ContentFolder);
+        return new GameLocation(game, install, Directory.Exists(content) ? content : null);
     }
 
     public IReadOnlyList<GameLocation> FindAll()

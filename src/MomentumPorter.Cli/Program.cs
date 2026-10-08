@@ -14,7 +14,7 @@ internal sealed partial class CliOptions
     [Value(1, Required = true, MetaName = "output", HelpText = "Where to write the ported BSP. For Quake 3 and GoldSrc maps, the game folder (e.g. Momentum's momentum folder) the map goes into, as maps/<name>.bsp with its zone file.")]
     public required string Output { get; set; }
 
-    [Option('g', "game", HelpText = "Game the map was made for (kzmod, ...). Detected from the map's entities if not given.")]
+    [Option('g', "game", HelpText = "Game a Source map was made for: kzmod (Kreedz Climbing) or gokz (CS:GO with the GOKZ mapping API). Detected from the map's entities if not given.")]
     public string? Game { get; set; }
 
     [Option('c', "compress", HelpText = "LZMA compress the output")]
@@ -64,6 +64,8 @@ internal static class Program
         {
             var context = new PortJobContext { Log = new CliLog(), WorkDirectory = workDirectory };
             context.Set(state);
+            // Nobody to ask on the command line: steps that would prompt (e.g. overwriting an installed map) decline
+            context.Set<IUserPrompts>(new DeclinePrompts());
 
             PortJobResult result = await job.RunAsync(context);
             result.Report.Print(Console.Out);

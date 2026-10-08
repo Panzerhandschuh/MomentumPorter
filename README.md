@@ -1,13 +1,37 @@
 # MomentumPorter
 
-Converts BSPs made for other Source games into Momentum Mod maps: KZ/game-specific entities become their Momentum
-equivalents, and brush entities can be restructured where Momentum's entities work differently.
+Ports maps and assets from other games to Momentum Mod, as a desktop app (`MomentumPorterUI`) and a command line
+(`MomentumPorter`):
 
-Built on [LibBSP](https://github.com/Panzerhandschuh/LibBSP), which has to be checked out next to this repo (`../LibBSP`) and
-built in Release, since it's referenced as `LibBSP/bin/Release/libBSP.dll`. Reading and writing compressed maps needs
-the LZMA support in this fork.
+- **Maps** made for other Source games (Kreedz Climbing Mod, CS:GO with the GOKZ mapping API): game-specific entities
+  become their Momentum equivalents, brush entities are restructured where Momentum's work differently, timer entities
+  become zone files, then bspPack packs the assets and the map is installed into Momentum.
+- **Quake 3 and GoldSrc (Half-Life, CS 1.6) maps**, through [BSPConvert](https://github.com/Panzerhandschuh/BSPConvert) in process.
+- **Player sounds**: packs that give the player Quake 3's jump, landing and footstep sounds.
+- **Weapons**: packs that put weapons from CS:S, CS:GO, TF2, HL2, CS 1.6, HL1 and Quake 3 into Momentum's weapon slots.
+- **Player models**: a feasibility study so far, see `docs/player-models.md`.
 
-## Usage
+Packs go into `momentum/custom/`; delete a pack to get Momentum's own assets back.
+
+## Building
+
+```
+src/MomentumPorter.Core    the porting code (class library)
+src/MomentumPorter.Cli     MomentumPorter.exe, the command line
+src/MomentumPorter.UI      MomentumPorterUI.exe, the Avalonia desktop app
+tests/MomentumPorter.Tests xunit tests (dotnet test); the ones that need installed games skip when they aren't there
+```
+
+Needs the .NET 10 SDK and two sibling checkouts, built in Release: [LibBSP](https://github.com/Panzerhandschuh/LibBSP)
+(this fork's LZMA support is needed for compressed maps; referenced as `../LibBSP/LibBSP/bin/Release/libBSP.dll`) and
+[BSPConvert](https://github.com/Panzerhandschuh/BSPConvert) (`../BSPConvert`, referenced as a project). If they live
+elsewhere, copy `Directory.Build.local.props.example` to `Directory.Build.local.props` and set the folders there.
+`MomentumPorter.slnx` also lists Lumper's library projects (`../lumper`) for reference; build the projects individually
+if you don't have that checkout.
+
+## Command line
+
+The verbs `sounds` and `weapon` build asset packs (see below). Without a verb, the arguments are a map to port:
 
 ```
 MomentumPorter <input.bsp> <output.bsp> [--game kzmod] [--compress] [--game-dir <folder>]
@@ -32,11 +56,14 @@ Files the conversion writes next to the map, such as GOKZ's `zones/local/<map>.j
 
 - **Maps**: the queue (status per map, detected kind and game), the options form (generated from the
   `[PortOption]` attributes on `MapPortOptions`), and the log and report of the selected map. Options can be saved and
-  loaded as JSON presets. Quake 3 and GoldSrc maps can be queued but are skipped until BSPConvert is integrated.
+  loaded as JSON presets. Quake 3 and GoldSrc maps in the queue go through BSPConvert instead (its options sit under
+  the Source map options) into Momentum's game folder, or the output folder laid out like one.
 - **Settings**: Momentum's folder (found in your Steam libraries unless overridden), bspPack's location, an optional
   pre-pack command, the output and work folders, whether to install by default, and which known games were found.
   Saved to `%AppData%/MomentumPorter/settings.json`.
-- **Weapons, Player Sounds, Player Models**: placeholders for later phases.
+- **Weapons**: pick a game, a weapon and the Momentum weapon it replaces, then build the pack (see Weapons below).
+- **Player Sounds**: pick a Quake 3 character and the jump/land/footstep options, then build the pack (see Player sounds).
+- **Player Models**: placeholder; see `docs/player-models.md` for the feasibility study.
 
 bspPack reads its `config.ini` (the game folder it packs assets from) and `ResourceConfig.ini` from its own folder, so
 set those up for the source game, e.g. a stub game folder that only mounts KZ's content. The pre-pack command runs

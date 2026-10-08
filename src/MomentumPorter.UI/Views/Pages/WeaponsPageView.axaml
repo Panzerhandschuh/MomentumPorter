@@ -1,0 +1,177 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MomentumPorter.UI.ViewModels.Pages"
+             xmlns:shared="using:MomentumPorter.UI.ViewModels.Shared"
+             xmlns:views="using:MomentumPorter.UI.Views.Shared"
+             xmlns:conv="using:MomentumPorter.UI.Converters"
+             xmlns:weapons="using:MomentumPorter.Assets.Weapons"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="MomentumPorter.UI.Views.Pages.WeaponsPageView"
+             x:DataType="vm:WeaponsPageViewModel"
+             Name="Page">
+
+  <Grid RowDefinitions="Auto, *, 6, 240" ColumnDefinitions="300, 12, 340, 12, *" Margin="16 14 16 12">
+
+    <!-- Header and actions -->
+    <DockPanel Grid.Row="0" Grid.ColumnSpan="5" Margin="0 0 0 12">
+      <StackPanel DockPanel.Dock="Left" Spacing="2" VerticalAlignment="Center">
+        <TextBlock Text="Weapons" Classes="h1" />
+        <TextBlock Text="Put a weapon from another game into one of Momentum's weapon slots with a pack in momentum/custom"
+                   Classes="muted" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+        <Button Command="{Binding BuildCommand}" Classes="accent" ToolTip.Tip="Build the pack into Momentum's custom folder">
+          <StackPanel>
+            <materialIcons:MaterialIcon Kind="Play" />
+            <TextBlock Text="Build pack" />
+          </StackPanel>
+        </Button>
+        <Button Command="{Binding CancelCommand}" ToolTip.Tip="Stop the running build">
+          <StackPanel>
+            <materialIcons:MaterialIcon Kind="Stop" />
+            <TextBlock Text="Cancel" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </DockPanel>
+
+    <!-- Game and weapon -->
+    <Border Grid.Row="1" Grid.Column="0" Classes="panel">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="12 8 12 6" Spacing="4">
+          <TextBlock Text="Game" Classes="h2" />
+          <ComboBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}" HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+              <DataTemplate DataType="weapons:CatalogGame">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="{Binding GameLimitations}" Classes="muted" FontSize="12" TextWrapping="Wrap"
+                     IsVisible="{Binding GameLimitations, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <TextBlock Text="Weapon" Classes="h2" Margin="0 8 0 0" />
+        </StackPanel>
+        <ListBox ItemsSource="{Binding Weapons}" SelectedItem="{Binding SelectedWeapon}" Background="Transparent" Margin="4 0 4 4">
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="Padding" Value="10 6" />
+              <Setter Property="CornerRadius" Value="4" />
+              <Setter Property="Margin" Value="4 1" />
+            </Style>
+          </ListBox.Styles>
+          <ListBox.ItemTemplate>
+            <DataTemplate DataType="weapons:CatalogWeapon">
+              <StackPanel Spacing="1">
+                <TextBlock Text="{Binding Name}" />
+                <TextBlock Text="{Binding View}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- Slot and options -->
+    <Border Grid.Row="1" Grid.Column="2" Classes="panel">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="12 8 12 6" Spacing="4">
+          <TextBlock Text="Momentum weapon" Classes="h2" />
+          <ComboBox ItemsSource="{Binding Slots}" SelectedItem="{Binding SelectedSlot}" HorizontalAlignment="Stretch"
+                    PlaceholderText="Pick a weapon first" />
+          <TextBlock Text="The slot the weapon replaces, best fit first" Classes="muted" FontSize="12" />
+          <TextBlock Text="Options" Classes="h2" Margin="0 8 0 0" />
+        </StackPanel>
+        <ScrollViewer Padding="12 0 12 4">
+          <views:OptionsForm Form="{Binding OptionsForm}" />
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- Builds -->
+    <Border Grid.Row="1" Grid.Column="4" Classes="panel">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Builds" Classes="h2" Margin="12 8 12 4" />
+        <Panel>
+          <StackPanel IsVisible="{Binding !Builds.Count}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="360">
+            <materialIcons:MaterialIcon Kind="Pistol" Width="40" Height="40" Opacity="0.5" />
+            <TextBlock Text="Pick a game, a weapon and the Momentum weapon it replaces, then Build pack. Reload scripts in game with weapon_reload_scripts."
+                       Classes="muted" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+          </StackPanel>
+          <ListBox ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}" Background="Transparent"
+                   IsVisible="{Binding !!Builds.Count}">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem">
+                <Setter Property="Padding" Value="10 8" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Margin" Value="4 1" />
+              </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="vm:WeaponPackBuildViewModel">
+                <Grid ColumnDefinitions="Auto, *">
+                  <materialIcons:MaterialIcon Grid.Column="0" Width="20" Height="20" VerticalAlignment="Top" Margin="0 1 10 0"
+                                              Kind="{Binding Status, Converter={x:Static conv:QueueStatusConverters.Icon}}"
+                                              Foreground="{Binding Status, Converter={x:Static conv:QueueStatusConverters.Brush}}"
+                                              ToolTip.Tip="{Binding Status}" />
+                  <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <StackPanel IsVisible="{Binding IsRunning}" Spacing="2" Margin="0 4 0 0">
+                      <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="100" MinWidth="0" Height="4" />
+                      <TextBlock Text="{Binding StepText}" FontSize="12" Classes="muted" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{Binding Status, Converter={x:Static conv:QueueStatusConverters.Brush}}"
+                               IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <TextBlock Text="{Binding OutputPath}" FontSize="12" Classes="muted" TextTrimming="CharacterEllipsis"
+                               IsVisible="{Binding OutputPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <GridSplitter Grid.Row="2" Grid.ColumnSpan="5" ResizeDirection="Rows" Background="Transparent" />
+
+    <!-- Log and report of the selected build -->
+    <Border Grid.Row="3" Grid.ColumnSpan="5" Classes="panel">
+      <DockPanel>
+        <DockPanel DockPanel.Dock="Top" Margin="6 4 6 0">
+          <Button DockPanel.Dock="Right" Command="{Binding OpenPackFolderCommand}" ToolTip.Tip="Show the pack, or Momentum's custom folder">
+            <StackPanel>
+              <materialIcons:MaterialIcon Kind="FolderOutline" />
+              <TextBlock Text="Open pack folder" />
+            </StackPanel>
+          </Button>
+          <TextBlock Text="{Binding SelectedBuild.Title, FallbackValue='', TargetNullValue=''}" Classes="muted"
+                     VerticalAlignment="Center" Margin="8 0" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+        <TabControl Padding="0" Margin="4 0 4 4">
+          <TabItem Header="Log" FontSize="14">
+            <views:LogView DataContext="{Binding SelectedBuild.Log, FallbackValue={x:Null}}" />
+          </TabItem>
+          <TabItem Header="Report" FontSize="14">
+            <ScrollViewer Background="#33000000">
+              <StackPanel Margin="10 6">
+                <TextBlock Text="Nothing to report yet. The report lists what the pack contains and what the port can't reproduce."
+                           Classes="muted" TextWrapping="Wrap"
+                           IsVisible="{Binding !SelectedBuild.HasReport, FallbackValue=True}" />
+                <ItemsControl ItemsSource="{Binding SelectedBuild.Report, FallbackValue={x:Null}}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="shared:ReportLine">
+                      <SelectableTextBlock Text="{Binding Text}" FontFamily="{StaticResource Monospace}" FontSize="12"
+                                           Classes.warning="{Binding IsWarning}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+        </TabControl>
+      </DockPanel>
+    </Border>
+  </Grid>
+
+</UserControl>
