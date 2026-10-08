@@ -22,10 +22,14 @@ src/MomentumPorter.UI      MomentumPorterUI.exe, the Avalonia desktop app
 tests/MomentumPorter.Tests xunit tests (dotnet test); the ones that need installed games skip when they aren't there
 ```
 
-Needs the .NET 10 SDK and two sibling checkouts, built in Release: [LibBSP](https://github.com/Panzerhandschuh/LibBSP)
-(this fork's LZMA support is needed for compressed maps; referenced as `../LibBSP/LibBSP/bin/Release/libBSP.dll`) and
-[BSPConvert](https://github.com/Panzerhandschuh/BSPConvert) (`../BSPConvert`, referenced as a project). If they live
-elsewhere, copy `Directory.Build.local.props.example` to `Directory.Build.local.props` and set the folders there.
+Needs the .NET 10 SDK. [BSPConvert](https://github.com/momentum-mod/BSPConvert) is a submodule (`external/BSPConvert`,
+referenced as a project), so clone with `--recursive` or run `git submodule update --init` after cloning, then
+`dotnet build`. LibBSP comes with it: the porter uses the build of [LibBSP](https://github.com/Panzerhandschuh/LibBSP)'s
+fork that BSPConvert ships (its LZMA support is needed for compressed maps).
+
+To work on BSPConvert or LibBSP alongside the porter, copy `Directory.Build.local.props.example` to
+`Directory.Build.local.props` and point it at your own checkouts (LibBSP's Release build is used). To move the
+submodule to a newer BSPConvert, push it first, then `git submodule update --remote external/BSPConvert` and commit.
 `MomentumPorter.slnx` also lists Lumper's library projects (`../lumper`) for reference; build the projects individually
 if you don't have that checkout.
 
@@ -74,8 +78,8 @@ with paths, so the bat's ResourceConfig update becomes
 ## Quake 3 and GoldSrc maps
 
 Quake 3 (`.bsp`/`.pk3`) and GoldSrc (Half-Life, CS 1.6; `.bsp`/`.zip`) maps are converted in process with
-[BSPConvert](https://github.com/Panzerhandschuh/BSPConvert), which has to be checked out next to this repo
-(`../BSPConvert`, or set `BspConvertDir` in `Directory.Build.local.props`). The CLI takes BSPConvert's options under the
+[BSPConvert](https://github.com/momentum-mod/BSPConvert) (the `external/BSPConvert` submodule, see Building). The CLI
+takes BSPConvert's options under the
 same names (`--wads`, `--subdiv`, `--scale`, `--nopak`, `--prefix`, `--maps`...; see `--help` or BSPConvert's README):
 
 ```

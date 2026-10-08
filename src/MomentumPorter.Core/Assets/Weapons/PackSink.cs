@@ -21,6 +21,9 @@ public interface IPackSink
 
     /// <summary>The game paths of the files in a folder of the pack, from this run or earlier ones.</summary>
     IReadOnlyList<string> ListFiles(string folder);
+
+    /// <summary>Removes a file of the pack, from this run or an earlier one.</summary>
+    void DeleteFile(string relativePath);
 }
 
 /// <summary>
@@ -60,6 +63,15 @@ public sealed class FolderPackSink : IPackSink
     {
         string target = Resolve(relativePath);
         return File.Exists(target) ? File.ReadAllBytes(target) : null;
+    }
+
+    public void DeleteFile(string relativePath)
+    {
+        string target = Resolve(relativePath);
+        if (File.Exists(target))
+            File.Delete(target);
+
+        _files.RemoveAll(x => x.Equals(ContentPath.Normalize(relativePath), StringComparison.OrdinalIgnoreCase));
     }
 
     public IReadOnlyList<string> ListFiles(string folder)

@@ -1,7 +1,9 @@
-<!-- Copy to Directory.Build.local.props (git ignored) to point at sibling checkouts that aren't next to this repo -->
+<!-- Copy to Directory.Build.local.props (git ignored) to build against your own BSPConvert and LibBSP checkouts instead
+     of the external/BSPConvert submodule and the libBSP build it ships with. Leave out either to keep its default. -->
 <Project>
   <PropertyGroup>
-    <LibBspDir>C:\Users\you\Code\LibBSP\</LibBspDir>
     <BspConvertDir>C:\Users\you\Code\BSPConvert\</BspConvertDir>
+    <!-- Its LibBSP\bin\Release\libBSP.dll is used, so build it in Release first -->
+    <LibBspDir>C:\Users\you\Code\LibBSP\</LibBspDir>
   </PropertyGroup>
 </Project>

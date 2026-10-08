@@ -245,7 +245,24 @@ public sealed class ConvertModelsStep : IPortStep
             return;
 
         foreach ((string source, string pack) in model.Sounds)
-            WeaponPackFiles.CopySound(context, state, source, pack);
+        {
+            if (WeaponPackFiles.CopySound(context, state, source, pack) is null)
+                continue;
+
+            // The model's animation events name this entry (GoldSrcWeaponConverter.SoundEntryName); playing the wave
+            // itself works too, but the engine warns about it on every play
+            string name = GoldSrcWeaponConverter.SoundEntryName(state.Game!.Id, pack);
+            if (state.AddedSoundEntries.Any(x => x.Key.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            var entry = new KeyValuesNode(name);
+            entry.Set("channel", "CHAN_ITEM");
+            entry.Set("volume", "1.0");
+            entry.Set("soundlevel", "SNDLVL_NORM");
+            entry.Set("pitch", "PITCH_NORM");
+            entry.Set("wave", ")" + ContentPath.Normalize(pack)["sound/".Length..]);
+            state.AddedSoundEntries.Add(entry);
+        }
     }
 }
 
@@ -393,9 +410,10 @@ public sealed class WriteWeaponPackStep : IPortStep
     public const string SoundscriptPath = "scripts/game_sounds_momentum_weapons.txt";
 
     /// <summary>
-    /// Each weapon's own soundscript entries, kept in the pack so that <see cref="SoundscriptPath"/> can be rebuilt
-    /// from Momentum's copy plus every weapon's entries whenever a weapon is added to the folder. The game doesn't
-    /// load these (they're not in its manifest).
+    /// Each Momentum weapon's soundscript entries from the weapon ported over it (<c>&lt;slot&gt;.txt</c>), kept in
+    /// the pack so that <see cref="SoundscriptPath"/> can be rebuilt from Momentum's copy plus every weapon's entries
+    /// whenever a weapon is added to the folder. A slot holds one weapon, so porting another over it replaces its
+    /// file. The game doesn't load these (they're not in its manifest).
     /// </summary>
     public const string SoundEntriesFolder = "scripts/porter_weapons";
 
@@ -502,6 +520,7 @@ public sealed class WriteWeaponPackStep : IPortStep
         sink.AddFile(slot.ScriptPath, Encoding.UTF8.GetBytes(script.Write(header)));
         sink.AddFile(ReloadConfigPath, Encoding.ASCII.GetBytes(ReloadConfig));
 
+        string ownEntries = $"{SoundEntriesFolder}/{slot.Id}.txt";
         if (state.AddedSoundEntries.Count > 0 || state.RedefinedSoundEntries.Count > 0)
         {
             var own = new StringBuilder();
@@ -517,10 +536,17 @@ public sealed class WriteWeaponPackStep : IPortStep
                 own.Append(entry.Write()).Append('\n');
             }
 
-            sink.AddFile($"{SoundEntriesFolder}/{WeaponPackBuilder.WeaponPackId(game.Id, weapon.Id, slot.Id)}.txt", Encoding.UTF8.GetBytes(own.ToString()));
+            sink.AddFile(ownEntries, Encoding.UTF8.GetBytes(own.ToString()));
             context.Report.Change("Soundscript entries added to the pack", state.AddedSoundEntries.Count + state.RedefinedSoundEntries.Count);
-            MergedSoundscript.Write(context, state);
         }
+        else if (sink.ReadFile(ownEntries) is not null)
+        {
+            // The weapon ported over this slot before had entries; this one doesn't
+            sink.DeleteFile(ownEntries);
+            context.Log.Info($"Removed {ownEntries}: the {slot.Name} is now the {weapon.Name}, which adds no soundscript entries");
+        }
+
+        MergedSoundscript.Write(context, state);
 
         foreach (string file in sink.Files)
             context.Report.Change($"Wrote {file}");
@@ -547,11 +573,31 @@ file static class MergedSoundscript
     public static void Write(PortJobContext context, WeaponPackState state)
     {
         IPackSink sink = state.Sink!;
+        if (sink.ListFiles(WriteWeaponPackStep.SoundEntriesFolder).Count == 0)
+        {
+            // Nothing in the folder adds sounds any more, so Momentum's own file can serve
+            if (sink.ReadFile(WriteWeaponPackStep.SoundscriptPath) is not null)
+            {
+                sink.DeleteFile(WriteWeaponPackStep.SoundscriptPath);
+                context.Log.Info($"Removed the pack's {WriteWeaponPackStep.SoundscriptPath}: no weapon in the folder adds soundscript entries");
+            }
+
+            return;
+        }
+
         var file = MomentumPorter.Assets.Sounds.SoundscriptFile.Parse(state.Momentum!.ReadRequiredText(WriteWeaponPackStep.SoundscriptPath), WriteWeaponPackStep.SoundscriptPath);
         var merged = new List<KeyValuesNode>();
         var weapons = new List<string>();
         foreach (string path in sink.ListFiles(WriteWeaponPackStep.SoundEntriesFolder))
         {
+            // Files from before the entries were kept per slot (<game>_<weapon>_<slot>.txt) would pile up
+            if (WeaponSlots.Find(Path.GetFileNameWithoutExtension(path)) is null)
+            {
+                sink.DeleteFile(path);
+                context.Report.Warn($"Removed {path}, from an older MomentumPorter: build that weapon again to get its sounds back");
+                continue;
+            }
+
             if (sink.ReadFile(path) is not { } data)
                 continue;
 

@@ -6,15 +6,17 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
-    <!-- Sibling checkouts. Override these in Directory.Build.local.props (git ignored) if yours live elsewhere. -->
-    <LibBspDir>$(RepoRoot)..\LibBSP\</LibBspDir>
-    <BspConvertDir>$(RepoRoot)..\BSPConvert\</BspConvertDir>
+    <!-- BSPConvert is the external/BSPConvert submodule. To work on BSPConvert or LibBSP alongside the porter, point
+         BspConvertDir / LibBspDir at your own checkouts in Directory.Build.local.props (git ignored). -->
+    <BspConvertDir>$(RepoRoot)external\BSPConvert\</BspConvertDir>
   </PropertyGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)Directory.Build.local.props" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.local.props')" />
 
   <PropertyGroup>
-    <LibBspDll Condition="'$(LibBspDll)' == ''">$(LibBspDir)LibBSP\bin\Release\libBSP.dll</LibBspDll>
+    <!-- A LibBSP checkout's Release build if one is set, otherwise the libBSP build BSPConvert ships with -->
+    <LibBspDll Condition="'$(LibBspDll)' == '' and '$(LibBspDir)' != ''">$(LibBspDir)LibBSP\bin\Release\libBSP.dll</LibBspDll>
+    <LibBspDll Condition="'$(LibBspDll)' == ''">$(BspConvertDir)BSPConvert.Lib\Dependencies\libBSP.dll</LibBspDll>
   </PropertyGroup>
 
 </Project>

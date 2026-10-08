@@ -55,6 +55,12 @@ public sealed class GoldSrcWeaponConverter
     /// <summary>Where a GoldSrc sound path (under sound/) goes in the pack.</summary>
     public string GetSoundPath(string soundPath) => $"sound/porter/{_gameId}/{ContentPath.Normalize(soundPath)["sound/".Length..].ToLowerInvariant()}";
 
+    /// <summary>
+    /// The soundscript entry a model's animation events play a pack sound through (the pack defines it), e.g.
+    /// <c>Porter_cs16.usp_clipin</c>. GoldSrc games share waves between weapons, so it's named after the wave.
+    /// </summary>
+    public static string SoundEntryName(string gameId, string packSoundPath) => $"Porter_{gameId}.{Path.GetFileNameWithoutExtension(packSoundPath).ToLowerInvariant()}";
+
     /// <param name="modelPath">Game path of the GoldSrc model, e.g. <c>models/v_ak47.mdl</c></param>
     /// <param name="kind">For view models, what activities its sequences get; null for world models</param>
     public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation)
@@ -136,7 +142,7 @@ public sealed class GoldSrcWeaponConverter
                 string source = "sound/" + ContentPath.Normalize(options);
                 string pack = GetSoundPath(source);
                 sounds.Add((source, pack));
-                qcEvents.Add(new QcEvent(SoundEvent, Math.Min(frame, Math.Max(sequence.FrameCount - 1, 0)), pack["sound/".Length..]));
+                qcEvents.Add(new QcEvent(SoundEvent, Math.Min(frame, Math.Max(sequence.FrameCount - 1, 0)), SoundEntryName(_gameId, pack)));
             }
 
             qc.Sequence(new QcSequence(sequenceNames[i], smd, sequence.Fps > 0 ? sequence.Fps : 30, sequence.Looping, activities[i], qcEvents));

@@ -12,35 +12,25 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Assets\Weapons\weapons.json" LogicalName="MomentumPorter.Assets.Weapons.weapons.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Quake 3 and GoldSrc map conversion (github.com/momentum-mod/BSPConvert), the external/BSPConvert submodule
+         unless Directory.Build.local.props sets BspConvertDir. It brings its sourcepp native dlls, Assets, Q3Content and
+         CustomContent folders into the output of every project referencing Core. -->
     <ProjectReference Include="$(BspConvertDir)BSPConvert.Lib\BSPConvert.Lib.csproj" />
     <!-- BSPConvert.Lib's VTF writer, used directly for Quake 3 weapon textures (assembly references don't flow) -->
     <Reference Include="sourcepp">
       <HintPath>$(BspConvertDir)BSPConvert.Lib\Dependencies\sourcepp.dll</HintPath>
     </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Assets\Weapons\weapons.json" LogicalName="MomentumPorter.Assets.Weapons.weapons.json" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- LibBSP (github.com/Panzerhandschuh/LibBSP) is expected to be checked out and built (Release) next to this repo.
-         See Directory.Build.props for how to point at another location. -->
+    <!-- LibBSP (github.com/Panzerhandschuh/LibBSP's fork, for LZMA): BSPConvert's own copy by default (see
+         Directory.Build.props). It has the same assembly identity as the copy BSPConvert.Lib references, and this
+         primary reference wins over that dependency here and in the projects referencing Core, so the output always has
+         $(LibBspDll) and BSPConvert runs on it too. -->
     <Reference Include="libBSP">
       <HintPath>$(LibBspDll)</HintPath>
     </Reference>
-    <ProjectReference Include="$(BspConvertDir)BSPConvert.Lib\BSPConvert.Lib.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Quake 3 and GoldSrc map conversion (github.com/Panzerhandschuh/BSPConvert), checked out next to this repo.
-         It brings its sourcepp native dlls, Assets, Q3Content and CustomContent folders into the output of every
-         project referencing Core.
-         BSPConvert.Lib references its own copy of libBSP (Dependencies\libBSP.dll, same assembly identity). The
-         Reference above is a primary reference, which wins over that dependency here and in the projects referencing
-         Core, so the output always has $(LibBspDll) and BSPConvert runs on it too. BSPConvert's copy only lands, unused,
-         in the output's Dependencies folder. -->
-    <ProjectReference Include="$(BspConvertDir)BSPConvert.Lib\BSPConvert.Lib.csproj" />
   </ItemGroup>
 
 </Project>

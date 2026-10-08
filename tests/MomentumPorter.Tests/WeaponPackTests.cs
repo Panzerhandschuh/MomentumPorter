@@ -200,6 +200,16 @@ public class WeaponPackTests
             Assert.True(File.Exists(Path.Combine(pack, "scripts", "weapon_momentum_pistol.txt")));
             Assert.True(File.Exists(Path.Combine(pack, "scripts", "weapon_momentum_machinegun.txt")));
             Assert.Equal(2, Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Length);
+
+            // Another weapon over the pistol replaces the deagle's entries rather than adding to them
+            (PortJobResult third, _, _) = await BuildAsync("csgo", "glock", "pistol", output);
+            Assert.True(third.Succeeded, third.Error);
+            entries = KeyValuesNode.ParseDocument(File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt")));
+            shot = Assert.Single(entries.FindAll("Weapon_Pistol.Single"));
+            Assert.Contains("glock", shot.Write(), StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("deagle", shot.Write(), StringComparison.OrdinalIgnoreCase);
+            Assert.NotNull(entries.Find("Porter_csgo.Weapon_AK47.Single"));
+            Assert.Equal(2, Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Length);
         }
         finally
         {

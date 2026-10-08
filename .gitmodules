@@ -1,0 +1,4 @@
+[submodule "external/BSPConvert"]
+	path = external/BSPConvert
+	url = https://github.com/momentum-mod/BSPConvert.git
+	branch = develop
