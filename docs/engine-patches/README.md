@@ -37,6 +37,10 @@ porting the CS:GO Desert Eagle over Momentum's pistol, which loaded but had no f
     `flush` (models and waves), and reloads textures and materials. Those commands are cheats only because they're
     for development, so it dispatches them directly rather than through the console's cheat check.
   - `weapon_reload_scripts` on its own still only re-reads the weapon scripts.
+- **Crash on `flush`.** `InvalidateMdlCache()` deleted an entity's `CStudioHdr` but left its `CBoneMergeCache`, which
+  holds a copy of that pointer and only rebuilds when the model's raw header moves. A flushed model usually reloads at
+  the same address, so the next bone merge (`MergeMatchingBones`, bone_merge_cache.cpp:208) read the deleted header
+  and crashed. The cache is now deleted with the header, on client and server; `r_flushlod` had the same latent bug.
 - **Defrag grenade trail.** `CMomDFGrenade` derives from `CMomExplosive`, not `CMomDFProjectile`, so it never made trail
   particles and its `GrenadeTrail` key went unread. It now makes the script's `GrenadeTrail` at the model's `trail`
   attachment, like the other Defrag projectiles. Momentum's own script has no `GrenadeTrail`, so its grenade is
