@@ -35,6 +35,15 @@ public class WeaponsPageTests
         Assert.Equal("tf2", options.Game);
         Assert.Equal(page.SelectedWeapon!.Id, options.Weapon);
         Assert.Equal(page.SelectedSlot, options.Slot);
+
+        // Every mode by default; ticked modes become the option's list
+        Assert.True(page.AllModes);
+        Assert.Null(page.SelectedModes);
+        Assert.Equal(GameModes.All.Count, page.ModeChoices.Count);
+        page.AllModes = false;
+        page.ModeChoices.First(x => x.Mode.Id == "kz16").IsSelected = true;
+        page.ModeChoices.First(x => x.Mode.Id == "kzt").IsSelected = true;
+        Assert.Equal("kzt,kz16", page.SelectedModes);
     }
 
     [Fact]

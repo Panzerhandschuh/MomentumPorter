@@ -28,6 +28,9 @@ public sealed class WeaponPackOptions
     [PortOption("Momentum weapon", "The Momentum weapon it replaces (pistol, machinegun, shotgun, sniper, knife, grenade, rocketlauncher, stickylauncher, concgrenade or a df_ weapon). Defaults to the weapon's best fit.", Order = 20)]
     public string? Slot { get; set; }
 
+    [PortOption("Game modes", "The game modes the weapon is used in, as a list of their ids (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop, conc, df_cpm, df_vq3, df_vtg). Empty means every mode. A weapon for some modes is written as scripts/<mode>/weapon_momentum_<slot>.txt, which Momentum builds with docs/engine-patches/gamemode-weapon-scripts.patch use in that mode, so e.g. Climb (1.6) can have a CS 1.6 pistol and Climb (KZT) a CS:GO one.", Order = 25)]
+    public string? GameModes { get; set; }
+
     [PortOption("Pack name", "Name of the pack folder, as it would sit in momentum/custom/. Defaults to momentumporter, which every weapon pack shares: packs in one folder merge the soundscript and particle manifest they'd otherwise each replace, while packs in separate folders hide each other's.", Order = 30)]
     public string? PackName { get; set; }
 
@@ -52,7 +55,7 @@ public sealed class WeaponPackOptions
     [PortOption("Gun FOV", "Quake 3 only: the FOV Quake 3's gun is drawn with. Quake 3 draws it with the world's FOV (cg_fov) and lowers it at FOVs above 90; Momentum draws view models at fov_viewmodel 54, which hides most of a Quake 3 gun. Empty uses your fov_desired.", Group = "Quake 3", Order = 0)]
     public int? GunFov { get; set; }
 
-    [PortOption("Set it in Defrag modes", "Quake 3 only, for packs written into momentum/custom/: adds a marked block to cfg/df_cpm.cfg, df_vq3.cfg and df_vtg.cfg that runs the pack's view model config, and one to cfg/game.cfg that puts your fov_viewmodel and viewmodel offsets back in other modes.", Group = "Quake 3", Order = 10)]
+    [PortOption("Set it in the modes' configs", "Quake 3 only, for packs written into momentum/custom/: adds a marked block to the configs of the weapon's game modes (cfg/df_cpm.cfg, df_vq3.cfg and df_vtg.cfg for a df_ weapon used in every mode) that runs the pack's view model config, and one to cfg/game.cfg that puts your fov_viewmodel and viewmodel offsets back in other modes.", Group = "Quake 3", Order = 10)]
     public bool SetInDefragModes { get; set; } = true;
 
     [PortOption("Momentum install", "Momentum Mod's install folder (the one holding momentum/ and bin/). Found through Steam when empty.", Group = "Advanced", Order = 0, Path = PathKind.Folder, Advanced = true)]

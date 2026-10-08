@@ -27,6 +27,9 @@ public sealed class WeaponPackState(WeaponPackOptions options) : IDisposable
 
     public WeaponSlot? Slot { get; set; }
 
+    /// <summary>The game modes the weapon is for; empty for every mode. See <see cref="WeaponSlot.ScriptPathFor"/>.</summary>
+    public IReadOnlyList<GameMode> GameModes { get; set; } = [];
+
     public MomentumInstall? Momentum { get; set; }
 
     public GameContent? Content { get; set; }

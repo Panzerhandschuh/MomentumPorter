@@ -12,8 +12,8 @@ public static partial class GameModeConfigs
 {
     public const string GameConfig = "game.cfg";
 
-    /// <summary>The Defrag modes' configs (engine/momentum/mom_system_gamemode.h).</summary>
-    public static readonly IReadOnlyList<string> DefragConfigs = ["df_cpm.cfg", "df_vq3.cfg", "df_vtg.cfg"];
+    /// <summary>The Defrag modes' configs (df_cpm.cfg, df_vq3.cfg, df_vtg.cfg).</summary>
+    public static readonly IReadOnlyList<string> DefragConfigs = GameModes.All.Where(x => x.IsDefrag).Select(x => x.ConfigFile).ToList();
 
     private const string BlockEnd = "// <<< MomentumPorter";
 

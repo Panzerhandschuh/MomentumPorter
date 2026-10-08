@@ -236,7 +236,7 @@ In code, `PlayerSoundPackJob.Create(PlayerSoundPackOptions)` builds the job; `Cu
 ## Weapons
 
 ```
-MomentumPorter weapon --game css --weapon ak47 [--slot machinegun] --output <folder> [--name <pack>]
+MomentumPorter weapon --game css --weapon ak47 [--slot machinegun] [--modes kzt,kz16] --output <folder> [--name <pack>]
                       [--no-sounds] [--arms auto|momentum|none] [--no-projectile] [--no-particles]
                       [--no-world-fit] [--gun-fov <degrees>] [--no-defrag-configs]
                       [--momentum-dir <install>] [--game-dir <content folder>] [--studiomdl <exe>]
@@ -276,6 +276,15 @@ Slots: `pistol`, `machinegun`, `shotgun`, `sniper`, `knife`, `grenade`, `rocketl
 The pack's `scripts/weapon_momentum_<slot>.txt` is Momentum's script with its `ModelData` (view, view_side, world,
 spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/Overrides` and `ParticleData` replaced.
 
+- **Game modes**: `--modes` (the Game modes list in the app) limits a weapon to some modes (`surf`, `bhop`, `bhophl`,
+  `kz`, `kzt`, `kz16`, `rj`, `sj`, `ahop`, `conc`, `df_cpm`, `df_vq3`, `df_vtg`: the modes' cfg names). Its script is
+  then written as `scripts/<mode>/weapon_momentum_<slot>.txt`, which the engine reads in that mode with
+  `docs/engine-patches/gamemode-weapon-scripts.patch` (falling back to the shared script, or Momentum's), so the Climb
+  (1.6) pistol can be CS 1.6's USP and the Climb (KZT) one CS:GO's Desert Eagle. A weapon for every mode keeps the plain
+  path and leaves the modes' own scripts in place. Bullet weapons' shots play from the player, so a per-mode weapon's
+  shot sound needs that patch too (it applies the weapon's `Overrides` to the player's sounds); a weapon for every mode
+  also redefines the shot entry, which works without it. The app shows what the pack holds for the slot per mode.
+
 - **Mounted games**: every model is checked in the VPKs Momentum's `gameinfo.txt` mounts (not loose files of the game).
   The game's own view model paths are used. `attach_to_hands` is 0 (the view models have arms), except CS:GO, whose view
   models have none: the script names CS:GO's `ct_arms.mdl` as `ModelData` `arms`, which needs the engine change in
@@ -296,7 +305,8 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   with nothing marking where they're held and stay as they are. "Fit world model" turns this off.
 - **Sounds**: Momentum only loads the soundscripts in its `game_sounds_manifest.txt`, and the first definition of a
   name wins. Bullet weapons (pistol, machine gun, shotgun, sniper) play their shot from the player, where a weapon
-  script's `Overrides` don't apply, so for those the pack redefines the shot's entry (e.g. `Weapon_Pistol.Single`) in place. Overrides point at the game's entries where Momentum loads them (CS:S, TF2, HL2). Entries Momentum doesn't
+  script's `Overrides` only apply with `docs/engine-patches/gamemode-weapon-scripts.patch`, so for those the pack also
+  redefines the shot's entry (e.g. `Weapon_Pistol.Single`) in place when the weapon is for every mode. Overrides point at the game's entries where Momentum loads them (CS:S, TF2, HL2). Entries Momentum doesn't
   load (CS:GO), or that a Momentum entry of the same name hides (Momentum's `Weapon_Pistol.Single`, `Weapon_Scout.Single`,
   `Weapon_Shotgun.Single`, `Weapon_Knife.*`), are copied (wave, channel, volume, pitch, level; no operator stacks), hidden
   ones as `Porter_<game>.<name>`. The manifest isn't overridden, so the pack ships a full copy of
@@ -325,9 +335,10 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
 - **Quake 3 view model FOV**: Quake 3 draws its gun with the world's FOV (`cg_fov`) and lowers it 0.2 units per degree
   above 90; Momentum draws view models at `fov_viewmodel` 54, which crops most of a Quake 3 gun. The pack's
   `cfg/porter_q3_viewmodel.cfg` sets `fov_viewmodel` (your `fov_desired`, or `--gun-fov`) and `viewmodel_offset_z`.
-  For a `df_` weapon written into `momentum/custom/`, the porter adds a marked block to `cfg/df_cpm.cfg`, `df_vq3.cfg`
-  and `df_vtg.cfg` that runs it, and one to `cfg/game.cfg` that sets your own `fov_viewmodel` and offsets back
-  (Momentum runs `game.cfg` on every map before the mode's config). Delete the blocks to undo.
+  For a `df_` weapon written into `momentum/custom/` (or any weapon with `--modes`), the porter adds a marked block to
+  the modes' configs (`cfg/df_cpm.cfg`, `df_vq3.cfg` and `df_vtg.cfg` for a Defrag weapon) that runs it, and one to
+  `cfg/game.cfg` that sets your own `fov_viewmodel` and offsets back (Momentum runs `game.cfg` on every map before the
+  mode's config). Delete the blocks to undo.
 - Every file written and every limitation is in the report.
 
 ## Splitting brush entities

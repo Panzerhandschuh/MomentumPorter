@@ -6,11 +6,18 @@ namespace MomentumPorter.Assets.Weapons;
 /// <param name="ProjectileKey">The ModelData key of the projectile it fires or throws, if it has its own model</param>
 /// <param name="ShotFromPlayer">
 /// Momentum plays the weapon's shot (FX_FireBullets: its single_shot sound) with the player as the source rather than
-/// the weapon, so a weapon script's SoundData Overrides never apply to it.
+/// the weapon, so a weapon script's SoundData Overrides only apply to it on Momentum builds with
+/// docs/engine-patches/gamemode-weapon-scripts.patch.
 /// </param>
 public sealed record WeaponSlot(string Id, string Name, string? ProjectileKey = null, bool ShotFromPlayer = false)
 {
     public string ScriptPath => $"scripts/weapon_momentum_{Id}.txt";
+
+    /// <summary>
+    /// The script the engine uses for this weapon in one game mode (with docs/engine-patches/gamemode-weapon-scripts.patch),
+    /// or <see cref="ScriptPath"/>, the one for every mode, when <paramref name="mode"/> is null.
+    /// </summary>
+    public string ScriptPathFor(GameMode? mode) => mode is null ? ScriptPath : $"scripts/{mode.Id}/weapon_momentum_{Id}.txt";
 
     /// <summary>The server's copy, which names the soundscript entry for each of the weapon's sounds.</summary>
     public string ServerScriptPath => $"scripts/server_weapon/weapon_momentum_{Id}.txt";

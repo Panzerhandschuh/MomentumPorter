@@ -17,6 +17,9 @@ internal sealed class WeaponCliOptions
     [Option('s', "slot", HelpText = "Momentum weapon it replaces (pistol, machinegun, shotgun, sniper, knife, grenade, rocketlauncher, stickylauncher, concgrenade, df_*). Defaults to the weapon's best fit.")]
     public string? Slot { get; set; }
 
+    [Option('m', "modes", HelpText = "Game modes the weapon is used in (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop, conc, df_cpm, df_vq3, df_vtg), comma separated. Every mode by default. Needs the engine change in docs/engine-patches/gamemode-weapon-scripts.patch.")]
+    public string? Modes { get; set; }
+
     [Option('o', "output", HelpText = "Folder to write the pack folder into")]
     public string? Output { get; set; }
 
@@ -41,7 +44,7 @@ internal sealed class WeaponCliOptions
     [Option("gun-fov", HelpText = "Quake 3: the FOV its gun is drawn with (Quake 3 uses cg_fov). Defaults to your fov_desired.")]
     public int? GunFov { get; set; }
 
-    [Option("no-defrag-configs", HelpText = "Quake 3: don't add the view model block to cfg/df_*.cfg and cfg/game.cfg")]
+    [Option("no-defrag-configs", HelpText = "Quake 3: don't add the view model block to the modes' cfg files (cfg/df_*.cfg by default) and cfg/game.cfg")]
     public bool NoDefragConfigs { get; set; }
 
     [Option("momentum-dir", HelpText = "Momentum Mod's install folder. Found through Steam by default.")]
@@ -98,6 +101,7 @@ internal static class WeaponCommand
             Game = cli.Game,
             Weapon = cli.Weapon,
             Slot = cli.Slot,
+            GameModes = cli.Modes,
             OutputDirectory = cli.Output,
             PackName = cli.Name,
             Sounds = !cli.NoSounds,

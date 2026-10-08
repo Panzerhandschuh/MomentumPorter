@@ -73,10 +73,10 @@ public class WeaponPackTests
         }
     }
 
-    private static async Task<(PortJobResult Result, string Pack, WeaponPackState State)> BuildAsync(string game, string weapon, string? slot = null, string? output = null)
+    private static async Task<(PortJobResult Result, string Pack, WeaponPackState State)> BuildAsync(string game, string weapon, string? slot = null, string? output = null, string? modes = null)
     {
         output ??= WeaponTestGames.TempDirectory("weapons");
-        var options = new WeaponPackOptions { Game = game, Weapon = weapon, Slot = slot, OutputDirectory = output };
+        var options = new WeaponPackOptions { Game = game, Weapon = weapon, Slot = slot, OutputDirectory = output, GameModes = modes };
         (PortJob job, WeaponPackState state) = WeaponPackBuilder.CreateJob(options);
         state.Steam = WeaponTestGames.Locator;
         string work = PortJob.CreateWorkDirectory("weapon_test");
@@ -215,6 +215,84 @@ public class WeaponPackTests
         {
             Directory.Delete(output, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task WeaponsForDifferentModesShareASlot()
+    {
+        if (!CanBuild("csgo"))
+            return;
+
+        string output = WeaponTestGames.TempDirectory("modes");
+        try
+        {
+            // The deagle in KZT, the glock in Climb 1.6: each mode's script, no shared one
+            (PortJobResult kzt, string pack, _) = await BuildAsync("csgo", "deagle", "pistol", output, "kzt");
+            Assert.True(kzt.Succeeded, kzt.Error);
+            (PortJobResult kz16, _, _) = await BuildAsync("csgo", "glock", "pistol", output, "kz16");
+            Assert.True(kz16.Succeeded, kz16.Error);
+
+            Assert.False(File.Exists(Path.Combine(pack, "scripts", "weapon_momentum_pistol.txt")));
+            WeaponScript deagle = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "kzt", "weapon_momentum_pistol.txt")));
+            WeaponScript glock = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "kz16", "weapon_momentum_pistol.txt")));
+            Assert.Contains("deagle", deagle.GetModel("view"), StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("glock", glock.GetModel("view"), StringComparison.OrdinalIgnoreCase);
+
+            // The shot plays through the script's override (the engine patch applies it to the player's sounds), so
+            // Momentum's entry isn't redefined: both modes would want it
+            Assert.Equal("Porter_csgo.Weapon_DEagle.Single", deagle.SoundOverrides["Weapon_Pistol.Single"]);
+            Assert.Equal("Porter_csgo.Weapon_Glock.Single", glock.SoundOverrides["Weapon_Pistol.Single"]);
+            string text = File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt"));
+            KeyValuesNode entries = KeyValuesNode.ParseDocument(text);
+            KeyValuesNode shot = Assert.Single(entries.FindAll("Weapon_Pistol.Single"));
+            Assert.Contains("mom_pistol-fire01.wav", shot.Write());
+            Assert.NotNull(entries.Find("Porter_csgo.Weapon_DEagle.Single"));
+            Assert.NotNull(entries.Find("Porter_csgo.Weapon_Glock.Single"));
+            Assert.Equal(["pistol.kz16.txt", "pistol.kzt.txt"], Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Select(Path.GetFileName).Order().ToArray());
+            Assert.Contains("gamemode-weapon-scripts.patch", Report(kz16));
+
+            // A pistol for every mode goes next to them, redefining the shot entry as before, and they keep their modes
+            (PortJobResult all, _, _) = await BuildAsync("csgo", "p250", "pistol", output);
+            Assert.True(all.Succeeded, all.Error);
+            Assert.True(File.Exists(Path.Combine(pack, "scripts", "weapon_momentum_pistol.txt")));
+            Assert.True(File.Exists(Path.Combine(pack, "scripts", "kzt", "weapon_momentum_pistol.txt")));
+            entries = KeyValuesNode.ParseDocument(File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt")));
+            shot = Assert.Single(entries.FindAll("Weapon_Pistol.Single"));
+            Assert.Contains("p250", shot.Write(), StringComparison.OrdinalIgnoreCase);
+            Assert.NotNull(entries.Find("Porter_csgo.Weapon_DEagle.Single"));
+            Assert.Equal(3, Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Length);
+            Assert.Contains("Climb (KZT), Climb (1.6)", Report(all));
+
+            IReadOnlyList<WeaponPackEntry> inventory = WeaponPackInventory.Read(pack);
+            Assert.Equal(3, inventory.Count);
+            Assert.Equal("Desert Eagle from Counter-Strike: Global Offensive (legacy)", Assert.Single(inventory, x => x.Mode?.Id == "kzt").Description);
+            Assert.Equal("P250 from Counter-Strike: Global Offensive (legacy)", Assert.Single(inventory, x => x.Mode is null).Description);
+
+            (PortJobResult unknown, _, _) = await BuildAsync("csgo", "deagle", "pistol", output, "kzx");
+            Assert.False(unknown.Succeeded);
+            Assert.Contains("kzx", unknown.Error);
+        }
+        finally
+        {
+            Directory.Delete(output, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void GameModeListsParse()
+    {
+        Assert.Empty(GameModes.Parse(null));
+        Assert.Empty(GameModes.Parse(" "));
+        Assert.Equal(["kzt", "kz16"], GameModes.Parse("kz16, KZT,kzt").Select(x => x.Id));
+        Assert.Equal("kzt,kz16", GameModes.ToList(GameModes.Parse("kz16 kzt")));
+        Assert.Null(GameModes.ToList([]));
+        Assert.Throws<FormatException>(() => GameModes.Parse("kzt,nope"));
+        Assert.Equal(["df_cpm.cfg", "df_vq3.cfg", "df_vtg.cfg"], GameModeConfigs.DefragConfigs);
+        Assert.Equal("scripts/kz16/weapon_momentum_pistol.txt", WeaponSlots.Find("pistol")!.ScriptPathFor(GameModes.Find("kz16")));
+        Assert.Equal((WeaponSlots.Find("pistol")!, GameModes.Find("kz16")), WriteWeaponPackStep.ParseSoundEntriesPath("scripts/porter_weapons/pistol.kz16.txt"));
+        Assert.Equal((WeaponSlots.Find("pistol")!, null), WriteWeaponPackStep.ParseSoundEntriesPath("scripts/porter_weapons/pistol.txt"));
+        Assert.Null(WriteWeaponPackStep.ParseSoundEntriesPath("scripts/porter_weapons/csgo_deagle_pistol.txt"));
+        Assert.Null(WriteWeaponPackStep.ParseSoundEntriesPath("scripts/porter_weapons/pistol.nope.txt"));
     }
 
     [Fact]

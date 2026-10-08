@@ -2,8 +2,9 @@
 
 Changes to Momentum's engine (strata/engine) that ported assets need. They aren't applied anywhere; review them and
 apply with `git apply <patch>` in an engine checkout. They apply cleanly to the engine as of October 2026 and compile,
-but haven't been tested in game. Each is a fix in an existing feature; the porter works around everything else content-side,
-so a Momentum build without them only misses what's listed under each patch.
+but haven't been tested in game. Each is a fix in an existing feature, except `gamemode-weapon-scripts.patch`, which
+is the one small feature the porter can't do content-side; the porter works around everything else, so a Momentum
+build without them only misses what's listed under each patch.
 
 ## weapon-overrides.patch
 
@@ -28,8 +29,30 @@ Without it: weapons from mounted games (CS:GO, CS:S, TF2, HL2) may play the wron
 show no arms. Converted weapons (Quake 3, GoldSrc) aren't affected by the animation bugs when their sequences are in
 Momentum's order.
 
-Shot sounds need no engine change: bullet weapons play their shot from the player, where a weapon's `SoundData
-Overrides` don't apply, so the porter redefines the shot's soundscript entry in the pack instead.
+Shot sounds of weapons used in every mode need no engine change: bullet weapons play their shot from the player,
+where a weapon's `SoundData Overrides` don't apply, so the porter redefines the shot's soundscript entry in the pack
+instead. Weapons for some modes can't (see `gamemode-weapon-scripts.patch`).
+
+## gamemode-weapon-scripts.patch
+
+Lets a game mode have its own weapons, so Climb (1.6) can use a CS 1.6 pistol and Climb (KZT) a CS:GO one.
+
+- **Per-mode client scripts.** `CWeaponDef::ParseWeaponScript` reads a client weapon script from
+  `scripts/<mode>/<weapon>.txt` when that file exists, where `<mode>` is the current mode's cfg name without its
+  extension (`kz16`, `kzt`, `df_cpm`, ...), and from `scripts/<weapon>.txt` as before otherwise. Server scripts
+  (`scripts/server_weapon/`) are untouched. The definitions are parsed again in `LevelInitPreEntity`, just before the
+  existing `PrecacheAll()`: the mode is set from the map name at `game_init`, before either DLL's level init, and the
+  game mode system is one engine object both DLLs query, so client and server agree without a cvar, a cfg line or a
+  reload, and the mode's models precache normally. `weapon_reload_scripts` keeps working.
+- **Player-emitted sounds use the weapon's overrides.** Bullet weapons' shots are emitted by the server from the
+  player (`FX_FireBullets`, the server script's `single_shot` entry), so the client weapon's `SoundData Overrides` never
+  reached them and the porter had to redefine the entry in the soundscript, which every mode shares. The client player
+  now routes its sound entries through its active weapon's `GetEffectiveSoundEntry` (which returns names it doesn't
+  override unchanged), so a per-mode script's `Overrides { "Weapon_Pistol.Single" "Porter_cs16.usp.single_shot" }` is
+  what plays.
+
+Without it: `scripts/<mode>/` is ignored, so weapons built for some modes don't appear and those modes use the pack's
+shared script or Momentum's weapon; weapons for every mode are unaffected (their shot is redefined in the soundscript).
 
 ## bonemerge-flush-crash.patch
 

@@ -17,20 +17,26 @@ using ReactiveUI;
 public sealed class WeaponsPageViewModel : PageViewModel
 {
     private readonly SettingsService _settings;
+    private readonly Action<Action> _post;
     private readonly WeaponPackOptions _options = new();
     private CatalogGame? _selectedGame;
     private CatalogWeapon? _selectedWeapon;
     private string? _selectedSlot;
     private WeaponPackBuildViewModel? _selectedBuild;
+    private bool _allModes = true;
+    private string? _slotAssignments;
 
     public WeaponsPageViewModel(SettingsService settings, JobRunnerService runner, Action<Action> post, WeaponCatalog? catalog = null)
     {
         _settings = settings;
+        _post = post;
         Runner = runner;
         Catalog = catalog ?? WeaponCatalog.Default;
-        // The page picks the game, weapon and slot with its own lists
-        OptionsForm = new OptionsFormViewModel(_options, exclude: [nameof(WeaponPackOptions.Game), nameof(WeaponPackOptions.Weapon), nameof(WeaponPackOptions.Slot)]);
+        // The page picks the game, weapon, slot and modes with its own lists
+        OptionsForm = new OptionsFormViewModel(_options, exclude: [nameof(WeaponPackOptions.Game), nameof(WeaponPackOptions.Weapon), nameof(WeaponPackOptions.Slot), nameof(WeaponPackOptions.GameModes)]);
         Games = Catalog.Games;
+        foreach (GameMode mode in GameModes.All)
+            ModeChoices.Add(new GameModeChoice(mode));
 
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);
         IObservable<bool> canBuild = this.WhenAnyValue(x => x.SelectedWeapon, x => x.Runner.IsRunning, (weapon, isRunning) => weapon is not null && !isRunning);
@@ -60,6 +66,26 @@ public sealed class WeaponsPageViewModel : PageViewModel
 
     /// <summary>Builds made this session, newest first.</summary>
     public ObservableCollection<WeaponPackBuildViewModel> Builds { get; } = [];
+
+    /// <summary>The game modes to tick when the weapon isn't for every mode.</summary>
+    public ObservableCollection<GameModeChoice> ModeChoices { get; } = [];
+
+    /// <summary>Whether the weapon is used in every mode (the plain script), or only in the ticked ones.</summary>
+    public bool AllModes
+    {
+        get => _allModes;
+        set => this.RaiseAndSetIfChanged(ref _allModes, value);
+    }
+
+    /// <summary>The ticked modes as the option's list, or null for every mode.</summary>
+    public string? SelectedModes => AllModes ? null : GameModes.ToList(ModeChoices.Where(x => x.IsSelected).Select(x => x.Mode));
+
+    /// <summary>What the pack folder in Momentum's custom folder holds for the selected slot, per mode.</summary>
+    public string? SlotAssignments
+    {
+        get => _slotAssignments;
+        private set => this.RaiseAndSetIfChanged(ref _slotAssignments, value);
+    }
 
     public CatalogGame? SelectedGame
     {
@@ -108,7 +134,43 @@ public sealed class WeaponsPageViewModel : PageViewModel
             this.RaiseAndSetIfChanged(ref _selectedSlot, value);
             _options.Slot = value;
             OptionsForm.Reload();
+            RefreshSlotAssignments();
         }
+    }
+
+    /// <summary>Reads the pack folder the builds go to and describes what it has for the selected slot.</summary>
+    public void RefreshSlotAssignments()
+    {
+        SlotAssignments = SelectedSlot is { } slotId && WeaponSlots.Find(slotId) is { } slot
+            ? DescribeAssignments(slot, WeaponPackInventory.Read(Path.Combine(OutputDirectory(_settings.Settings), SanitizedPackName())))
+            : null;
+    }
+
+    private static string? DescribeAssignments(WeaponSlot slot, IReadOnlyList<WeaponPackEntry> inventory)
+    {
+        var lines = inventory
+            .Where(x => x.Slot == slot)
+            .OrderBy(x => x.Mode is null ? -1 : GameModes.All.ToList().IndexOf(x.Mode))
+            .Select(x => $"{(x.Mode is null ? "Every other mode" : x.Mode.Name)}: {x.Description}")
+            .ToList();
+        if (lines.Count == 0)
+            return null;
+
+        if (!lines[0].StartsWith("Every other mode", StringComparison.Ordinal))
+            return "In the pack now: " + string.Join("; ", lines);
+
+        return "In the pack now: " + string.Join("; ", lines.Skip(1).Append(lines.Count == 1 ? lines[0].Replace("Every other mode", "every mode") : lines[0].Replace("Every other mode", "every other mode")));
+    }
+
+    private string SanitizedPackName() => string.IsNullOrWhiteSpace(_options.PackName) ? WeaponPackBuilder.SharedPackName : _options.PackName.Trim();
+
+    /// <summary>Where packs go: Momentum's custom folder, or the output folder's custom/ when Momentum isn't found.</summary>
+    private static string OutputDirectory(PorterSettings settings)
+    {
+        string? content = settings.ResolveMomentumContentDirectory();
+        return content is not null
+            ? Path.Combine(content, "custom")
+            : Path.Combine(settings.ResolveOutputDirectory(), "custom");
     }
 
     /// <summary>What the selected game can't reproduce, from the catalog.</summary>
@@ -149,7 +211,8 @@ public sealed class WeaponsPageViewModel : PageViewModel
         if (SelectedWeapon is null)
             return;
 
-        var build = new WeaponPackBuildViewModel($"{SelectedGame?.Name}: {SelectedWeapon.Name} as {SelectedSlot ?? "best fit"}");
+        string modes = AllModes ? "" : $" in {GameModes.Describe(GameModes.Parse(SelectedModes))}";
+        var build = new WeaponPackBuildViewModel($"{SelectedGame?.Name}: {SelectedWeapon.Name} as {SelectedSlot ?? "best fit"}{modes}");
         Builds.Insert(0, build);
         SelectedBuild = build;
         await Runner.RunAsync(new List<WeaponPackBuildViewModel> { build }, Prepare);
@@ -164,18 +227,14 @@ public sealed class WeaponsPageViewModel : PageViewModel
         options.Game = SelectedGame?.Id ?? options.Game;
         options.Weapon = SelectedWeapon?.Id ?? options.Weapon;
         options.Slot = SelectedSlot ?? options.Slot;
+        options.GameModes = SelectedModes;
         PorterSettings settings = _settings.Settings.Clone();
 
         if (string.IsNullOrWhiteSpace(options.MomentumDirectory) && !string.IsNullOrWhiteSpace(settings.MomentumDirectory))
             options.MomentumDirectory = settings.MomentumDirectory;
 
         if (string.IsNullOrWhiteSpace(options.OutputDirectory))
-        {
-            string? content = settings.ResolveMomentumContentDirectory();
-            options.OutputDirectory = content is not null
-                ? Path.Combine(content, "custom")
-                : Path.Combine(settings.ResolveOutputDirectory(), "custom");
-        }
+            options.OutputDirectory = OutputDirectory(settings);
 
         (PortJob job, WeaponPackState state) = WeaponPackBuilder.CreateJob(options);
         string workDirectory = PortJob.CreateWorkDirectory($"weapon_{options.Game}_{options.Weapon}");
@@ -191,6 +250,7 @@ public sealed class WeaponsPageViewModel : PageViewModel
             (context, result) =>
             {
                 state.Dispose();
+                _post(RefreshSlotAssignments);
                 if (!result.Succeeded)
                 {
                     return result.Exception is OperationCanceledException
@@ -221,4 +281,20 @@ public sealed class WeaponsPageViewModel : PageViewModel
 public sealed class WeaponPackBuildViewModel(string title) : QueueItemViewModel
 {
     public override string Title { get; } = title;
+}
+
+/// <summary>A game mode in the Weapons page's mode list.</summary>
+public sealed class GameModeChoice(GameMode mode) : ReactiveObject
+{
+    private bool _isSelected;
+
+    public GameMode Mode { get; } = mode;
+
+    public string Name => Mode.Name;
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => this.RaiseAndSetIfChanged(ref _isSelected, value);
+    }
 }
