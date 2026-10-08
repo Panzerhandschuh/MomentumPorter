@@ -116,6 +116,22 @@ public sealed class WeaponsPageViewModel : PageViewModel
         ? string.Join(" ", game.Limitations.Select(x => x.TrimEnd().EndsWith('.') ? x.Trim() : x.Trim() + "."))
         : null;
 
+    private bool _gameNotesExpanded;
+
+    /// <summary>Whether the game's notes show in full, or clipped to a couple of lines so the weapon list has room.</summary>
+    public bool GameNotesExpanded
+    {
+        get => _gameNotesExpanded;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _gameNotesExpanded, value);
+            this.RaisePropertyChanged(nameof(GameNotesMaxLines));
+        }
+    }
+
+    /// <summary>The notes' line limit: 0 (none) when expanded.</summary>
+    public int GameNotesMaxLines => GameNotesExpanded ? 0 : 2;
+
     public WeaponPackBuildViewModel? SelectedBuild
     {
         get => _selectedBuild;
