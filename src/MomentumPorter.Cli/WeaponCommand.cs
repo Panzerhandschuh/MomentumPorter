@@ -35,6 +35,15 @@ internal sealed class WeaponCliOptions
     [Option("no-particles", HelpText = "Keep Momentum's particles")]
     public bool NoParticles { get; set; }
 
+    [Option("no-world-fit", HelpText = "Use the source game's world model as it is instead of fitting it to Momentum's player's hand")]
+    public bool NoWorldFit { get; set; }
+
+    [Option("gun-fov", HelpText = "Quake 3: the FOV its gun is drawn with (Quake 3 uses cg_fov). Defaults to your fov_desired.")]
+    public int? GunFov { get; set; }
+
+    [Option("no-defrag-configs", HelpText = "Quake 3: don't add the view model block to cfg/df_*.cfg and cfg/game.cfg")]
+    public bool NoDefragConfigs { get; set; }
+
     [Option("momentum-dir", HelpText = "Momentum Mod's install folder. Found through Steam by default.")]
     public string? MomentumDirectory { get; set; }
 
@@ -95,6 +104,9 @@ internal static class WeaponCommand
             Arms = arms,
             Projectile = !cli.NoProjectile,
             Particles = !cli.NoParticles,
+            FitWorldModel = !cli.NoWorldFit,
+            GunFov = cli.GunFov,
+            SetInDefragModes = !cli.NoDefragConfigs,
             MomentumDirectory = cli.MomentumDirectory,
             GameDirectory = cli.GameDirectory,
             StudioMdlPath = cli.StudioMdl,

@@ -49,6 +49,12 @@ public sealed class WeaponPackOptions
     [PortOption("Particles", "Use the source game's particle effects (explosions, trails) where the catalog lists them.", Group = "Weapon", Order = 30)]
     public bool Particles { get; set; } = true;
 
+    [PortOption("Gun FOV", "Quake 3 only: the FOV Quake 3's gun is drawn with. Quake 3 draws it with the world's FOV (cg_fov) and lowers it at FOVs above 90; Momentum draws view models at fov_viewmodel 54, which hides most of a Quake 3 gun. Empty uses your fov_desired.", Group = "Quake 3", Order = 0)]
+    public int? GunFov { get; set; }
+
+    [PortOption("Set it in Defrag modes", "Quake 3 only, for packs written into momentum/custom/: adds a marked block to cfg/df_cpm.cfg, df_vq3.cfg and df_vtg.cfg that runs the pack's view model config, and one to cfg/game.cfg that puts your fov_viewmodel and viewmodel offsets back in other modes.", Group = "Quake 3", Order = 10)]
+    public bool SetInDefragModes { get; set; } = true;
+
     [PortOption("Momentum install", "Momentum Mod's install folder (the one holding momentum/ and bin/). Found through Steam when empty.", Group = "Advanced", Order = 0, Path = PathKind.Folder, Advanced = true)]
     public string? MomentumDirectory { get; set; }
 

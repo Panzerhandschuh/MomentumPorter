@@ -73,6 +73,17 @@ public sealed class WeaponPackState(WeaponPackOptions options) : IDisposable
     /// <summary>The arms model Momentum should bone-merge onto the view model (ModelData "arms"), if any.</summary>
     public string? ArmsModel { get; set; }
 
+    /// <summary>Whether the pack is written straight into Momentum's custom folder, where the game loads it.</summary>
+    public bool PackIsInMomentumCustom =>
+        Momentum is { } momentum &&
+        string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetDirectoryName(PackDirectory)!)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(momentum.GameDirectory, "custom"))),
+            StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>ParticleData entries for effects the pack makes (on top of the catalog's).</summary>
+    public Dictionary<string, string> Particles { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public void Dispose()
     {
         Content?.Dispose();
@@ -99,6 +110,8 @@ public static class WeaponPackBuilder
             new CheckMountedAssetsStep(),
             new ConvertModelsStep(),
             new FitWorldModelStep(),
+            new Quake3EffectsStep(),
+            new Quake3ViewModelStep(),
             new ResolveWeaponSoundsStep(),
             new WriteWeaponPackStep(),
         };

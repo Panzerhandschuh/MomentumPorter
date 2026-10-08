@@ -3,6 +3,7 @@ namespace MomentumPorter.Tests;
 using System.IO.Compression;
 using System.Text;
 using MomentumPorter.Assets.Vpk;
+using MomentumPorter.Assets.Particles;
 using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
 using Xunit;
@@ -343,6 +344,65 @@ public class WeaponPackTests
             WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_df_railgun.txt")));
             Assert.Equal("models/porter/q3/weapons2/railgun/v_railgun.mdl", script.GetModel("view"));
             Assert.Equal("Porter_q3.railgun.single_shot", script.SoundOverrides["Weapon_Scout.Single"]);
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(pack)!, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Quake 3's rocket launcher gets Quake 3's explosion and smoke trail, and a view model config (slow).
+    /// </summary>
+    [Fact]
+    public async Task Quake3RocketLauncherPackHasQuake3Effects()
+    {
+        if (!CanBuild("q3") || !File.Exists(WeaponTestGames.Momentum!.DmxConvertPath))
+            return;
+
+        string momentumCfg = Path.Combine(WeaponTestGames.Momentum.GameDirectory, "cfg");
+        DateTime gameCfgTime = File.Exists(Path.Combine(momentumCfg, "game.cfg")) ? File.GetLastWriteTimeUtc(Path.Combine(momentumCfg, "game.cfg")) : default;
+        (PortJobResult result, string pack, _) = await BuildAsync("q3", "rocketlauncher");
+        try
+        {
+            Assert.True(result.Succeeded, result.Error + Report(result));
+            WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_df_rocketlauncher.txt")));
+            Assert.Equal("porter_q3_rocket_explosion", script.GetParticle("ExplosionEffect"));
+            Assert.Equal("porter_q3_rocket_trail", script.GetParticle("RocketTrail"));
+            Assert.Equal("models/porter/q3/ammo/rocket/w_rocket.mdl", script.GetModel("rocket"));
+
+            Assert.True(File.Exists(Path.Combine(pack, "particles", "porter_q3.pcf")));
+            Assert.Contains("\"!particles/porter_q3.pcf\"", File.ReadAllText(Path.Combine(pack, "particles", "particles_manifest.txt")));
+            Assert.True(File.Exists(Path.Combine(pack, "materials", "porter", "q3", "effects", "rlboom_8.vtf")));
+
+            string viewModel = File.ReadAllText(Path.Combine(pack, "cfg", "porter_q3_viewmodel.cfg"));
+            Assert.Matches(@"(?m)^fov_viewmodel \d+", viewModel);
+
+            // Written outside momentum/custom, so the player's configs are left alone
+            if (gameCfgTime != default)
+                Assert.Equal(gameCfgTime, File.GetLastWriteTimeUtc(Path.Combine(momentumCfg, "game.cfg")));
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(pack)!, recursive: true);
+        }
+    }
+
+    /// <summary>Quake 3's plasma ball is a sprite on an invisible projectile, not Momentum's rocket (slow).</summary>
+    [Fact]
+    public async Task Quake3PlasmaGunPackFiresPlasmaBalls()
+    {
+        if (!CanBuild("q3") || !File.Exists(WeaponTestGames.Momentum!.DmxConvertPath))
+            return;
+
+        (PortJobResult result, string pack, _) = await BuildAsync("q3", "plasmagun");
+        try
+        {
+            Assert.True(result.Succeeded, result.Error + Report(result));
+            WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_df_plasmagun.txt")));
+            Assert.Equal(Quake3Effects.InvisibleProjectile, script.GetModel("plasma"));
+            Assert.Equal("porter_q3_plasma_ball", script.GetParticle("PlasmaTrail"));
+            Assert.True(File.Exists(Path.Combine(pack, "models", "porter", "q3", "effects", "invisible_projectile.mdl")));
         }
         finally
         {

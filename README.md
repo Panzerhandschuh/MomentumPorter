@@ -226,6 +226,7 @@ In code, `PlayerSoundPackJob.Create(PlayerSoundPackOptions)` builds the job; `Cu
 ```
 MomentumPorter weapon --game css --weapon ak47 [--slot machinegun] --output <folder> [--name <pack>]
                       [--no-sounds] [--arms auto|momentum|none] [--no-projectile] [--no-particles]
+                      [--no-world-fit] [--gun-fov <degrees>] [--no-defrag-configs]
                       [--momentum-dir <install>] [--game-dir <content folder>] [--studiomdl <exe>]
 MomentumPorter weapon --list [--game css]
 ```
@@ -285,6 +286,19 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
 - **Quake 3**: the weapon and its barrel become a one-bone model. The view model hangs it from the hand model's
   `tag_weapon`, and the hand's frames give it idle, fire (recoil) and draw sequences. Barrels don't spin, the muzzle
   flash isn't drawn, and shaders become plain materials from their first stage (additive if it's blended so).
+- **Quake 3 effects**: rocket, grenade, plasma and BFG explosions, the rocket and grenade smoke trails and the plasma
+  ball are rebuilt as particle systems in `particles/porter_q3.pcf` from Quake 3's own textures, timed as cgame draws
+  them (explosion sprites 16 units off the wall growing from 30 to 72 units through the animmap frames, a smoke puff
+  every 50 ms, a 16 unit spinning plasma sprite on an invisible projectile). The file is written as keyvalues2 text and
+  converted to binary with Momentum's `dmxconvert`. Particle files only load through `particles/particles_manifest.txt`,
+  so the pack ships Momentum's manifest with the file added (every Quake 3 pack writes the same files). The railgun,
+  machine gun and shotgun hit with Momentum's bullet impacts: those aren't in the weapon script.
+- **Quake 3 view model FOV**: Quake 3 draws its gun with the world's FOV (`cg_fov`) and lowers it 0.2 units per degree
+  above 90; Momentum draws view models at `fov_viewmodel` 54, which crops most of a Quake 3 gun. The pack's
+  `cfg/porter_q3_viewmodel.cfg` sets `fov_viewmodel` (your `fov_desired`, or `--gun-fov`) and `viewmodel_offset_z`.
+  For a `df_` weapon written into `momentum/custom/`, the porter adds a marked block to `cfg/df_cpm.cfg`, `df_vq3.cfg`
+  and `df_vtg.cfg` that runs it, and one to `cfg/game.cfg` that sets your own `fov_viewmodel` and offsets back
+  (Momentum runs `game.cfg` on every map before the mode's config). Delete the blocks to undo.
 - Every file written and every limitation is in the report.
 
 ## Splitting brush entities

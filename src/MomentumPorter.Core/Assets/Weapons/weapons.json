@@ -280,7 +280,7 @@
         { "id": "lightning", "name": "Lightning Gun", "slots": [ "df_lightninggun" ], "view": "models/weapons2/lightning/lightning.md3", "world": "models/weapons2/lightning/lightning.md3", "waves": { "single_shot": [ "sound/weapons/lightning/lg_fire.wav" ] } },
         { "id": "railgun", "name": "Railgun", "slots": [ "df_railgun", "sniper" ], "view": "models/weapons2/railgun/railgun.md3", "world": "models/weapons2/railgun/railgun.md3", "waves": { "single_shot": [ "sound/weapons/railgun/railgf1a.wav" ] } },
         { "id": "plasmagun", "name": "Plasma Gun", "slots": [ "df_plasmagun" ], "view": "models/weapons2/plasma/plasma.md3", "world": "models/weapons2/plasma/plasma.md3", "waves": { "single_shot": [ "sound/weapons/plasma/hyprbf1a.wav" ], "explosion": [ "sound/weapons/plasma/plasmx1a.wav" ], "trail": [ "sound/weapons/plasma/lasfly.wav" ] } },
-        { "id": "bfg", "name": "BFG10K", "slots": [ "df_bfg" ], "view": "models/weapons2/bfg/bfg.md3", "world": "models/weapons2/bfg/bfg.md3", "waves": { "single_shot": [ "sound/weapons/bfg/bfg_fire.wav" ], "explosion": [ "sound/weapons/rocket/rocklx1a.wav" ] } }
+        { "id": "bfg", "name": "BFG10K", "slots": [ "df_bfg" ], "view": "models/weapons2/bfg/bfg.md3", "world": "models/weapons2/bfg/bfg.md3", "projectile": "models/weaphits/bfg.md3", "waves": { "single_shot": [ "sound/weapons/bfg/bfg_fire.wav" ], "explosion": [ "sound/weapons/rocket/rocklx1a.wav" ] } }
       ]
     }
   ]

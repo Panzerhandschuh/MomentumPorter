@@ -171,26 +171,27 @@ public sealed class ConvertModelsStep : IPortStep
             _ => ViewModelKind.Gun,
         };
 
-        Func<string, ViewModelKind?, Task<ConvertedModel>> convert;
+        // Model path, view model kind (null for world and projectile models), whether it's a projectile
+        Func<string, ViewModelKind?, bool, Task<ConvertedModel>> convert;
         switch (info.Engine)
         {
             case ContentEngine.GoldSrc:
             {
                 var converter = new GoldSrcWeaponConverter(state.Content!, compiler, info.Id, context.WorkDirectory);
-                convert = (path, viewKind) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation);
+                convert = (path, viewKind, _) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation);
                 break;
             }
             case ContentEngine.Quake3:
             {
                 var converter = new Quake3WeaponConverter(state.Content!, compiler, info.Id);
-                convert = (path, viewKind) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation);
+                convert = (path, viewKind, projectile) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation, projectile);
                 break;
             }
             default:
                 throw new PortStepException($"{info.Name}'s models can't be converted");
         }
 
-        ConvertedModel view = await convert(weapon.View, kind).ConfigureAwait(false);
+        ConvertedModel view = await convert(weapon.View, kind, false).ConfigureAwait(false);
         Add(context, state, view);
         state.ViewModel = view.GamePath;
         state.ViewSideModel = view.GamePath;
@@ -199,7 +200,7 @@ public sealed class ConvertModelsStep : IPortStep
         {
             try
             {
-                ConvertedModel world = await convert(weapon.World, null).ConfigureAwait(false);
+                ConvertedModel world = await convert(weapon.World, null, false).ConfigureAwait(false);
                 state.WorldModel = world.GamePath;
                 if (info.Engine == ContentEngine.Quake3)
                 {
@@ -222,7 +223,7 @@ public sealed class ConvertModelsStep : IPortStep
         {
             try
             {
-                ConvertedModel projectile = await convert(weapon.Projectile, null).ConfigureAwait(false);
+                ConvertedModel projectile = await convert(weapon.Projectile, null, true).ConfigureAwait(false);
                 Add(context, state, projectile);
                 state.ProjectileModel = projectile.GamePath;
             }
@@ -438,7 +439,7 @@ public sealed class WriteWeaponPackStep : IPortStep
 
         if (state.Options.Particles)
         {
-            foreach ((string key, string particle) in weapon.Particles)
+            foreach ((string key, string particle) in weapon.Particles.Concat(state.Particles))
                 script.SetParticle(key, particle);
         }
 
@@ -485,11 +486,7 @@ public sealed class WriteWeaponPackStep : IPortStep
 
         context.Set(new WeaponPackOutput(state.PackDirectory, sink.Files.ToList()));
         // Packs written straight into Momentum's custom folder are already live; anywhere else they have to be copied there
-        bool inCustom = state.Momentum is { } momentum &&
-            string.Equals(
-                Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetDirectoryName(state.PackDirectory)!)),
-                Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(momentum.GameDirectory, "custom"))),
-                StringComparison.OrdinalIgnoreCase);
+        bool inCustom = state.PackIsInMomentumCustom;
         context.Log.Info(inCustom
             ? $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Run weapon_reload_scripts in game (sounds need a restart)."
             : $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/ and run weapon_reload_scripts (sounds need a restart).");

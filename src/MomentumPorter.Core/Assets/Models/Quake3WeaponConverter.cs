@@ -46,7 +46,11 @@ public sealed class Quake3WeaponConverter
 
     /// <param name="modelPath">e.g. <c>models/weapons2/railgun/railgun.md3</c></param>
     /// <param name="kind">Non-null for the view model (hung from the hand model), null for the world model</param>
-    public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation)
+    /// <param name="projectile">
+    /// A projectile: gets a <c>trail</c> attachment at its origin, where Momentum starts its trail particles and Quake 3
+    /// leaves its smoke
+    /// </param>
+    public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation, bool projectile = false)
     {
         Md3Model weapon = ReadModel(modelPath) ?? throw new PortStepException($"{modelPath} isn't in {_content.Name}'s files");
         string directory = Path.GetDirectoryName(ContentPath.Normalize(modelPath))!.Replace('\\', '/');
@@ -139,6 +143,9 @@ public sealed class Quake3WeaponConverter
 
         // Source's studiomdl turns models 90 degrees unless told otherwise; these are already in game space
         var qc = new QcWriter(modelName, materialFolder).Origin(0, 0, 0, -90).SurfaceProp("metal").Body("weapon", "reference.smd");
+        if (projectile)
+            qc.Attachment("trail", "root", 0, 0, 0);
+
         if (handFrames is null)
         {
             await WriteAnimation(sourceFolder, "idle.smd", bones, [pose], cancellation).ConfigureAwait(false);

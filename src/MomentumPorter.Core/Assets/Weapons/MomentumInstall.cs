@@ -23,6 +23,8 @@ public sealed class MomentumInstall
 
     public string StudioMdlPath => Path.Combine(InstallDirectory, "bin", "win64", "studiomdl.exe");
 
+    public string DmxConvertPath => Path.Combine(InstallDirectory, "bin", "win64", "dmxconvert.exe");
+
     /// <summary>
     /// Finds Momentum through Steam (a release install first, then the playtest).
     /// </summary>
