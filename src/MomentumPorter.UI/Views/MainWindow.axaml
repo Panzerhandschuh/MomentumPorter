@@ -20,7 +20,7 @@
             BorderBrush="{StaticResource PanelBorder}" BorderThickness="0 0 1 0">
       <DockPanel>
         <StackPanel DockPanel.Dock="Top" Margin="16 18 16 14" Spacing="2">
-          <TextBlock Text="MomentumPorter" FontSize="17" FontWeight="Bold" />
+          <TextBlock Text="Momentum Porter" FontSize="17" FontWeight="Bold" />
           <TextBlock Text="Port maps and assets to Momentum Mod" Classes="muted" FontSize="11" TextWrapping="Wrap" />
         </StackPanel>
         <ListBox ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}" Background="Transparent"
@@ -65,7 +65,7 @@
       <Border BorderBrush="#66FFFFFF" BorderThickness="2" CornerRadius="12" Margin="24">
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
           <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="56" Height="56" />
-          <TextBlock Text="Drop to add to MomentumPorter" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="Drop to add to Momentum Porter" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
           <TextBlock Text="Maps (.bsp, .pk3, .zip) go to the Maps queue" Classes="muted" HorizontalAlignment="Center" />
         </StackPanel>
       </Border>

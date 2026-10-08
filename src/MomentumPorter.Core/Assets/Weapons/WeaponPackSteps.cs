@@ -594,7 +594,7 @@ file static class MergedSoundscript
             if (WeaponSlots.Find(Path.GetFileNameWithoutExtension(path)) is null)
             {
                 sink.DeleteFile(path);
-                context.Report.Warn($"Removed {path}, from an older MomentumPorter: build that weapon again to get its sounds back");
+                context.Report.Warn($"Removed {path}, from an older Momentum Porter: build that weapon again to get its sounds back");
                 continue;
             }
 

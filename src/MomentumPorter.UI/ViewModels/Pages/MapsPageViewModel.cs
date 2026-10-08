@@ -22,7 +22,7 @@ using ReactiveUI;
 public sealed class MapsPageViewModel : PageViewModel
 {
     public static readonly FileFilter MapFilter = new("Maps", "*.bsp", "*.pk3", "*.zip");
-    public static readonly FileFilter PresetFilter = new("MomentumPorter preset", "*" + OptionsPreset.Extension);
+    public static readonly FileFilter PresetFilter = new("Momentum Porter preset", "*" + OptionsPreset.Extension);
 
     /// <summary>Map options only Source maps use; the rest (compress, install, overwrite) apply to every map.</summary>
     private static readonly HashSet<string> SourceOnlyOptions = [nameof(MapPortOptions.Game), nameof(MapPortOptions.GameDirectory), nameof(MapPortOptions.Pack)];

@@ -76,7 +76,7 @@ public sealed class Quake3ViewModelStep : IPortStep
         }
 
         context.Report.Change($"Defrag modes draw Quake 3's gun at fov_viewmodel {fov}");
-        context.Log.Info($"Added a MomentumPorter block to cfg/{string.Join(", cfg/", GameModeConfigs.DefragConfigs)} (runs {PackConfig}.cfg) and cfg/{GameModeConfigs.GameConfig} ({string.Join("; ", reset)}). Momentum's own Defrag weapons are drawn at that FOV too.");
+        context.Log.Info($"Added a Momentum Porter block to cfg/{string.Join(", cfg/", GameModeConfigs.DefragConfigs)} (runs {PackConfig}.cfg) and cfg/{GameModeConfigs.GameConfig} ({string.Join("; ", reset)}). Momentum's own Defrag weapons are drawn at that FOV too.");
         return Task.CompletedTask;
     }
 

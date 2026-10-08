@@ -28,7 +28,7 @@ public static class BspConvertHelp
     public const string NoFogOverlay = "Don't draw fog shader visible stages (e.g. scrolling clouds) as an overlay face; fog brush faces are just dropped.";
     public const string NoEnvMap = "Disable envmap (specular cubemap) shader conversion. Useful for maps where Source's cubemap poorly emulates Quake 3's spheremap effect.";
     public const string ClampOverbright = "Apply Quake 3's hue-preserving overbright clamp to lightmaps, flattening over-bright highlights toward white.";
-    public const string Q3Content = "When the Q3Content folder next to MomentumPorter is empty, extract the Quake 3 install's baseq3 pak files into it first (found through Steam, about 650 MB, once), so the textures, shaders and sounds maps share with the base game convert.";
+    public const string Q3Content = "When the Q3Content folder next to Momentum Porter is empty, extract the Quake 3 install's baseq3 pak files into it first (found through Steam, about 650 MB, once), so the textures, shaders and sounds maps share with the base game convert.";
 
     // Animated textures
     public const string NoAnim = "Disable baking multi-pass / animated shaders (scrolling liquids, layered effects, animMaps) into animated flipbook textures.";

@@ -33,7 +33,7 @@ public sealed class MainWindowViewModel : ViewModel
         _statusMessage = settings.LoadError;
     }
 
-    public string Title => "MomentumPorter";
+    public string Title => "Momentum Porter";
 
     public IReadOnlyList<PageViewModel> Pages { get; }
 
@@ -93,7 +93,7 @@ public sealed class MainWindowViewModel : ViewModel
                 maps.Add(path);
             else
                 others.Add(kind == InputKind.Unknown
-                    ? $"{Path.GetFileName(path)} isn't a file MomentumPorter recognises"
+                    ? $"{Path.GetFileName(path)} isn't a file Momentum Porter recognises"
                     : $"{Path.GetFileName(path)} is a {PortJobFactory.Describe(kind)}; porting those comes in a later phase");
         }
 

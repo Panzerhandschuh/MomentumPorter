@@ -180,7 +180,7 @@ public sealed class CustomPackWriter
             return;
 
         if (!File.Exists(Path.Combine(target, MarkerFileName)))
-            throw new PortStepException($"{target} already exists and wasn't made by MomentumPorter, so it won't be replaced. Pick another pack name.");
+            throw new PortStepException($"{target} already exists and wasn't made by Momentum Porter, so it won't be replaced. Pick another pack name.");
 
         if (!overwrite)
             throw new PortStepException($"{target} already exists");

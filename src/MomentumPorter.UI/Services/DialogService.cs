@@ -32,7 +32,7 @@ public interface IDialogService
 /// </summary>
 public sealed class DialogUserPrompts(IDialogService dialogs) : IUserPrompts
 {
-    public Task<bool> ConfirmAsync(string question) => dialogs.ConfirmAsync("MomentumPorter", question);
+    public Task<bool> ConfirmAsync(string question) => dialogs.ConfirmAsync("Momentum Porter", question);
 }
 
 public sealed class AvaloniaDialogService(Func<Window?> owner) : IDialogService
