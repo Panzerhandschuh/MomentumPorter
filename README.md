@@ -232,11 +232,13 @@ MomentumPorter weapon --list [--game css]
 ```
 
 Ports a weapon from another game into one of Momentum's weapons as a pack folder (`<output>/<game>_<weapon>_<slot>`
-by default). Copy the folder into `momentum/custom/` (or pack it into a VPK) and restart Momentum: it only scans
-`custom/` at startup, and `weapon_reload_scripts` only reloads the script of a pack that's already loaded. Engine
-builds with `docs/engine-patches/weapon-reload-all.patch` have `weapon_reload_all`, which mounts new packs and reloads
-sound scripts, particles, weapon scripts, models, sounds and materials without a restart. Removing the pack brings
-Momentum's weapon back. Nothing is written into the Momentum install (except the Quake 3 config blocks below); models are compiled against a stub game folder in a temp work folder.
+by default). Copy the folder into `momentum/custom/` and restart Momentum: it only scans `custom/` at startup. After
+that, rebuilding the pack into the same folder doesn't need a restart: run `exec porter_reload` in game (with
+`sv_cheats 1`). The pack's `cfg/porter_reload.cfg` reloads soundscripts, particles, weapon scripts, models and the
+pack's materials with Momentum's own commands; the model step (`flush`) crashes engine builds without
+`docs/engine-patches/bonemerge-flush-crash.patch`, so on those remove that line and reload the map instead. A pack in
+a VPK needs a restart for every change. Removing the pack brings Momentum's weapon back. Nothing is written into the
+Momentum install (except the Quake 3 config blocks below); models are compiled against a stub game folder in a temp work folder.
 
 The weapons come from `src/MomentumPorter.Core/Assets/Weapons/weapons.json` (embedded in Core): per game, each
 weapon's models, the Momentum weapons it fits (best first) and its sounds keyed by the role Momentum gives them in

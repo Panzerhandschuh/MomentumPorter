@@ -94,7 +94,7 @@
         <Panel>
           <StackPanel IsVisible="{Binding !Builds.Count}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="360">
             <materialIcons:MaterialIcon Kind="Pistol" Width="40" Height="40" Opacity="0.5" />
-            <TextBlock Text="Pick a game, a weapon and the Momentum weapon it replaces, then Build pack. Restart Momentum to load the pack (or run weapon_reload_all on engine builds that have it)."
+            <TextBlock Text="Pick a game, a weapon and the Momentum weapon it replaces, then Build pack. A new pack needs a Momentum restart; rebuilding one only needs exec porter_reload in game (sv_cheats 1)."
                        Classes="muted" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
           </StackPanel>
           <ListBox ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}" Background="Transparent"

@@ -391,13 +391,30 @@ public sealed class WriteWeaponPackStep : IPortStep
     /// </summary>
     public const string SoundscriptPath = "scripts/game_sounds_momentum_weapons.txt";
 
+    /// <summary>The pack's reload config: everything a pack changes, with the console commands Momentum has.</summary>
+    public const string ReloadConfigPath = "cfg/porter_reload.cfg";
+
     /// <summary>
-    /// Momentum only scans momentum/custom at startup and keeps models, sounds and particles it has loaded, so
-    /// weapon_reload_scripts only picks up script changes to a pack that was already loaded.
+    /// Momentum only scans momentum/custom at startup, so a new pack folder needs a restart. Files changed inside a
+    /// mounted folder are read again on the next open, so a rebuilt pack only needs the reload config.
     /// </summary>
     private const string ReloadHint =
-        "Restart Momentum to load it, or run weapon_reload_all on engine builds with docs/engine-patches/weapon-reload-all.patch "
-        + "(weapon_reload_scripts only reloads the script of a pack that was already loaded).";
+        "A new pack folder needs a restart (Momentum scans custom/ at startup); after that, rebuilding it only needs "
+        + "\"exec porter_reload\" in game with sv_cheats 1.";
+
+    // Momentum's own commands cover everything a pack changes. They're cheats only because they're for development.
+    private const string ReloadConfig =
+        "// Reloads what a MomentumPorter weapon pack changes, without restarting. Needs sv_cheats 1.\n"
+        + "// Momentum scans momentum/custom/ at startup only: a new pack folder needs a restart, but changes inside a\n"
+        + "// mounted folder (not a VPK) are read again on the next open, so a rebuilt pack only needs this.\n"
+        + "sv_soundemitter_flush      // soundscripts (game_sounds_*.txt)\n"
+        + "sv_particles_reload        // the particle manifest and the .pcf files it lists\n"
+        + "cl_particles_reload\n"
+        + "// Models and waves already in memory are read again from disk. Momentum builds without the bone merge\n"
+        + "// fix in docs/engine-patches/bonemerge-flush-crash.patch crash here: remove the line and reload the map instead.\n"
+        + "flush\n"
+        + "weapon_reload_scripts      // weapon scripts, then re-precaches and swaps the models on the weapons in the map\n"
+        + "mat_reloadmaterial porter  // the pack's materials\n";
 
     public string Name => "Write pack";
 
@@ -452,8 +469,9 @@ public sealed class WriteWeaponPackStep : IPortStep
         }
 
         string header = $"{weapon.Name} from {game.Name} as Momentum's {slot.Name}, made by MomentumPorter.\n"
-            + $"Remove the {state.PackName} pack (or this file) to get Momentum's weapon back. Reload with weapon_reload_all where the engine has it, else restart.";
+            + $"Remove the {state.PackName} pack (or this file) to get Momentum's weapon back. Reload with \"exec porter_reload\" (sv_cheats 1) or a restart.";
         sink.AddFile(slot.ScriptPath, Encoding.UTF8.GetBytes(script.Write(header)));
+        sink.AddFile(ReloadConfigPath, Encoding.ASCII.GetBytes(ReloadConfig));
 
         if (state.AddedSoundEntries.Count > 0 || state.RedefinedSoundEntries.Count > 0)
         {
