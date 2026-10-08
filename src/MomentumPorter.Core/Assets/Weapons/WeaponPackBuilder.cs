@@ -156,5 +156,13 @@ public static class WeaponPackBuilder
     /// <summary>
     /// The default pack name: <c>&lt;game&gt;_&lt;weapon&gt;_&lt;slot&gt;</c>.
     /// </summary>
-    public static string DefaultPackName(string game, string weapon, string slot) => $"{game}_{weapon}_{slot}".ToLowerInvariant();
+    /// <summary>
+    /// The folder every weapon pack goes into unless named otherwise. Packs in one folder merge the files they'd
+    /// otherwise each replace (the weapons soundscript, the particle manifest), which packs in separate folders can't:
+    /// Momentum takes one folder's copy and the others' are hidden.
+    /// </summary>
+    public const string SharedPackName = "momentumporter";
+
+    /// <summary>A weapon's id inside a pack folder: its sidecar files are named after it.</summary>
+    public static string WeaponPackId(string game, string weapon, string slot) => $"{game}_{weapon}_{slot}".ToLowerInvariant();
 }

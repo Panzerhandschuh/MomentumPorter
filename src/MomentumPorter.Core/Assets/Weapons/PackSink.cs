@@ -15,6 +15,12 @@ public interface IPackSink
 
     /// <summary>Every game path added so far, in order.</summary>
     IReadOnlyList<string> Files { get; }
+
+    /// <summary>A file already in the pack (from this run or an earlier one), or null.</summary>
+    byte[]? ReadFile(string relativePath);
+
+    /// <summary>The game paths of the files in a folder of the pack, from this run or earlier ones.</summary>
+    IReadOnlyList<string> ListFiles(string folder);
 }
 
 /// <summary>
@@ -48,6 +54,25 @@ public sealed class FolderPackSink : IPackSink
             File.Copy(sourcePath, target, overwrite: true);
 
         Track(relativePath);
+    }
+
+    public byte[]? ReadFile(string relativePath)
+    {
+        string target = Resolve(relativePath);
+        return File.Exists(target) ? File.ReadAllBytes(target) : null;
+    }
+
+    public IReadOnlyList<string> ListFiles(string folder)
+    {
+        string normalized = ContentPath.Normalize(folder).TrimEnd('/');
+        string directory = Path.Combine(Root, normalized.Replace('/', Path.DirectorySeparatorChar));
+        if (!Directory.Exists(directory))
+            return [];
+
+        return Directory.GetFiles(directory)
+            .Select(x => normalized + "/" + Path.GetFileName(x))
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private string Resolve(string relativePath)

@@ -73,9 +73,9 @@ public class WeaponPackTests
         }
     }
 
-    private static async Task<(PortJobResult Result, string Pack, WeaponPackState State)> BuildAsync(string game, string weapon, string? slot = null)
+    private static async Task<(PortJobResult Result, string Pack, WeaponPackState State)> BuildAsync(string game, string weapon, string? slot = null, string? output = null)
     {
-        string output = WeaponTestGames.TempDirectory("weapons");
+        output ??= WeaponTestGames.TempDirectory("weapons");
         var options = new WeaponPackOptions { Game = game, Weapon = weapon, Slot = slot, OutputDirectory = output };
         (PortJob job, WeaponPackState state) = WeaponPackBuilder.CreateJob(options);
         state.Steam = WeaponTestGames.Locator;
@@ -119,7 +119,7 @@ public class WeaponPackTests
         try
         {
             Assert.True(result.Succeeded, result.Error);
-            Assert.Equal("css_ak47_machinegun", Path.GetFileName(pack));
+            Assert.Equal(WeaponPackBuilder.SharedPackName, Path.GetFileName(pack));
 
             WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_machinegun.txt")));
             Assert.Equal("models/weapons/v_rif_ak47.mdl", script.GetModel("view"));
@@ -167,6 +167,43 @@ public class WeaponPackTests
         finally
         {
             Directory.Delete(Path.GetDirectoryName(pack)!, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Two weapons built into the same folder (the default) share one soundscript copy and one particle manifest.
+    /// </summary>
+    [Fact]
+    public async Task CsgoWeaponsInOneFolderMergeTheirSharedFiles()
+    {
+        if (!CanBuild("csgo"))
+            return;
+
+        string output = WeaponTestGames.TempDirectory("merge");
+        try
+        {
+            (PortJobResult first, string pack, _) = await BuildAsync("csgo", "deagle", "pistol", output);
+            Assert.True(first.Succeeded, first.Error);
+            (PortJobResult second, string samePack, _) = await BuildAsync("csgo", "ak47", "machinegun", output);
+            Assert.True(second.Succeeded, second.Error);
+            Assert.Equal(pack, samePack);
+            Assert.Equal(WeaponPackBuilder.SharedPackName, Path.GetFileName(pack));
+
+            KeyValuesNode entries = KeyValuesNode.ParseDocument(File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt")));
+            KeyValuesNode shot = Assert.Single(entries.FindAll("Weapon_Pistol.Single"));
+            Assert.Contains("deagle", shot.Write(), StringComparison.OrdinalIgnoreCase);
+            Assert.NotNull(entries.Find("Porter_csgo.Weapon_AK47.Single"));
+            Assert.NotNull(entries.Find("Weapon_Scout.Single"));
+
+            string manifest = File.ReadAllText(Path.Combine(pack, "particles", "particles_manifest.txt"));
+            Assert.Equal(1, manifest.Split("cs_weapon_fx.pcf").Length - 1);
+            Assert.True(File.Exists(Path.Combine(pack, "scripts", "weapon_momentum_pistol.txt")));
+            Assert.True(File.Exists(Path.Combine(pack, "scripts", "weapon_momentum_machinegun.txt")));
+            Assert.Equal(2, Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Length);
+        }
+        finally
+        {
+            Directory.Delete(output, recursive: true);
         }
     }
 

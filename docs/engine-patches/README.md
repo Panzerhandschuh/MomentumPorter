@@ -44,13 +44,27 @@ pick up changed models instead.
 
 ## particles-reload-precache.patch
 
-`cl_particles_reload` / `sv_particles_reload` uncache every particle system, which throws away the precache lookups,
-and re-read the manifest, but nothing precaches the `ParticleEffectNames` string table's entries again. Effects
-dispatched by index afterwards (bullet impacts, networked effects) found nothing: `Attempted to create unknown particle
-system type "impact_concrete"` on every hit until the next map. The reload now precaches every entry in the table again.
+`cl_particles_reload` / `sv_particles_reload` call `UncacheAllParticleSystems()`, which threw away the precache
+lookups (string table index to system), then re-read the manifest. The string table outlives the reload and effects
+dispatched by index (bullet impacts, networked effects) look up through those tables, so every one of them found
+nothing afterwards: `Attempted to create unknown particle system type "impact_concrete"` and the red-cross error
+effect on every hit until the next map. Walking the string table isn't enough, because client-side precaches (the
+impacts) live in its client-side part. The lookups are now kept through an uncache (they resolve by name, which
+survives the re-read) and `PrecacheLookedUpParticleSystems()` precaches the re-read definitions they point at.
 
 Without it: the `sv_particles_reload` / `cl_particles_reload` lines in `cfg/porter_reload.cfg` break bullet impacts
 for the rest of the map; remove them and restart to pick up particle changes instead.
+
+## weapon-reload-scripts-model.patch
+
+`weapon_reload_scripts` (client side) set every weapon's model to its world model. A held weapon's model is its view
+model, and that differing from the world model is what makes the client create the world model clone that stands in
+for it in third person and hides it in first person; with the two equal the clone goes away on the next update and
+the entity draws its world model in first person, floating in front of the camera. Each weapon now keeps whichever
+of the two models it had.
+
+Without it: after `weapon_reload_scripts` (so after `cfg/porter_reload.cfg`) the held weapon's world model shows in
+first person until the next map.
 
 ## viewmodel-muzzle-flash.patch
 

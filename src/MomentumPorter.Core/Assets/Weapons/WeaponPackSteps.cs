@@ -82,7 +82,7 @@ public sealed class LoadWeaponStep : IPortStep
         state.Weapon = weapon;
         state.Slot = slot;
         state.Momentum = momentum;
-        state.PackName = SanitizePackName(string.IsNullOrWhiteSpace(options.PackName) ? WeaponPackBuilder.DefaultPackName(game.Id, weapon.Id, slot.Id) : options.PackName);
+        state.PackName = SanitizePackName(string.IsNullOrWhiteSpace(options.PackName) ? WeaponPackBuilder.SharedPackName : options.PackName);
         state.PackDirectory = Path.GetFullPath(Path.Combine(options.OutputDirectory, state.PackName));
         state.Sink ??= new FolderPackSink(state.PackDirectory);
 
@@ -392,6 +392,13 @@ public sealed class WriteWeaponPackStep : IPortStep
     /// </summary>
     public const string SoundscriptPath = "scripts/game_sounds_momentum_weapons.txt";
 
+    /// <summary>
+    /// Each weapon's own soundscript entries, kept in the pack so that <see cref="SoundscriptPath"/> can be rebuilt
+    /// from Momentum's copy plus every weapon's entries whenever a weapon is added to the folder. The game doesn't
+    /// load these (they're not in its manifest).
+    /// </summary>
+    public const string SoundEntriesFolder = "scripts/porter_weapons";
+
     /// <summary>The pack's reload config: everything a pack changes, with the console commands Momentum has.</summary>
     public const string ReloadConfigPath = "cfg/porter_reload.cfg";
 
@@ -482,8 +489,12 @@ public sealed class WriteWeaponPackStep : IPortStep
 
         if (state.ParticleFiles.Count > 0)
         {
-            sink.AddFile(ParticleManifest.Path, Encoding.UTF8.GetBytes(ParticleManifest.WithFiles(state.Momentum!.ReadRequiredText(ParticleManifest.Path), state.ParticleFiles)));
-            context.Report.Warn($"The pack replaces {ParticleManifest.Path} (Momentum's plus {string.Join(", ", state.ParticleFiles.Select(x => x.TrimStart('!')))}), since particle files only load through it: packs that replace it hide each other, and Momentum's updates to it are hidden until the pack is rebuilt");
+            // Onto the folder's manifest when an earlier pack wrote one, so the folder's packs add up
+            string manifest = sink.ReadFile(ParticleManifest.Path) is { } existing
+                ? Encoding.UTF8.GetString(existing)
+                : state.Momentum!.ReadRequiredText(ParticleManifest.Path);
+            sink.AddFile(ParticleManifest.Path, Encoding.UTF8.GetBytes(ParticleManifest.WithFiles(manifest, state.ParticleFiles)));
+            context.Report.Warn($"The pack replaces {ParticleManifest.Path} (Momentum's plus {string.Join(", ", state.ParticleFiles.Select(x => x.TrimStart('!')))}), since particle files only load through it: packs in other folders that replace it hide each other's, and Momentum's updates to it are hidden until a pack in this folder is rebuilt");
         }
 
         string header = $"{weapon.Name} from {game.Name} as Momentum's {slot.Name}, made by MomentumPorter.\n"
@@ -493,36 +504,22 @@ public sealed class WriteWeaponPackStep : IPortStep
 
         if (state.AddedSoundEntries.Count > 0 || state.RedefinedSoundEntries.Count > 0)
         {
-            string momentumText = state.Momentum!.ReadRequiredText(SoundscriptPath);
-
-            // Source keeps the first definition of an entry and skips later ones, so a redefined entry has to replace
-            // Momentum's rather than follow it
-            if (state.RedefinedSoundEntries.Count > 0)
-            {
-                var file = MomentumPorter.Assets.Sounds.SoundscriptFile.Parse(momentumText, SoundscriptPath);
-                foreach (string name in state.RedefinedSoundEntries.Keys)
-                    file.Remove(name);
-
-                momentumText = file.ToText();
-            }
-
-            var text = new StringBuilder(momentumText.TrimEnd());
-            text.Append("\n\n// ----------------------------------------------------------------------------\n");
-            text.Append($"// Added by MomentumPorter for {state.PackName}: {weapon.Name} ({game.Name})\n");
-            text.Append("// ----------------------------------------------------------------------------\n\n");
+            var own = new StringBuilder();
+            own.Append($"// {weapon.Name} ({game.Name}) as Momentum's {slot.Name}: the soundscript entries MomentumPorter merges into\n");
+            own.Append($"// {SoundscriptPath}, together with those of the other weapons in this folder. Entries Momentum's copy\n");
+            own.Append("// has too replace them there. The game doesn't load this file.\n\n");
             foreach (KeyValuesNode entry in state.AddedSoundEntries)
-                text.Append(entry.Write()).Append('\n');
+                own.Append(entry.Write()).Append('\n');
 
             foreach (KeyValuesNode entry in state.RedefinedSoundEntries.Values)
             {
-                text.Append($"// Replaces Momentum's {entry.Key}\n");
-                text.Append(entry.Write()).Append('\n');
+                own.Append($"// Replaces Momentum's {entry.Key}\n");
+                own.Append(entry.Write()).Append('\n');
             }
 
-            int count = state.AddedSoundEntries.Count + state.RedefinedSoundEntries.Count;
-            sink.AddFile(SoundscriptPath, Encoding.UTF8.GetBytes(text.ToString()));
-            context.Report.Change("Soundscript entries added to the pack", count);
-            context.Report.Warn($"The pack replaces {SoundscriptPath} (Momentum's copy plus {count} entries), since the base game_sounds_manifest.txt isn't overridden: only one pack that does this works at a time, and Momentum's updates to that file are hidden until the pack is rebuilt");
+            sink.AddFile($"{SoundEntriesFolder}/{WeaponPackBuilder.WeaponPackId(game.Id, weapon.Id, slot.Id)}.txt", Encoding.UTF8.GetBytes(own.ToString()));
+            context.Report.Change("Soundscript entries added to the pack", state.AddedSoundEntries.Count + state.RedefinedSoundEntries.Count);
+            MergedSoundscript.Write(context, state);
         }
 
         foreach (string file in sink.Files)
@@ -536,6 +533,58 @@ public sealed class WriteWeaponPackStep : IPortStep
             : $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/. {ReloadHint}");
         state.Dispose();
         return Task.CompletedTask;
+    }
+}
+
+/// <summary>Merges the weapon soundscript and the pack's own entry files; see <see cref="WriteWeaponPackStep"/>.</summary>
+file static class MergedSoundscript
+{
+    /// <summary>
+    /// Writes Momentum's weapons soundscript with every weapon's entries from the pack's
+    /// <see cref="WriteWeaponPackStep.SoundEntriesFolder"/>: an entry Momentum defines too replaces it (Source keeps
+    /// the first definition of a name), and the last weapon's wins when two define the same entry.
+    /// </summary>
+    public static void Write(PortJobContext context, WeaponPackState state)
+    {
+        IPackSink sink = state.Sink!;
+        var file = MomentumPorter.Assets.Sounds.SoundscriptFile.Parse(state.Momentum!.ReadRequiredText(WriteWeaponPackStep.SoundscriptPath), WriteWeaponPackStep.SoundscriptPath);
+        var merged = new List<KeyValuesNode>();
+        var weapons = new List<string>();
+        foreach (string path in sink.ListFiles(WriteWeaponPackStep.SoundEntriesFolder))
+        {
+            if (sink.ReadFile(path) is not { } data)
+                continue;
+
+            KeyValuesNode document;
+            try
+            {
+                document = KeyValuesNode.ParseDocument(Encoding.UTF8.GetString(data), path);
+            }
+            catch (FormatException ex)
+            {
+                context.Report.Warn($"{path} in the pack couldn't be read, its sounds are left out: {ex.Message}");
+                continue;
+            }
+
+            foreach (KeyValuesNode entry in document.Children)
+            {
+                file.Remove(entry.Key);
+                merged.RemoveAll(x => x.Key.Equals(entry.Key, StringComparison.OrdinalIgnoreCase));
+                merged.Add(entry);
+            }
+
+            weapons.Add(Path.GetFileNameWithoutExtension(path));
+        }
+
+        var text = new StringBuilder(file.ToText().TrimEnd());
+        text.Append("\n\n// ----------------------------------------------------------------------------\n");
+        text.Append($"// Added by MomentumPorter from {WriteWeaponPackStep.SoundEntriesFolder}/: {string.Join(", ", weapons)}\n");
+        text.Append("// ----------------------------------------------------------------------------\n\n");
+        foreach (KeyValuesNode entry in merged)
+            text.Append(entry.Write()).Append('\n');
+
+        sink.AddFile(WriteWeaponPackStep.SoundscriptPath, Encoding.UTF8.GetBytes(text.ToString()));
+        context.Report.Warn($"The pack replaces {WriteWeaponPackStep.SoundscriptPath} (Momentum's copy plus the entries of the folder's {weapons.Count} weapon pack(s)), since the base game_sounds_manifest.txt isn't overridden: a pack in another folder that replaces it hides this one's, so keep weapon packs in one folder, and Momentum's updates to that file are hidden until a pack here is rebuilt");
     }
 }
 

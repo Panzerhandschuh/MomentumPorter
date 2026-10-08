@@ -20,7 +20,7 @@ internal sealed class WeaponCliOptions
     [Option('o', "output", HelpText = "Folder to write the pack folder into")]
     public string? Output { get; set; }
 
-    [Option("name", HelpText = "Pack name. Defaults to <game>_<weapon>_<slot>.")]
+    [Option("name", HelpText = "Pack folder name. Defaults to momentumporter, shared by every weapon pack so their soundscript and particle manifest merge.")]
     public string? Name { get; set; }
 
     [Option("no-sounds", HelpText = "Keep Momentum's sounds")]

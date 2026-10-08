@@ -28,7 +28,7 @@ public sealed class WeaponPackOptions
     [PortOption("Momentum weapon", "The Momentum weapon it replaces (pistol, machinegun, shotgun, sniper, knife, grenade, rocketlauncher, stickylauncher, concgrenade or a df_ weapon). Defaults to the weapon's best fit.", Order = 20)]
     public string? Slot { get; set; }
 
-    [PortOption("Pack name", "Name of the pack folder, as it would sit in momentum/custom/. Defaults to <game>_<weapon>_<slot>.", Order = 30)]
+    [PortOption("Pack name", "Name of the pack folder, as it would sit in momentum/custom/. Defaults to momentumporter, which every weapon pack shares: packs in one folder merge the soundscript and particle manifest they'd otherwise each replace, while packs in separate folders hide each other's.", Order = 30)]
     public string? PackName { get; set; }
 
     [PortOption("Output folder", "Folder the pack is written into (the pack is a folder inside it). Copy it into momentum/custom/ to use it.", Order = 40, Path = PathKind.Folder)]

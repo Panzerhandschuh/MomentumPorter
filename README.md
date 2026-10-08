@@ -231,8 +231,10 @@ MomentumPorter weapon --game css --weapon ak47 [--slot machinegun] --output <fol
 MomentumPorter weapon --list [--game css]
 ```
 
-Ports a weapon from another game into one of Momentum's weapons as a pack folder (`<output>/<game>_<weapon>_<slot>`
-by default). Copy the folder into `momentum/custom/` and restart Momentum: it only scans `custom/` at startup. After
+Ports a weapon from another game into one of Momentum's weapons as a pack folder (`<output>/momentumporter` by
+default: every weapon goes into the same folder, where their shared files merge, because packs in separate folders
+each replace `game_sounds_momentum_weapons.txt` and the particle manifest and Momentum only takes one; `--name` makes
+a separate folder anyway). Copy the folder into `momentum/custom/` and restart Momentum: it only scans `custom/` at startup. After
 that, rebuilding the pack into the same folder doesn't need a restart: run `exec porter_reload` in game (with
 `sv_cheats 1`). The pack's `cfg/porter_reload.cfg` reloads soundscripts, particles, weapon scripts, models and the
 pack's materials with Momentum's own commands; the model step (`flush`) crashes engine builds without
