@@ -128,6 +128,12 @@ public sealed class CatalogGame
     public bool BuiltRightHanded { get; set; } = true;
 
     /// <summary>
+    /// For attach_to_hands 1: the game's own arms model, written as the weapon script's ModelData "arms" so the
+    /// engine bone-merges it instead of Momentum's arms (whose bones a foreign view model doesn't have).
+    /// </summary>
+    public string? ArmsModel { get; set; }
+
+    /// <summary>
     /// The game's own soundscripts (game paths, read from the game, else from Momentum's folder), for entries that
     /// Momentum doesn't load or that a Momentum entry of the same name hides.
     /// </summary>

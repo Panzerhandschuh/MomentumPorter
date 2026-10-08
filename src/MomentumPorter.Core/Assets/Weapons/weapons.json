@@ -56,10 +56,11 @@
       "name": "Counter-Strike: Global Offensive (legacy)",
       "attachToHands": 1,
       "builtRightHanded": true,
+      "armsModel": "models/weapons/ct_arms.mdl",
       "soundscripts": [ "scripts/game_sounds_weapons.txt" ],
       "momentumSoundscripts": [],
       "limitations": [
-        "CS:GO view models have no arms; Momentum's arms are bone-merged onto them (attach_to_hands 1), CS:GO's gloves aren't used",
+        "CS:GO view models have no arms; the pack uses CS:GO's ct_arms, not the gloves and sleeves of newer CS:GO agents",
         "Momentum doesn't load CS:GO's soundscripts, so the sounds the weapon and its animations play are copied into the pack's game_sounds_momentum_weapons.txt without CS:GO's operator stacks (no distant sounds)",
         "View model FOV differs from CS:GO's (viewmodel_fov 68, viewmodel_offset_*)",
         "Inspect and other CS:GO-only animations aren't used"

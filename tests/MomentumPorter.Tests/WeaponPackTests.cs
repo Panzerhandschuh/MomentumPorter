@@ -129,8 +129,11 @@ public class WeaponPackTests
             Assert.Equal("Weapon_AK47.Single", script.SoundOverrides["Weapon_SMG1.Single"]);
             Assert.Equal("#MOM_Weapon_Machinegun", script.Root.GetString("printname"));
 
-            // CS:S's AK entries are all in Momentum's copy, so no soundscript is needed
-            Assert.False(File.Exists(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt")));
+            // The machine gun's shot is played from the player, where Overrides don't apply, so the pack's soundscript
+            // redefines Weapon_SMG1.Single as CS:S's AK shot (CS:S's entries are otherwise all in Momentum's copy)
+            KeyValuesNode entries = KeyValuesNode.ParseDocument(File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt")));
+            Assert.Single(entries.FindAll("Weapon_SMG1.Single"));
+            Assert.Contains("ak47", entries.Find("Weapon_SMG1.Single")!.Write(), StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Wrote scripts/weapon_momentum_machinegun.txt", Report(result));
         }
         finally
@@ -157,6 +160,39 @@ public class WeaponPackTests
             KeyValuesNode entries = KeyValuesNode.ParseDocument(soundscript);
             Assert.NotNull(entries.Find("Weapon_RL.Single"));
             Assert.Contains("weapons/scout/scout_fire-1.wav", SoundscriptLibrary.GetWaves(entries.Find("Porter_css.Weapon_Scout.Single")!).Single());
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(pack)!, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CsgoDeaglePistolRedefinesTheShotAndAsksForCsgoArms()
+    {
+        if (!CanBuild("csgo"))
+            return;
+
+        (PortJobResult result, string pack, _) = await BuildAsync("csgo", "deagle", "pistol");
+        try
+        {
+            Assert.True(result.Succeeded, result.Error);
+            WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_pistol.txt")));
+            Assert.Equal(1, script.AttachToHands);
+            // CS:GO's own arms share the view model's bones; Momentum's don't
+            Assert.Equal("models/weapons/ct_arms.mdl", script.GetModel("arms"));
+
+            // The pistol's shot is played from the player, where Overrides don't apply, so the entry itself is redefined
+            string text = File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt"));
+            KeyValuesNode entries = KeyValuesNode.ParseDocument(text);
+            Assert.Single(entries.FindAll("Weapon_Pistol.Single"));
+            KeyValuesNode shot = entries.Find("Weapon_Pistol.Single")!;
+            Assert.Contains("deagle", shot.Write(), StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("mom_pistol-fire01.wav", text);
+
+            // Everything else in Momentum's file is still there
+            Assert.NotNull(entries.Find("Weapon_Scout.Single"));
+            Assert.Contains("Weapon_Pistol.Single redefined", Report(result));
         }
         finally
         {

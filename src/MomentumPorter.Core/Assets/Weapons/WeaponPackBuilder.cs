@@ -57,6 +57,15 @@ public sealed class WeaponPackState(WeaponPackOptions options) : IDisposable
     /// <summary>The weapon script's SoundData/Overrides.</summary>
     public Dictionary<string, string> SoundOverrides { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Momentum soundscript entries the pack redefines outright (keyed by the entry's name), for sounds that
+    /// SoundData Overrides can't reach. See <see cref="WeaponSlot.ShotFromPlayer"/>.
+    /// </summary>
+    public Dictionary<string, KeyValuesNode> RedefinedSoundEntries { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The arms model Momentum should bone-merge onto the view model (ModelData "arms"), if any.</summary>
+    public string? ArmsModel { get; set; }
+
     public void Dispose()
     {
         Content?.Dispose();

@@ -4,7 +4,7 @@ using MomentumPorter.Options;
 
 public enum WeaponArms
 {
-    /// <summary>What suits the source game's view models (their own arms, or Momentum's on CS:GO's).</summary>
+    /// <summary>What suits the source game's view models: their own arms, or for CS:GO the game's arms model.</summary>
     Auto,
 
     /// <summary>Draw Momentum's arms on the weapon (attach_to_hands 1).</summary>

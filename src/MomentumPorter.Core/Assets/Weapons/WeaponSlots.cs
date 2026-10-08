@@ -4,7 +4,11 @@ namespace MomentumPorter.Assets.Weapons;
 /// A Momentum weapon a ported weapon can replace (<c>scripts/weapon_momentum_&lt;Id&gt;.txt</c>).
 /// </summary>
 /// <param name="ProjectileKey">The ModelData key of the projectile it fires or throws, if it has its own model</param>
-public sealed record WeaponSlot(string Id, string Name, string? ProjectileKey = null)
+/// <param name="ShotFromPlayer">
+/// Momentum plays the weapon's shot (FX_FireBullets: its single_shot sound) with the player as the source rather than
+/// the weapon, so a weapon script's SoundData Overrides never apply to it.
+/// </param>
+public sealed record WeaponSlot(string Id, string Name, string? ProjectileKey = null, bool ShotFromPlayer = false)
 {
     public string ScriptPath => $"scripts/weapon_momentum_{Id}.txt";
 
@@ -16,10 +20,10 @@ public static class WeaponSlots
 {
     public static readonly IReadOnlyList<WeaponSlot> All =
     [
-        new("pistol", "Pistol"),
-        new("machinegun", "Machine gun"),
-        new("shotgun", "Shotgun"),
-        new("sniper", "Sniper"),
+        new("pistol", "Pistol", ShotFromPlayer: true),
+        new("machinegun", "Machine gun", ShotFromPlayer: true),
+        new("shotgun", "Shotgun", ShotFromPlayer: true),
+        new("sniper", "Sniper", ShotFromPlayer: true),
         new("knife", "Knife"),
         new("grenade", "Grenade"),
         new("rocketlauncher", "Rocket launcher", "rocket"),

@@ -125,7 +125,10 @@ public sealed class CheckMountedAssetsStep : IPortStep
         state.ViewSideModel = Check(weapon.ViewSide, "side view model") ?? weapon.View;
         state.WorldModel = Check(weapon.World, "world model");
         state.ProjectileModel = state.Options.Projectile ? Check(weapon.Projectile, "projectile model") : null;
-        context.Log.Info($"Found {string.Join(", ", weapon.Models)} in {content.Name}");
+        if (state.Options.Arms == WeaponArms.Auto && state.Game!.ArmsModel is { Length: > 0 } arms)
+            state.ArmsModel = Check(arms, "arms model");
+
+        context.Log.Info($"Found {string.Join(", ", weapon.Models.Concat(state.ArmsModel is null ? [] : [state.ArmsModel]))} in {content.Name}");
         return Task.CompletedTask;
 
         string? Check(string? model, string what)
@@ -308,11 +311,52 @@ public sealed class ResolveWeaponSoundsStep : IPortStep
             state.SoundOverrides[slotEntry] = resolver.AddWaves($"Porter_{game.Id}.{weapon.Id}.{role}", role, packed);
         }
 
+        RedefinePlayerShot(context, state, resolver, loaded, sourceGame);
+
         state.AddedSoundEntries.AddRange(resolver.AddedEntries);
         foreach (string unused in state.SlotSounds.Keys.Where(x => !weapon.Sounds.ContainsKey(x) && !weapon.Waves.ContainsKey(x)))
             context.Log.Info($"The {state.Slot!.Name}'s {unused} sound stays Momentum's");
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Bullet weapons' shots are played with the player as the source (FX_FireBullets), and the engine only applies a
+    /// weapon's SoundData Overrides to sounds the weapon itself plays. So for those the pack redefines Momentum's
+    /// shot entry (e.g. Weapon_Pistol.Single) as the replacement sound.
+    /// </summary>
+    private static void RedefinePlayerShot(PortJobContext context, WeaponPackState state, WeaponSoundResolver resolver, SoundscriptLibrary momentumSounds, SoundscriptLibrary sourceGame)
+    {
+        WeaponSlot slot = state.Slot!;
+        if (!slot.ShotFromPlayer
+            || !state.SlotSounds.TryGetValue("single_shot", out string? shotEntry)
+            || !state.SoundOverrides.TryGetValue(shotEntry, out string? replacement)
+            || replacement.Length == 0)
+        {
+            return;
+        }
+
+        KeyValuesNode? body = resolver.AddedEntries.FirstOrDefault(x => x.Key.Equals(replacement, StringComparison.OrdinalIgnoreCase))
+            ?? momentumSounds.Find(replacement)?.Node
+            ?? sourceGame.Find(replacement)?.Node;
+        if (body is null)
+        {
+            context.Report.Warn($"Couldn't find {replacement} to redefine {shotEntry} with; the {slot.Name} keeps Momentum's shot");
+            return;
+        }
+
+        state.RedefinedSoundEntries[shotEntry] = body.Clone(shotEntry);
+        context.Log.Info($"{shotEntry} redefined as {replacement}: Momentum plays the {slot.Name}'s shot from the player, where weapon sound overrides don't apply");
+        context.Report.Change($"{shotEntry} redefined in the pack's soundscript");
+
+        MomentumInstall momentum = state.Momentum!;
+        var sharing = WeaponSlots.All
+            .Where(x => x != slot && momentum.ReadText(x.ServerScriptPath) is { } text
+                && WeaponScript.ReadSoundEntries(text, x.ServerScriptPath).Values.Contains(shotEntry, StringComparer.OrdinalIgnoreCase))
+            .Select(x => x.Name)
+            .ToList();
+        if (sharing.Count > 0)
+            context.Report.Warn($"{shotEntry} is also the shot of Momentum's {string.Join(", ", sharing)}, which now sound like the {state.Weapon!.Name} too");
     }
 
     private static bool TryGetSlotEntry(PortJobContext context, WeaponPackState state, string role, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? slotEntry)
@@ -374,6 +418,12 @@ public sealed class WriteWeaponPackStep : IPortStep
         };
         script.BuiltRightHanded = game.BuiltRightHanded;
 
+        if (script.AttachToHands == 1 && state.ArmsModel is not null)
+        {
+            script.SetModel("arms", state.ArmsModel);
+            context.Report.Warn($"ModelData arms ({state.ArmsModel}) only takes effect on Momentum builds with the arms change in docs/engine-patches; until then Momentum attaches its own arms, which {game.Name}'s view models have no bones for, so no arms show");
+        }
+
         foreach ((string entry, string replacement) in state.SoundOverrides)
             script.SetSoundOverride(entry, replacement);
 
@@ -387,18 +437,38 @@ public sealed class WriteWeaponPackStep : IPortStep
             + $"Remove the {state.PackName} pack (or this file) to get Momentum's weapon back. Reload with weapon_reload_scripts.";
         sink.AddFile(slot.ScriptPath, Encoding.UTF8.GetBytes(script.Write(header)));
 
-        if (state.AddedSoundEntries.Count > 0)
+        if (state.AddedSoundEntries.Count > 0 || state.RedefinedSoundEntries.Count > 0)
         {
-            var text = new StringBuilder(state.Momentum!.ReadRequiredText(SoundscriptPath).TrimEnd());
+            string momentumText = state.Momentum!.ReadRequiredText(SoundscriptPath);
+
+            // Source keeps the first definition of an entry and skips later ones, so a redefined entry has to replace
+            // Momentum's rather than follow it
+            if (state.RedefinedSoundEntries.Count > 0)
+            {
+                var file = MomentumPorter.Assets.Sounds.SoundscriptFile.Parse(momentumText, SoundscriptPath);
+                foreach (string name in state.RedefinedSoundEntries.Keys)
+                    file.Remove(name);
+
+                momentumText = file.ToText();
+            }
+
+            var text = new StringBuilder(momentumText.TrimEnd());
             text.Append("\n\n// ----------------------------------------------------------------------------\n");
             text.Append($"// Added by MomentumPorter for {state.PackName}: {weapon.Name} ({game.Name})\n");
             text.Append("// ----------------------------------------------------------------------------\n\n");
             foreach (KeyValuesNode entry in state.AddedSoundEntries)
                 text.Append(entry.Write()).Append('\n');
 
+            foreach (KeyValuesNode entry in state.RedefinedSoundEntries.Values)
+            {
+                text.Append($"// Replaces Momentum's {entry.Key}\n");
+                text.Append(entry.Write()).Append('\n');
+            }
+
+            int count = state.AddedSoundEntries.Count + state.RedefinedSoundEntries.Count;
             sink.AddFile(SoundscriptPath, Encoding.UTF8.GetBytes(text.ToString()));
-            context.Report.Change("Soundscript entries added to the pack", state.AddedSoundEntries.Count);
-            context.Report.Warn($"The pack replaces {SoundscriptPath} (Momentum's copy plus {state.AddedSoundEntries.Count} entries), since the base game_sounds_manifest.txt isn't overridden: only one pack that does this works at a time, and Momentum's updates to that file are hidden until the pack is rebuilt");
+            context.Report.Change("Soundscript entries added to the pack", count);
+            context.Report.Warn($"The pack replaces {SoundscriptPath} (Momentum's copy plus {count} entries), since the base game_sounds_manifest.txt isn't overridden: only one pack that does this works at a time, and Momentum's updates to that file are hidden until the pack is rebuilt");
         }
 
         foreach (string file in sink.Files)
