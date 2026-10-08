@@ -1,5 +1,6 @@
 namespace MomentumPorter.Porting;
 
+using MomentumPorter.Games.Gokz;
 using MomentumPorter.Games.KreedzClimbing;
 
 /// <summary>
@@ -16,7 +17,7 @@ public interface IGameProfile
 
 public static class GameProfiles
 {
-    public static readonly IReadOnlyList<IGameProfile> All = [new KreedzClimbingProfile()];
+    public static readonly IReadOnlyList<IGameProfile> All = [new KreedzClimbingProfile(), new GokzProfile()];
 
     public static IGameProfile? Find(string name)
     {

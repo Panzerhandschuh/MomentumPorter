@@ -15,6 +15,7 @@
     <Reference Include="libBSP">
       <HintPath>$(LibBspDll)</HintPath>
     </Reference>
+    <ProjectReference Include="$(BspConvertDir)BSPConvert.Lib\BSPConvert.Lib.csproj" />
   </ItemGroup>
 
 </Project>

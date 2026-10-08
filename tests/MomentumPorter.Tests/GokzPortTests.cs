@@ -1,0 +1,504 @@
+namespace MomentumPorter.Tests;
+
+using System.Text.Json;
+using BSPConvert.Lib.Zones;
+using LibBSP;
+using MomentumPorter.Detection;
+using MomentumPorter.Games.Gokz;
+using MomentumPorter.Options;
+using MomentumPorter.Pipeline;
+using MomentumPorter.Porting;
+using MomentumPorter.Steam;
+using MomentumPorter.Steps;
+using Xunit;
+using Xunit.Abstractions;
+
+/// <summary>
+/// There's no GOKZ map to ship as a fixture, so these turn brush models of an installed Source map (KZ Mod's kz_dance,
+/// else a Counter-Strike: Source map) into GOKZ mapping API entities and check each conversion rule. Nothing runs
+/// when neither game is installed. <see cref="PortsInstalledGokzMaps"/> also ports real GOKZ maps from CS:GO if present.
+/// </summary>
+public class GokzPortTests(ITestOutputHelper output)
+{
+    private static readonly Lazy<string?> SourceMap = new(FindSourceMap);
+
+    private static string? FindSourceMap()
+    {
+        var steam = new SteamLocator();
+        if (steam.Find(KnownGame.KreedzClimbing)?.ContentDirectory is { } kz && File.Exists(Path.Combine(kz, "maps", "kz_dance.bsp")))
+            return Path.Combine(kz, "maps", "kz_dance.bsp");
+
+        if (steam.Find(KnownGame.CounterStrikeSource)?.ContentDirectory is { } css && Directory.Exists(Path.Combine(css, "maps")))
+            return Directory.EnumerateFiles(Path.Combine(css, "maps"), "*.bsp").FirstOrDefault();
+
+        return null;
+    }
+
+    /// <summary>
+    /// A loaded Source map plus helpers to add GOKZ entities that reuse its brush models.
+    /// </summary>
+    private sealed class SyntheticMap
+    {
+        private readonly List<int> _models;
+        private int _nextModel;
+
+        public SyntheticMap(string path)
+        {
+            Bsp = new BSP(new FileInfo(path));
+            _models = Bsp.Entities.Select(x => x.ModelNumber).Where(x => x > 0).Distinct().Order().ToList();
+            Assert.NotEmpty(_models);
+
+            // Some destination for climb_teleport to point at
+            Add("info_teleport_destination", "dest", null, ("origin", "0 0 64"));
+        }
+
+        public BSP Bsp { get; }
+
+        public PortContext Context { get; private set; } = null!;
+
+        public PortReport Report => Context.Report;
+
+        public Entity Add(string className, string name, int? model = -1, params (string Key, string Value)[] keys)
+        {
+            var entity = new Entity(className, Bsp.Entities) { Name = name };
+            if (model == -1)
+                model = _models[_nextModel++ % _models.Count];
+            if (model is not null)
+                entity.Model = $"*{model}";
+
+            foreach ((string key, string value) in keys)
+                entity[key] = value;
+
+            Bsp.Entities.Add(entity);
+            return entity;
+        }
+
+        public Entity AddTrigger(string name, params (string Key, string Value)[] keys) => Add("trigger_multiple", name, -1, keys);
+
+        public void Port(string mapName = "gokz_test")
+        {
+            Context = new PortContext(Bsp, mapName, null);
+            new GokzProfile().Apply(Context);
+        }
+
+        public string PrintReport()
+        {
+            using var writer = new StringWriter();
+            Report.Print(writer);
+            return writer.ToString();
+        }
+    }
+
+    private static SyntheticMap? CreateMap()
+    {
+        return SourceMap.Value is { } path ? new SyntheticMap(path) : null;
+    }
+
+    private static void AssertNoClimbKeys(Entity entity)
+    {
+        Assert.DoesNotContain(entity.Keys, x => x.StartsWith("climb_", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("2", entity["_ported_by_tools"]);
+    }
+
+    [Fact]
+    public void ConvertsTeleport()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity entity = map.AddTrigger(
+            "climb_teleport",
+            ("spawnflags", "4097"),
+            ("wait", "1"),
+            ("StartDisabled", "1"),
+            ("filtername", "filter"),
+            ("climb_teleport_type", "0"),
+            ("climb_teleport_destination", "dest"),
+            ("climb_teleport_delay", "0.5"),
+            ("climb_teleport_use_dest_angles", "0"),
+            ("climb_teleport_reset_speed", "0")
+        );
+        entity.connections.Add(new Entity.EntityConnection { name = "OnTrigger", target = "relay", action = "Trigger", param = "", delay = 0, fireOnce = -1 });
+        string model = entity.Model;
+
+        map.Port();
+
+        Assert.Equal("trigger_momentum_teleport", entity.ClassName);
+        Assert.Equal("4097", entity["spawnflags"]);
+        Assert.Equal("dest", entity["target"]);
+        Assert.Equal("0.5", entity["TeleportDelay"]);
+        Assert.Equal("0", entity["VelocityMode"]);
+        Assert.Equal("0", entity["UseLandmarkAngles"]);
+        Assert.Equal(model, entity.Model);
+        Assert.Equal("climb_teleport", entity.Name);
+        Assert.Equal("1", entity["StartDisabled"]);
+        Assert.Equal("filter", entity["filtername"]);
+        Assert.False(entity.ContainsKey("wait"));
+        Assert.Single(entity.connections);
+        AssertNoClimbKeys(entity);
+        Assert.Contains("climb_teleport -> trigger_momentum_teleport", map.PrintReport());
+    }
+
+    [Fact]
+    public void ConvertsTeleportWithFgdDefaults()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity entity = map.AddTrigger("climb_teleport", ("climb_teleport_destination", "dest"));
+
+        map.Port();
+
+        Assert.Equal("trigger_momentum_teleport", entity.ClassName);
+        Assert.Equal("1", entity["spawnflags"]);
+        Assert.False(entity.ContainsKey("TeleportDelay"));
+        Assert.Equal("1", entity["VelocityMode"]);
+        Assert.Equal("1", entity["UseLandmarkAngles"]);
+        Assert.DoesNotContain("warning: climb_teleport", map.PrintReport());
+    }
+
+    [Theory]
+    [InlineData("1", "0", "1", "0", "0.08")]
+    [InlineData("2", "0.1", "3", "1", "0.1")]
+    [InlineData("3", "0.05", "3", "1", "0.08")]
+    public void ConvertsBhopTriggers(string type, string delay, string spawnflags, string landingLimit, string timeLimit)
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity entity = map.AddTrigger(
+            "climb_teleport",
+            ("spawnflags", "4097"),
+            ("climb_teleport_type", type),
+            ("climb_teleport_destination", "dest"),
+            ("climb_teleport_delay", delay),
+            ("climb_teleport_reset_speed", "0")
+        );
+
+        map.Port();
+
+        Assert.Equal("trigger_momentum_bhop", entity.ClassName);
+        Assert.Equal(spawnflags, entity["spawnflags"]);
+        Assert.Equal(landingLimit, entity["LandingLimit"]);
+        Assert.Equal(timeLimit, entity["TimeLimit"]);
+        Assert.Equal("dest", entity["target"]);
+        Assert.Equal("0", entity["ResetVelocityOnTeleport"]);
+        Assert.Equal("1", entity["UseDestinationAngles"]);
+        AssertNoClimbKeys(entity);
+
+        string report = map.PrintReport();
+        Assert.Contains("-> trigger_momentum_bhop", report);
+        Assert.Equal(type == "3", report.Contains("sequential bhop triggers only remember their own landings"));
+    }
+
+    [Fact]
+    public void ConvertsAntiCheckpoint()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity entity = map.AddTrigger("climb_anti_checkpoint", ("spawnflags", "4097"));
+
+        map.Port();
+
+        Assert.Equal("trigger_momentum_disallowcheckpoint", entity.ClassName);
+        Assert.Equal("4097", entity["spawnflags"]);
+        AssertNoClimbKeys(entity);
+    }
+
+    [Theory]
+    [InlineData(null, "0.2")]
+    [InlineData("0.5", "0.5")]
+    [InlineData("0", "0")]
+    public void ConvertsAntiBhop(string? time, string cooldown)
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity entity = map.AddTrigger("climb_anti_bhop", ("spawnflags", "1"));
+        if (time is not null)
+            entity["climb_anti_bhop_time"] = time;
+
+        map.Port();
+
+        Assert.Equal("trigger_momentum_limitmovement", entity.ClassName);
+        Assert.Equal((1 | (1 << 19)).ToString(), entity["spawnflags"]);
+        Assert.Equal(cooldown, entity["BhopCooldown"]);
+        AssertNoClimbKeys(entity);
+    }
+
+    [Fact]
+    public void WarnsAboutUnreproducibleTeleports()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        map.AddTrigger("climb_teleport", ("climb_teleport_destination", "dest"), ("climb_teleport_reorient_player", "1"));
+        map.AddTrigger("climb_teleport", ("climb_teleport_destination", "dest"), ("climb_teleport_relative", "1"));
+        map.AddTrigger("climb_teleport", ("climb_teleport_destination", "missing"));
+
+        map.Port();
+
+        string report = map.PrintReport();
+        Assert.Contains("Reorient Player", report);
+        Assert.Contains("Relative To Trigger Origin", report);
+        Assert.Contains("destination \"missing\" doesn't exist", report);
+    }
+
+    [Fact]
+    public void LeavesUnknownAndMiscasedTriggersAlone()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity unknownType = map.AddTrigger("climb_teleport", ("climb_teleport_type", "7"));
+        Entity miscased = map.AddTrigger("Climb_Teleport");
+        Entity noModel = map.Add("trigger_multiple", "climb_teleport", model: null);
+
+        map.Port();
+
+        Assert.Equal("trigger_multiple", unknownType.ClassName);
+        Assert.Equal("7", unknownType["climb_teleport_type"]);
+        Assert.Equal("trigger_multiple", miscased.ClassName);
+        Assert.Equal("trigger_multiple", noModel.ClassName);
+
+        string report = map.PrintReport();
+        Assert.Contains("unknown climb_teleport_type 7", report);
+        Assert.Contains("matched case sensitively", report);
+    }
+
+    [Fact]
+    public void RemovesTriggersMomentumHasNoEquivalentFor()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        map.AddTrigger("climb_anti_pause");
+        map.AddTrigger("climb_anti_pause");
+        map.AddTrigger("climb_anti_jumpstat");
+        map.AddTrigger("climb_bhop_reset");
+
+        map.Port();
+
+        Assert.DoesNotContain(map.Bsp.Entities, x => x.Name is "climb_anti_pause" or "climb_anti_jumpstat" or "climb_bhop_reset");
+        string report = map.PrintReport();
+        Assert.Contains("2 x warning: climb_anti_pause removed", report);
+        Assert.Contains("1 x warning: climb_anti_jumpstat removed", report);
+        Assert.Contains("1 x warning: climb_bhop_reset removed", report);
+    }
+
+    [Fact]
+    public void RemovesMappingApiVersion()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity world = map.Bsp.Entities.First(x => x.ClassName == "worldspawn");
+        world["climb_mapping_api_version"] = "1";
+
+        map.Port();
+
+        Assert.False(world.ContainsKey("climb_mapping_api_version"));
+    }
+
+    [Fact]
+    public void WritesZonesForCourses()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        map.AddTrigger("climb_startzone");
+        map.Add("func_button", "climb_endbutton");
+        map.Add("info_teleport_destination", "climb_start", null, ("origin", "1 2 3"), ("angles", "0 90 0"));
+        map.Add("func_button", "climb_bonus1_startbutton");
+        map.AddTrigger("climb_bonus1_endzone");
+        map.Add("info_teleport_destination", "climb_bonus1_start", null, ("origin", "4 5 6"));
+        // Bonus 3 without bonus 2 becomes Momentum's bonus 2, with no start position
+        map.AddTrigger("climb_bonus3_startzone");
+        map.AddTrigger("climb_bonus3_endzone");
+        // Incomplete courses are left out
+        map.AddTrigger("climb_bonus4_startzone");
+
+        map.Port("gokz_zones");
+
+        ExtraOutput zoneFile = Assert.Single(map.Context.ExtraOutputs);
+        Assert.Equal("zones/local/gokz_zones.json", zoneFile.RelativePath);
+
+        ZoneDefsBase zones = ParseAndValidate(zoneFile.Content);
+        Assert.Equal("climb_start", zones.Tracks.Main!.Zones.Segments[0].Checkpoints[0].Regions[0].TeleDestTargetname);
+        Assert.Equal(2, zones.Tracks.Bonuses.Count);
+        Assert.Equal("climb_bonus1_start", zones.Tracks.Bonuses[0].Zones!.Segments[0].Checkpoints[0].Regions[0].TeleDestTargetname);
+        Assert.NotNull(zones.Tracks.Bonuses[1].Zones!.Segments[0].Checkpoints[0].Regions[0].TeleDestPos);
+
+        // The end button's zone reaches past the button
+        Entity button = map.Bsp.Entities.First(x => x.Name == "climb_endbutton");
+        Model model = map.Bsp.Models[button.ModelNumber];
+        Region end = Assert.Single(zones.Tracks.Main.Zones.End.Regions);
+        Assert.True(end.Bottom < model.Minimums.Z);
+        Assert.True(end.Bottom + end.Height > model.Maximums.Z);
+
+        string report = map.PrintReport();
+        Assert.Contains("timer buttons are approximated", report);
+        Assert.Contains("GOKZ bonus 3 is Momentum bonus 2", report);
+        Assert.Contains("bonus 4 has no timer end", report);
+    }
+
+    [Fact]
+    public void WritesNoZonesWithoutMainCourse()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        map.AddTrigger("climb_bonus1_startzone");
+        map.AddTrigger("climb_bonus1_endzone");
+
+        map.Port();
+
+        Assert.Empty(map.Context.ExtraOutputs);
+        Assert.Contains("no zone file was written", map.PrintReport());
+    }
+
+    [Fact]
+    public async Task JobWritesZoneFileNextToMap()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        map.AddTrigger("climb_startzone");
+        map.AddTrigger("climb_endzone");
+        map.AddTrigger("climb_teleport", ("climb_teleport_destination", "dest"));
+
+        string dir = Path.Combine(Path.GetTempPath(), "MomentumPorterTests", Guid.NewGuid().ToString("N"));
+        string input = Path.Combine(dir, "in", "kz_synthetic.bsp");
+        string outputPath = Path.Combine(dir, "out", "maps", "kz_synthetic_mom.bsp");
+        string work = PortJob.CreateWorkDirectory("test");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(input)!);
+            new BSPWriter(map.Bsp).WriteBSP(input, false);
+
+            (PortJob job, MapPortState state) = PortJobFactory.CreateSourceMapJob(input, outputPath, new MapPortOptions { Pack = false, Install = false });
+            var context = new PortJobContext { Log = NullLog.Instance, WorkDirectory = work };
+            context.Set(state);
+
+            PortJobResult result = await job.RunAsync(context);
+
+            Assert.True(result.Succeeded, result.Error);
+            Assert.Equal("gokz", state.Profile?.Name);
+            string zonePath = Path.Combine(dir, "out", "maps", "zones", "local", "kz_synthetic_mom.json");
+            Assert.True(File.Exists(zonePath));
+            ParseAndValidate(File.ReadAllText(zonePath));
+
+            var ported = new BSP(new FileInfo(outputPath));
+            Assert.Contains(ported.Entities, x => x.ClassName == "trigger_momentum_teleport" && x["_ported_by_tools"] == "2");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+            Directory.Delete(work, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void RefusesExtraOutputsOutsideTheMapFolder()
+    {
+        string root = Path.GetTempPath();
+        Assert.Throws<InvalidOperationException>(() => WriteBspStep.GetExtraOutputPath(root, "../x.json"));
+        Assert.Throws<InvalidOperationException>(() => WriteBspStep.GetExtraOutputPath(root, Path.Combine(root, "x.json")));
+        Assert.Equal(Path.Combine(root, "zones", "local", "x.json"), WriteBspStep.GetExtraOutputPath(root, "zones/local/x.json"));
+    }
+
+    /// <summary>
+    /// Ports every GOKZ map in CS:GO's (legacy) maps folder and its workshop folders, if CS:GO is installed.
+    /// </summary>
+    [Fact]
+    public void PortsInstalledGokzMaps()
+    {
+        string? csgo = new SteamLocator().Find(KnownGame.CounterStrikeGlobalOffensive)?.ContentDirectory;
+        string maps = csgo is null ? "" : Path.Combine(csgo, "maps");
+        if (!Directory.Exists(maps))
+            return;
+
+        var failures = new List<string>();
+        foreach (string path in Directory.EnumerateFiles(maps, "*.bsp", SearchOption.AllDirectories))
+        {
+            string name = Path.GetFileNameWithoutExtension(path);
+            try
+            {
+                var bsp = new BSP(new FileInfo(path));
+                if (SourceGameSniffer.DetectProfile(bsp) != "gokz")
+                    continue;
+
+                var context = new PortContext(bsp, name, csgo);
+                new GokzProfile().Apply(context);
+
+                using var writer = new StringWriter();
+                context.Report.Print(writer);
+                output.WriteLine($"{name} ({bsp.MapType}):\n{writer}");
+
+                foreach (ExtraOutput extra in context.ExtraOutputs)
+                {
+                    output.WriteLine(extra.Content);
+                    ParseAndValidate(extra.Content);
+                }
+
+                // The map still has to write
+                string temp = Path.Combine(Path.GetTempPath(), $"gokz_{Guid.NewGuid():N}.bsp");
+                try
+                {
+                    new BSPWriter(bsp).WriteBSP(temp, false);
+                    var reloaded = new BSP(new FileInfo(temp));
+                    Assert.Equal(bsp.Entities.Count, reloaded.Entities.Count);
+                }
+                finally
+                {
+                    File.Delete(temp);
+                }
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{name}: {ex}");
+            }
+        }
+
+        Assert.Empty(failures);
+    }
+
+    /// <summary>
+    /// Reads a zone file into BSPConvert's ZoneDefs and checks it against the rules Momentum enforces when loading it
+    /// (mom_zone_runtime_data.cpp).
+    /// </summary>
+    private static ZoneDefsBase ParseAndValidate(string json)
+    {
+        ZoneDefsBase zones = JsonSerializer.Deserialize<ZoneDefsBase>(json) ?? throw new InvalidDataException("empty zone file");
+        Assert.Equal(1, zones.FormatVersion);
+        Assert.NotNull(zones.Tracks.Main);
+        Assert.True(zones.Tracks.Bonuses.Count <= 25);
+
+        var tracks = new List<TrackZones> { zones.Tracks.Main.Zones };
+        tracks.AddRange(zones.Tracks.Bonuses.Select(x => x.Zones ?? throw new InvalidDataException("bonus without zones")));
+        foreach (TrackZones track in tracks)
+        {
+            Segment segment = Assert.Single(track.Segments);
+            Zone start = Assert.Single(segment.Checkpoints);
+            Assert.NotEmpty(start.Regions);
+            Assert.NotEmpty(track.End.Regions);
+
+            foreach (Region region in start.Regions)
+            {
+                // Start zones need a destination for each region: a name, or a position and yaw
+                Assert.True(region.TeleDestTargetname is { Length: > 0 } ^ region.TeleDestPos is not null);
+                Assert.Equal(region.TeleDestPos is not null, region.TeleDestYaw is not null);
+            }
+
+            foreach (Region region in start.Regions.Concat(track.End.Regions))
+            {
+                Assert.NotNull(region.Bottom);
+                Assert.True(region.Height > 1);
+                Assert.True(ZoneShapes.IsValidPolygon(region), string.Join(" ", region.Points.Select(p => $"({p[0]} {p[1]})")));
+            }
+        }
+
+        return zones;
+    }
+}
