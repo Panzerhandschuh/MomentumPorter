@@ -391,6 +391,14 @@ public sealed class WriteWeaponPackStep : IPortStep
     /// </summary>
     public const string SoundscriptPath = "scripts/game_sounds_momentum_weapons.txt";
 
+    /// <summary>
+    /// Momentum only scans momentum/custom at startup and keeps models, sounds and particles it has loaded, so
+    /// weapon_reload_scripts only picks up script changes to a pack that was already loaded.
+    /// </summary>
+    private const string ReloadHint =
+        "Restart Momentum to load it, or run weapon_reload_all on engine builds with docs/engine-patches/weapon-reload-all.patch "
+        + "(weapon_reload_scripts only reloads the script of a pack that was already loaded).";
+
     public string Name => "Write pack";
 
     public Task RunAsync(PortJobContext context)
@@ -444,7 +452,7 @@ public sealed class WriteWeaponPackStep : IPortStep
         }
 
         string header = $"{weapon.Name} from {game.Name} as Momentum's {slot.Name}, made by MomentumPorter.\n"
-            + $"Remove the {state.PackName} pack (or this file) to get Momentum's weapon back. Reload with weapon_reload_scripts.";
+            + $"Remove the {state.PackName} pack (or this file) to get Momentum's weapon back. Reload with weapon_reload_all where the engine has it, else restart.";
         sink.AddFile(slot.ScriptPath, Encoding.UTF8.GetBytes(script.Write(header)));
 
         if (state.AddedSoundEntries.Count > 0 || state.RedefinedSoundEntries.Count > 0)
@@ -488,8 +496,8 @@ public sealed class WriteWeaponPackStep : IPortStep
         // Packs written straight into Momentum's custom folder are already live; anywhere else they have to be copied there
         bool inCustom = state.PackIsInMomentumCustom;
         context.Log.Info(inCustom
-            ? $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Run weapon_reload_scripts in game (sounds need a restart)."
-            : $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/ and run weapon_reload_scripts (sounds need a restart).");
+            ? $"Wrote {sink.Files.Count} files to {state.PackDirectory}. {ReloadHint}"
+            : $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/. {ReloadHint}");
         state.Dispose();
         return Task.CompletedTask;
     }
