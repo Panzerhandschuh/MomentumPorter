@@ -13,8 +13,6 @@ using ReactiveUI;
 /// </summary>
 public sealed class MapQueueItemViewModel : QueueItemViewModel
 {
-    public const string BspConvertComing = "Quake 3 and GoldSrc maps need BSPConvert, its integration is coming";
-
     private string? _game;
     private string? _detectedProfile;
 
@@ -42,10 +40,13 @@ public sealed class MapQueueItemViewModel : QueueItemViewModel
     public string KindText => PortJobFactory.Describe(Kind);
 
     /// <summary>Only Source maps can be ported in this phase.</summary>
-    public bool IsSupported => Kind == InputKind.SourceBsp;
+    /// <summary>Source maps go through a game profile, Quake 3 and GoldSrc ones through BSPConvert.</summary>
+    public bool IsSupported => InputDetector.IsMap(Kind);
+
+    public bool UsesBspConvert => IsSupported && Kind != InputKind.SourceBsp;
 
     /// <summary>Shown under the item when it can't be ported yet.</summary>
-    public string? Note => IsSupported ? null : InputDetector.IsMap(Kind) ? BspConvertComing : "Not a map";
+    public string? Note => IsSupported ? null : "Not a map";
 
     /// <summary>The game the map was detected as, for display.</summary>
     public string? Game

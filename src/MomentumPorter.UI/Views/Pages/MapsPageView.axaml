@@ -132,7 +132,16 @@
           <TextBlock Text="Options" Classes="h2" VerticalAlignment="Center" />
         </DockPanel>
         <ScrollViewer Padding="12 4 12 4">
-          <views:OptionsForm Form="{Binding OptionsForm}" />
+          <StackPanel Spacing="8">
+            <Expander Header="Source maps (KZ Mod, GOKZ)" IsExpanded="True" HorizontalAlignment="Stretch"
+                      ToolTip.Tip="Maps made for other Source games: their entities are converted with a game profile, then bspPack packs the assets">
+              <views:OptionsForm Form="{Binding OptionsForm}" />
+            </Expander>
+            <Expander Header="Quake 3 and GoldSrc maps (BSPConvert)" HorizontalAlignment="Stretch"
+                      ToolTip.Tip="Quake 3 (.bsp/.pk3) and Half-Life/CS 1.6 (.bsp/.zip) maps are converted with BSPConvert; these are its options. Install, Overwrite and Compress above apply too.">
+              <views:OptionsForm Form="{Binding BspConvertOptionsForm}" />
+            </Expander>
+          </StackPanel>
         </ScrollViewer>
       </DockPanel>
     </Border>

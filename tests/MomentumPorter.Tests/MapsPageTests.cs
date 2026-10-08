@@ -70,8 +70,9 @@ public class MapsPageTests
         MapQueueItemViewModel item = Assert.Single(window.Maps.Queue);
         Assert.Equal(InputKind.Quake3Bsp, item.Kind);
         Assert.Equal("Quake 3", item.Game);
-        Assert.False(item.IsSupported);
-        Assert.Equal(MapQueueItemViewModel.BspConvertComing, item.Note);
+        Assert.True(item.IsSupported);
+        Assert.True(item.UsesBspConvert);
+        Assert.Null(item.Note);
         Assert.Contains("Added 1 map", window.StatusMessage);
         Assert.Contains("v_ak47.mdl is a model", window.StatusMessage);
 
@@ -96,17 +97,20 @@ public class MapsPageTests
     }
 
     [Fact]
-    public async Task NonSourceMapsAreSkippedForNow()
+    public async Task NonSourceMapsRunThroughBspConvert()
     {
         using var temp = new TempFolder();
         MapsPageViewModel maps = CreateWindow(temp).Maps;
+        maps.Options.Install = false;
         maps.AddFiles([WriteFakeMap(temp, "q3dm17.bsp", Quake3Header)]);
         Assert.True(maps.HasQueued);
+        Assert.True(maps.Queue[0].UsesBspConvert);
+        Assert.Contains(maps.Prepare(maps.Queue[0]).Job.Steps, x => x is MomentumPorter.BspConvert.BspConvertStep);
 
+        // A header-only file isn't a map BSPConvert can read, so the job fails rather than being skipped
         await maps.RunAsync();
 
-        Assert.Equal(QueueStatus.Skipped, maps.Queue[0].Status);
-        Assert.Contains("BSPConvert", maps.Queue[0].StatusMessage);
+        Assert.Equal(QueueStatus.Failed, maps.Queue[0].Status);
         Assert.False(maps.HasQueued);
 
         maps.RequeueAll();

@@ -4,11 +4,13 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using Material.Icons;
+using MomentumPorter.BspConvert;
 using MomentumPorter.Detection;
 using MomentumPorter.Options;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
 using MomentumPorter.Settings;
+using MomentumPorter.Steam;
 using MomentumPorter.Steps;
 using MomentumPorter.UI.Services;
 using MomentumPorter.UI.ViewModels.Shared;
@@ -27,6 +29,8 @@ public sealed class MapsPageViewModel : PageViewModel
     private readonly Action<Action> _post;
     private MapPortOptions _options;
     private OptionsFormViewModel _optionsForm;
+    private BspConvertOptions _bspConvertOptions = new();
+    private OptionsFormViewModel _bspConvertOptionsForm;
     private MapQueueItemViewModel? _selectedItem;
     private string? _message;
     private bool _hasQueued;
@@ -39,6 +43,7 @@ public sealed class MapsPageViewModel : PageViewModel
         Runner = runner;
         _options = new MapPortOptions { Install = settings.Settings.InstallByDefault };
         _optionsForm = new OptionsFormViewModel(_options);
+        _bspConvertOptionsForm = new OptionsFormViewModel(_bspConvertOptions);
 
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);
         Queue.CollectionChanged += (_, _) => UpdateQueueState();
@@ -81,6 +86,19 @@ public sealed class MapsPageViewModel : PageViewModel
     {
         get => _optionsForm;
         private set => this.RaiseAndSetIfChanged(ref _optionsForm, value);
+    }
+
+    /// <summary>Options for Quake 3 and GoldSrc maps, which go through BSPConvert instead of a game profile.</summary>
+    public BspConvertOptions BspConvertOptions
+    {
+        get => _bspConvertOptions;
+        private set => this.RaiseAndSetIfChanged(ref _bspConvertOptions, value);
+    }
+
+    public OptionsFormViewModel BspConvertOptionsForm
+    {
+        get => _bspConvertOptionsForm;
+        private set => this.RaiseAndSetIfChanged(ref _bspConvertOptionsForm, value);
     }
 
     /// <summary>Feedback for the last action (files added, preset saved...).</summary>
@@ -170,10 +188,13 @@ public sealed class MapsPageViewModel : PageViewModel
     public PreparedJob Prepare(MapQueueItemViewModel item)
     {
         if (!item.IsSupported)
-            throw new JobSkippedException(InputDetector.IsMap(item.Kind) ? "Skipped until BSPConvert is integrated" : "Skipped, not a map");
+            throw new JobSkippedException("Skipped, not a map");
 
         MapPortOptions options = OptionsPreset.Clone(Options);
         PorterSettings settings = _settings.Settings.Clone();
+
+        if (item.UsesBspConvert)
+            return PrepareBspConvert(item, options, settings);
 
         string workDirectory = CreateWorkDirectory(settings, item.MapName);
         string workOutput = Path.Combine(workDirectory, item.MapName + ".bsp");
@@ -226,6 +247,56 @@ public sealed class MapsPageViewModel : PageViewModel
         }
 
         return new JobOutcome(QueueStatus.Done, $"Saved to the output folder{warnings}", OutputPath: output);
+    }
+
+    /// <summary>
+    /// Quake 3 and GoldSrc maps: BSPConvert converts into the work folder, then the files are copied into Momentum's
+    /// game folder (Install) or the output folder, which is laid out like a game folder (maps/, maps/zones/local/...).
+    /// </summary>
+    private PreparedJob PrepareBspConvert(MapQueueItemViewModel item, MapPortOptions mapOptions, PorterSettings settings)
+    {
+        BspConvertOptions options = BspConvertOptions.Clone();
+        options.Overwrite = mapOptions.Overwrite || !mapOptions.Install;
+        options.Compress = options.Compress || mapOptions.Compress;
+
+        string? target = mapOptions.Install ? settings.ResolveMomentumContentDirectory() : settings.ResolveOutputDirectory();
+        if (target is null)
+            throw new InvalidOperationException("Momentum Mod wasn't found in your Steam libraries. Set its folder in Settings, or turn off Install into Momentum.");
+
+        options.OutputDirectory = target;
+
+        var steam = new SteamLocator();
+        foreach (string filled in BspConvertDefaults.Fill(options, steam, item.InputPath, output: false))
+            item.Log.Add(LogLevel.Info, filled);
+
+        (PortJob job, BspConvertState state) = BspConvertJobs.Create(item.InputPath, options, copyToOutput: true, steam);
+        string workDirectory = CreateWorkDirectory(settings, item.MapName);
+
+        return new PreparedJob(
+            job,
+            workDirectory,
+            context =>
+            {
+                context.Set(state);
+                context.Set(settings);
+            },
+            (context, result) =>
+            {
+                if (!result.Succeeded)
+                {
+                    return result.Exception is OperationCanceledException
+                        ? new JobOutcome(QueueStatus.Skipped, "Cancelled")
+                        : new JobOutcome(QueueStatus.Failed, $"{result.FailedStep} failed: {result.Error}");
+                }
+
+                string? warnings = context.Report.HasWarnings ? " (with warnings, see the report)" : null;
+                string? firstMap = state.InstalledFiles.FirstOrDefault(x => x.EndsWith(".bsp", StringComparison.OrdinalIgnoreCase));
+                int maps = state.InstalledFiles.Count(x => x.EndsWith(".bsp", StringComparison.OrdinalIgnoreCase));
+                string what = maps == 1 ? "1 map" : $"{maps} maps";
+                return mapOptions.Install
+                    ? new JobOutcome(QueueStatus.Done, $"Installed {what} into Momentum{warnings}", InstalledPath: firstMap)
+                    : new JobOutcome(QueueStatus.Done, $"Saved {what} to the output folder{warnings}", OutputPath: firstMap);
+            });
     }
 
     private static string CreateWorkDirectory(PorterSettings settings, string mapName)
