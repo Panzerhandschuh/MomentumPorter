@@ -3,6 +3,7 @@ namespace MomentumPorter.Assets.Weapons;
 using System.Text;
 using MomentumPorter.Assets.Common;
 using MomentumPorter.Assets.Models;
+using MomentumPorter.Assets.Particles;
 using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Steam;
@@ -408,7 +409,9 @@ public sealed class WriteWeaponPackStep : IPortStep
         + "// Momentum scans momentum/custom/ at startup only: a new pack folder needs a restart, but changes inside a\n"
         + "// mounted folder (not a VPK) are read again on the next open, so a rebuilt pack only needs this.\n"
         + "sv_soundemitter_flush      // soundscripts (game_sounds_*.txt)\n"
-        + "sv_particles_reload        // the particle manifest and the .pcf files it lists\n"
+        + "// The particle manifest and the .pcf files it lists. Momentum builds without docs/engine-patches/\n"
+        + "// particles-reload-precache.patch lose their bullet impacts here until the next map: remove the two lines.\n"
+        + "sv_particles_reload\n"
         + "cl_particles_reload\n"
         + "// Models and waves already in memory are read again from disk. Momentum builds without the bone merge\n"
         + "// fix in docs/engine-patches/bonemerge-flush-crash.patch crash here: remove the line and reload the map instead.\n"
@@ -466,6 +469,21 @@ public sealed class WriteWeaponPackStep : IPortStep
         {
             foreach ((string key, string particle) in weapon.Particles.Concat(state.Particles))
                 script.SetParticle(key, particle);
+
+            // The game's own particle files (CS:GO's muzzle flashes), from the content Momentum mounts
+            foreach (string file in game.ParticleFiles)
+            {
+                if (state.Content!.Exists(file))
+                    state.ParticleFiles.Add(file);
+                else
+                    context.Report.Warn($"{file} isn't in {state.Content.Name}'s files, so the effects in it aren't drawn");
+            }
+        }
+
+        if (state.ParticleFiles.Count > 0)
+        {
+            sink.AddFile(ParticleManifest.Path, Encoding.UTF8.GetBytes(ParticleManifest.WithFiles(state.Momentum!.ReadRequiredText(ParticleManifest.Path), state.ParticleFiles)));
+            context.Report.Warn($"The pack replaces {ParticleManifest.Path} (Momentum's plus {string.Join(", ", state.ParticleFiles.Select(x => x.TrimStart('!')))}), since particle files only load through it: packs that replace it hide each other, and Momentum's updates to it are hidden until the pack is rebuilt");
         }
 
         string header = $"{weapon.Name} from {game.Name} as Momentum's {slot.Name}, made by MomentumPorter.\n"

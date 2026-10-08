@@ -267,6 +267,12 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   models have none: the script names CS:GO's `ct_arms.mdl` as `ModelData` `arms`, which needs the engine change in
   `docs/engine-patches` (without it Momentum's arms are attached, and they share no bones with CS:GO's view models). CS:S
   and CS 1.6 models are left handed (`BuiltRightHanded 0`).
+- **Muzzle flashes**: Momentum's view models have no muzzle flash events, and the ones on other games' models
+  (`CL_EVENT_MUZZLEFLASH0`, which CS:GO, CS:S and HL2 models all carry) are drawn by the base engine on the player
+  entity rather than the view model, so nothing shows. With `docs/engine-patches/viewmodel-muzzle-flash.patch` the
+  engine draws the weapon script's `ParticleData MuzzleFlashEffect` at the attachment the event names (CS:GO), or its
+  sprite flash on the view model (CS:S, HL2). The catalog gives each CS:GO weapon its muzzle flash from CS:GO's
+  `items_game.txt`, and the pack ships Momentum's particle manifest with `particles/weapons/cs_weapon_fx.pcf` added.
 - **World models** (third person, replays, spawners): held weapons are bone-merged onto the player by bone name, and
   other games' world models are rigged to their own player skeletons, so they'd sit at the player's feet. The porter
   recompiles them onto Momentum's `weapon_bone.R` (`models/porter/<game>/`), placed like the Momentum model they replace.

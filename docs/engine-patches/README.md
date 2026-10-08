@@ -2,8 +2,8 @@
 
 Changes to Momentum's engine (strata/engine) that ported assets need. They aren't applied anywhere; review them and
 apply with `git apply <patch>` in an engine checkout. They apply cleanly to the engine as of October 2026 and compile,
-but haven't been tested in game. Each is a bug fix in an existing feature; the porter works around everything else
-content-side, so a Momentum build without them only misses what's listed under each patch.
+but haven't been tested in game. Each is a fix in an existing feature; the porter works around everything else content-side,
+so a Momentum build without them only misses what's listed under each patch.
 
 ## weapon-overrides.patch
 
@@ -41,6 +41,28 @@ anything is bone-merged (a held weapon, arms on the view model).
 
 Without it: the `flush` line in a pack's `cfg/porter_reload.cfg` crashes the game; remove it and reload the map to
 pick up changed models instead.
+
+## particles-reload-precache.patch
+
+`cl_particles_reload` / `sv_particles_reload` uncache every particle system, which throws away the precache lookups,
+and re-read the manifest, but nothing precaches the `ParticleEffectNames` string table's entries again. Effects
+dispatched by index afterwards (bullet impacts, networked effects) found nothing: `Attempted to create unknown particle
+system type "impact_concrete"` on every hit until the next map. The reload now precaches every entry in the table again.
+
+Without it: the `sv_particles_reload` / `cl_particles_reload` lines in `cfg/porter_reload.cfg` break bullet impacts
+for the rest of the map; remove them and restart to pick up particle changes instead.
+
+## viewmodel-muzzle-flash.patch
+
+Momentum's own view models have no muzzle flash events, but models from other games carry `CL_EVENT_MUZZLEFLASH0`
+(5001) on their fire sequences: CS:GO's name the attachment in the options (`"1"`), CS:S's and HL2's give the sprite
+flash type and imply the attachment from the event. `C_BaseViewModel::FireEvent` hands the event to the weapon, and
+the base class falls through to `C_BaseAnimating::FireObsoleteEvent`, which draws the flash on the *view entity* (the
+player model) rather than the view model, so nothing visible comes of it. `CWeaponBase::OnFireEvent` now handles it on
+the view model: it draws the weapon script's `ParticleData "MuzzleFlashEffect"` at the attachment when the script has
+one (the porter sets CS:GO's `weapon_muzzle_flash_*` from `items_game.txt`), else the engine's sprite flash.
+
+Without it: ported weapons from CS:GO, CS:S and HL2 have no first-person muzzle flash.
 
 ## df-grenade-trail.patch
 

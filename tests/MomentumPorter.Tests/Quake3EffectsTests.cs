@@ -13,12 +13,13 @@ public class Quake3EffectsTests
     {
         const string momentum = "particles_manifest\n{\n    \"file\" \"!particles/mom_rocket.pcf\"\n}\n";
 
-        string manifest = Quake3Effects.Manifest(momentum);
+        string manifest = ParticleManifest.WithFiles(momentum, ["!" + Quake3Effects.ParticleFile, "particles/weapons/cs_weapon_fx.pcf"]);
 
         Assert.Contains("\"!particles/porter_q3.pcf\"", manifest);
+        Assert.Contains("\"particles/weapons/cs_weapon_fx.pcf\"", manifest);
         Assert.Contains("\"!particles/mom_rocket.pcf\"", manifest);
         Assert.EndsWith("}\n", manifest);
-        Assert.Equal(manifest, Quake3Effects.Manifest(manifest));
+        Assert.Equal(manifest, ParticleManifest.WithFiles(manifest, ["!" + Quake3Effects.ParticleFile]));
     }
 
     [Fact]

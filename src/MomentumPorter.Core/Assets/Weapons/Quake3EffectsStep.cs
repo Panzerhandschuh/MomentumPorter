@@ -42,8 +42,9 @@ public sealed class Quake3EffectsStep : IPortStep
         foreach ((string key, string particle) in particles)
             state.Particles[key] = particle;
 
+        // Precached like Momentum's own weapon effects
+        state.ParticleFiles.Add("!" + Quake3Effects.ParticleFile);
         context.Report.Change("Quake 3 explosions and trails");
-        context.Report.Warn($"The pack replaces {Quake3Effects.ManifestPath} (Momentum's plus {Quake3Effects.ParticleFile}), since particle files only load through it: other packs that replace it hide each other, and Momentum's updates to it are hidden until the pack is rebuilt");
 
         if (Quake3Effects.HasSpriteProjectile(weaponId) && state.Options.Projectile)
         {

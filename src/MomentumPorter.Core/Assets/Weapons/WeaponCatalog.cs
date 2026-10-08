@@ -142,6 +142,12 @@ public sealed class CatalogGame
     /// <summary>Momentum's copies of this game's soundscripts (e.g. scripts/game_sounds_weapons_css.txt).</summary>
     public List<string> MomentumSoundscripts { get; set; } = [];
 
+    /// <summary>
+    /// Particle files of the game (in content Momentum mounts) that its weapons' ParticleData needs and Momentum's
+    /// particle manifest doesn't list; the pack ships a manifest copy with them added.
+    /// </summary>
+    public List<string> ParticleFiles { get; set; } = [];
+
     /// <summary>What doesn't carry over for every weapon of this game; added to the report.</summary>
     public List<string> Limitations { get; set; } = [];
 

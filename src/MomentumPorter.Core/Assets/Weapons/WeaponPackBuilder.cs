@@ -84,6 +84,9 @@ public sealed class WeaponPackState(WeaponPackOptions options) : IDisposable
     /// <summary>ParticleData entries for effects the pack makes (on top of the catalog's).</summary>
     public Dictionary<string, string> Particles { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Particle files the pack's effects need that Momentum's manifest doesn't list ("!" precaches).</summary>
+    public List<string> ParticleFiles { get; } = [];
+
     public void Dispose()
     {
         Content?.Dispose();

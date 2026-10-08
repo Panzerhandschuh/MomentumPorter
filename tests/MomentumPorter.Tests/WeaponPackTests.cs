@@ -185,6 +185,11 @@ public class WeaponPackTests
             // CS:GO's own arms share the view model's bones; Momentum's don't
             Assert.Equal("models/weapons/ct_arms.mdl", script.GetModel("arms"));
 
+            // CS:GO's muzzle flash, drawn at the view model's "1" attachment by the engine patch; its particle file
+            // only loads through the manifest
+            Assert.Equal("weapon_muzzle_flash_pistol", script.GetParticle("MuzzleFlashEffect"));
+            Assert.Contains("\"particles/weapons/cs_weapon_fx.pcf\"", File.ReadAllText(Path.Combine(pack, "particles", "particles_manifest.txt")));
+
             // The pistol's shot is played from the player, where Overrides don't apply, so the entry itself is redefined
             string text = File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt"));
             KeyValuesNode entries = KeyValuesNode.ParseDocument(text);

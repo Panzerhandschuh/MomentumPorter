@@ -24,7 +24,6 @@ using sourcepp.vtfpp;
 public static class Quake3Effects
 {
     public const string ParticleFile = "particles/porter_q3.pcf";
-    public const string ManifestPath = "particles/particles_manifest.txt";
     public const string MaterialFolder = "porter/q3/effects";
 
     /// <summary>A model with nothing to draw and a <c>trail</c> attachment, for projectiles that are only a sprite.</summary>
@@ -97,8 +96,8 @@ public static class Quake3Effects
     }
 
     /// <summary>
-    /// Writes the effects' materials, particle file and the particle manifest (Momentum's plus the particle file)
-    /// into the pack.
+    /// Writes the effects' materials and particle file into the pack. <see cref="ParticleFile"/> still has to go into
+    /// the pack's particle manifest (<see cref="ParticleManifest"/>).
     /// </summary>
     public static async Task WriteAsync(GameContent content, MomentumInstall momentum, IPackSink sink, string workDirectory, IPortLog log, CancellationToken cancellation)
     {
@@ -122,23 +121,7 @@ public static class Quake3Effects
         await File.WriteAllTextAsync(text, ParticleSystemFile.Write(Systems()), cancellation).ConfigureAwait(false);
         await new DmxConvert(momentum.DmxConvertPath, momentum.GameDirectory, log).ToBinaryAsync(text, binary, cancellation).ConfigureAwait(false);
         sink.AddFile(ParticleFile, binary);
-        sink.AddFile(ManifestPath, Encoding.UTF8.GetBytes(Manifest(momentum.ReadRequiredText(ManifestPath))));
         log.Info($"Wrote Quake 3's projectile effects to {ParticleFile}");
-    }
-
-    /// <summary>Momentum's particle manifest with the porter's file added (precached, like Momentum's weapon effects).</summary>
-    public static string Manifest(string momentumManifest)
-    {
-        if (momentumManifest.Contains(ParticleFile, StringComparison.OrdinalIgnoreCase))
-            return momentumManifest;
-
-        int close = momentumManifest.LastIndexOf('}');
-        if (close < 0)
-            throw new PortStepException($"Momentum's {ManifestPath} isn't a manifest");
-
-        return momentumManifest[..close].TrimEnd()
-            + $"\n\n    // Quake 3 weapon effects, added by MomentumPorter\n    \"file\"        \"!{ParticleFile}\"\n"
-            + momentumManifest[close..];
     }
 
     /// <summary>Compiles <see cref="InvisibleProjectile"/> and adds it to the pack.</summary>
