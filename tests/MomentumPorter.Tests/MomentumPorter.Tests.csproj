@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MomentumPorter.Core\MomentumPorter.Core.csproj" />
+    <!-- View model tests -->
+    <ProjectReference Include="..\..\src\MomentumPorter.UI\MomentumPorter.UI.csproj" />
     <!-- Assembly references don't flow through project references -->
     <Reference Include="libBSP">
       <HintPath>$(LibBspDll)</HintPath>

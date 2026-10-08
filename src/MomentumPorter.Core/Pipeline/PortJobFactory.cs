@@ -23,7 +23,12 @@ public static class PortJobFactory
             new WriteBspStep(),
         };
 
-        // Later phases append BspPackStep / InstallStep here when options.Pack / options.Install are set.
+        // Both read their tool and game locations from the PorterSettings in the job's context
+        if (options.Pack)
+            steps.Add(new BspPackStep());
+
+        if (options.Install)
+            steps.Add(new InstallStep());
 
         return (new PortJob(Path.GetFileName(inputPath), steps), state);
     }

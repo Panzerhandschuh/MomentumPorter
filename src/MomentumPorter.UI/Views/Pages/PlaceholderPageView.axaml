@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MomentumPorter.UI.ViewModels.Pages"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="MomentumPorter.UI.Views.Pages.PlaceholderPageView"
+             x:DataType="vm:PlaceholderPageViewModel">
+
+  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" MaxWidth="460">
+    <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="64" Height="64" Opacity="0.5" />
+    <TextBlock Text="{Binding Title}" Classes="h1" HorizontalAlignment="Center" />
+    <TextBlock Text="Coming in a later phase" HorizontalAlignment="Center" FontWeight="SemiBold" />
+    <TextBlock Text="{Binding Description}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+  </StackPanel>
+
+</UserControl>
