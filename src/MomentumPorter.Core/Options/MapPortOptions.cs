@@ -22,6 +22,6 @@ public sealed class MapPortOptions
     [PortOption("Install into Momentum", "Copy the finished map into Momentum Mod's maps folder.", Group = "After porting", Order = 10)]
     public bool Install { get; set; } = true;
 
-    [PortOption("Overwrite existing maps", "Replace a map of the same name that is already in Momentum's maps folder instead of asking.", Group = "After porting", Order = 20, Advanced = true)]
-    public bool Overwrite { get; set; }
+    [PortOption("Overwrite existing maps", "Replace a map of the same name that is already in Momentum's game folder. Turn off to be asked first (Source maps) or to stop before copying anything (Quake 3 and GoldSrc maps).", Group = "After porting", Order = 20)]
+    public bool Overwrite { get; set; } = true;
 }

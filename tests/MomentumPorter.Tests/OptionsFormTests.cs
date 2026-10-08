@@ -144,6 +144,6 @@ public class OptionsFormTests
 
         Assert.Equal(["General", "After porting"], form.Groups.Select(x => x.Name));
         Assert.Contains(form.Groups[0].AdvancedFields, x => x.Name == nameof(MapPortOptions.GameDirectory));
-        Assert.Contains(form.Groups[1].AdvancedFields, x => x.Name == nameof(MapPortOptions.Overwrite));
+        Assert.Contains(form.Groups[1].Fields, x => x.Name == nameof(MapPortOptions.Overwrite));
     }
 }

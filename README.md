@@ -54,8 +54,8 @@ cubemap materials, aren't renamed, so keep the map's name or rename it with Lump
 (or pass them on the command line), pick options, Run. Each queued Source map is ported, packed with bspPack
 (`-M -C`) and copied into Momentum's `momentum/maps` folder, one map at a time. Everything happens in a temp work folder
 and the map is only moved into `maps/` once every step succeeded, so a failed or cancelled map never leaves a broken
-file there. If the map is already installed you're asked whether to overwrite it, unless "Overwrite existing maps" is
-on. Maps that aren't installed are saved to the output folder instead (Documents/MomentumPorter/maps by default).
+file there. An installed map of the same name is replaced; turn off "Overwrite existing maps" to be asked first. The
+options panel only shows the options for the kinds of map in the queue. Maps that aren't installed are saved to the output folder instead (Documents/MomentumPorter/maps by default).
 Files the conversion writes next to the map, such as GOKZ's `zones/local/<map>.json`, go along with it.
 
 - **Maps**: the queue (status per map, detected kind and game), the options form (generated from the

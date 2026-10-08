@@ -14,6 +14,9 @@ public sealed class OptionsFormViewModel : ViewModel
 {
     public const string DefaultGroup = "General";
 
+    private readonly List<OptionFieldViewModel> _fields;
+    private IReadOnlyList<OptionGroupViewModel> _groups;
+
     /// <param name="exclude">Options the page edits with its own controls, left out of the form</param>
     public OptionsFormViewModel(object options, Type? optionsType = null, IEnumerable<string>? exclude = null)
     {
@@ -24,26 +27,29 @@ public sealed class OptionsFormViewModel : ViewModel
 
         var excluded = new HashSet<string>(exclude ?? [], StringComparer.Ordinal);
         IReadOnlyList<PortOptionInfo> infos = PortOptions.Describe(OptionsType).Where(x => !excluded.Contains(x.Name)).ToList();
-        var fields = infos.Select(x => OptionFieldViewModel.Create(x, options)).OfType<OptionFieldViewModel>().ToList();
-
-        // General first, then the rest in the order Describe sorts them
-        Groups = fields
-            .GroupBy(x => x.Info.Attribute.Group)
-            .OrderBy(x => x.Key == DefaultGroup ? 0 : 1)
-            .Select(x => new OptionGroupViewModel(
-                x.Key,
-                x.Where(f => !f.Info.Attribute.Advanced).ToList(),
-                x.Where(f => f.Info.Attribute.Advanced).ToList()))
-            .ToList();
+        _fields = infos.Select(x => OptionFieldViewModel.Create(x, options)).OfType<OptionFieldViewModel>().ToList();
+        _groups = BuildGroups(_ => true);
     }
 
     public object Options { get; }
 
     public Type OptionsType { get; }
 
-    public IReadOnlyList<OptionGroupViewModel> Groups { get; }
+    /// <summary>The groups on show, see <see cref="SetFilter"/>.</summary>
+    public IReadOnlyList<OptionGroupViewModel> Groups
+    {
+        get => _groups;
+        private set => this.RaiseAndSetIfChanged(ref _groups, value);
+    }
 
-    public IEnumerable<OptionFieldViewModel> Fields => Groups.SelectMany(x => x.Fields.Concat(x.AdvancedFields));
+    /// <summary>Every field, shown or not.</summary>
+    public IEnumerable<OptionFieldViewModel> Fields => _fields;
+
+    /// <summary>
+    /// Shows only the fields <paramref name="show"/> accepts (all of them when null); groups left empty are hidden.
+    /// Hidden fields keep their values.
+    /// </summary>
+    public void SetFilter(Func<OptionFieldViewModel, bool>? show) => Groups = BuildGroups(show ?? (_ => true));
 
     public OptionFieldViewModel? Find(string propertyName) => Fields.FirstOrDefault(x => x.Name == propertyName);
 
@@ -52,6 +58,20 @@ public sealed class OptionsFormViewModel : ViewModel
     {
         foreach (OptionFieldViewModel field in Fields)
             field.Load();
+    }
+
+    // General first, then the rest in the order Describe sorts them
+    private List<OptionGroupViewModel> BuildGroups(Func<OptionFieldViewModel, bool> show)
+    {
+        return _fields
+            .Where(show)
+            .GroupBy(x => x.Info.Attribute.Group)
+            .OrderBy(x => x.Key == DefaultGroup ? 0 : 1)
+            .Select(x => new OptionGroupViewModel(
+                x.Key,
+                x.Where(f => !f.Info.Attribute.Advanced).ToList(),
+                x.Where(f => f.Info.Attribute.Advanced).ToList()))
+            .ToList();
     }
 }
 

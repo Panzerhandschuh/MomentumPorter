@@ -24,6 +24,12 @@ public sealed class MapsPageViewModel : PageViewModel
     public static readonly FileFilter MapFilter = new("Maps", "*.bsp", "*.pk3", "*.zip");
     public static readonly FileFilter PresetFilter = new("MomentumPorter preset", "*" + OptionsPreset.Extension);
 
+    /// <summary>Map options only Source maps use; the rest (compress, install, overwrite) apply to every map.</summary>
+    private static readonly HashSet<string> SourceOnlyOptions = [nameof(MapPortOptions.Game), nameof(MapPortOptions.GameDirectory), nameof(MapPortOptions.Pack)];
+
+    /// <summary>BSPConvert options the page sets from the map options, so they aren't in its form.</summary>
+    private static readonly string[] SharedBspConvertOptions = [nameof(BspConvertOptions.OutputDirectory), nameof(BspConvertOptions.Compress), nameof(BspConvertOptions.Overwrite)];
+
     private readonly SettingsService _settings;
     private readonly IDialogService _dialogs;
     private readonly Action<Action> _post;
@@ -34,6 +40,7 @@ public sealed class MapsPageViewModel : PageViewModel
     private MapQueueItemViewModel? _selectedItem;
     private string? _message;
     private bool _hasQueued;
+    private bool _showBspConvertOptions = true;
 
     public MapsPageViewModel(SettingsService settings, IDialogService dialogs, JobRunnerService runner, Action<Action> post)
     {
@@ -43,7 +50,7 @@ public sealed class MapsPageViewModel : PageViewModel
         Runner = runner;
         _options = new MapPortOptions { Install = settings.Settings.InstallByDefault };
         _optionsForm = new OptionsFormViewModel(_options);
-        _bspConvertOptionsForm = new OptionsFormViewModel(_bspConvertOptions);
+        _bspConvertOptionsForm = new OptionsFormViewModel(_bspConvertOptions, exclude: SharedBspConvertOptions);
 
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);
         Queue.CollectionChanged += (_, _) => UpdateQueueState();
@@ -101,6 +108,13 @@ public sealed class MapsPageViewModel : PageViewModel
         private set => this.RaiseAndSetIfChanged(ref _bspConvertOptionsForm, value);
     }
 
+    /// <summary>Whether the queue has Quake 3 or GoldSrc maps (or is empty), so the BSPConvert options are shown.</summary>
+    public bool ShowBspConvertOptions
+    {
+        get => _showBspConvertOptions;
+        private set => this.RaiseAndSetIfChanged(ref _showBspConvertOptions, value);
+    }
+
     /// <summary>Feedback for the last action (files added, preset saved...).</summary>
     public string? Message
     {
@@ -153,6 +167,7 @@ public sealed class MapsPageViewModel : PageViewModel
 
             var item = new MapQueueItemViewModel(full);
             item.WhenAnyValue(x => x.Status).Subscribe(_ => UpdateQueueState());
+            item.WhenAnyValue(x => x.MapKinds).Subscribe(_ => UpdateVisibleOptions());
             Queue.Add(item);
             added.Add(item);
             _ = item.DetectGameAsync(_post);
@@ -257,7 +272,7 @@ public sealed class MapsPageViewModel : PageViewModel
     {
         BspConvertOptions options = BspConvertOptions.Clone();
         options.Overwrite = mapOptions.Overwrite || !mapOptions.Install;
-        options.Compress = options.Compress || mapOptions.Compress;
+        options.Compress = mapOptions.Compress;
 
         string? target = mapOptions.Install ? settings.ResolveMomentumContentDirectory() : settings.ResolveOutputDirectory();
         if (target is null)
@@ -323,6 +338,29 @@ public sealed class MapsPageViewModel : PageViewModel
     {
         HasQueued = Queue.Any(x => x.Status == QueueStatus.Queued);
         this.RaisePropertyChanged(nameof(IsEmpty));
+        UpdateVisibleOptions();
+    }
+
+    /// <summary>
+    /// Shows only the options for the kinds of map in the queue, or all of them while it's empty.
+    /// </summary>
+    private void UpdateVisibleOptions()
+    {
+        HashSet<InputKind> kinds = Queue.Count == 0
+            ? [InputKind.SourceBsp, InputKind.Quake3Bsp, InputKind.GoldSrcBsp]
+            : Queue.SelectMany(x => x.MapKinds).ToHashSet();
+        bool source = kinds.Contains(InputKind.SourceBsp);
+        bool quake3 = kinds.Contains(InputKind.Quake3Bsp);
+        bool goldSrc = kinds.Contains(InputKind.GoldSrcBsp);
+
+        OptionsForm.SetFilter(x => source || !SourceOnlyOptions.Contains(x.Name));
+        BspConvertOptionsForm.SetFilter(x => x.Info.Attribute.Group switch
+        {
+            BspConvertOptions.Quake3Group or BspConvertOptions.AnimatedTexturesGroup => quake3,
+            BspConvertOptions.GoldSrcGroup => goldSrc,
+            _ => true,
+        });
+        ShowBspConvertOptions = quake3 || goldSrc;
     }
 
     public void Requeue(MapQueueItemViewModel item)
@@ -348,6 +386,7 @@ public sealed class MapsPageViewModel : PageViewModel
     {
         Options = options;
         OptionsForm = new OptionsFormViewModel(options);
+        UpdateVisibleOptions();
     }
 
     public void SavePreset(Stream stream) => OptionsPreset.Save(Options, stream);

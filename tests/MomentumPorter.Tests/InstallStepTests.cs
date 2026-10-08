@@ -60,7 +60,7 @@ public class InstallStepTests
     public async Task KeepsAnExistingMapWhenNobodyCanBeAsked()
     {
         using var temp = new TempFolder();
-        (PortJobContext context, _, string maps) = Setup(temp);
+        (PortJobContext context, _, string maps) = Setup(temp, new MapPortOptions { Overwrite = false });
         File.WriteAllText(Path.Combine(maps, "kz_test.bsp"), "old map");
 
         await new InstallStep().RunAsync(context);
@@ -76,7 +76,7 @@ public class InstallStepTests
     {
         using var temp = new TempFolder();
         var prompts = new Prompts(answer);
-        (PortJobContext context, _, string maps) = Setup(temp, prompts: prompts);
+        (PortJobContext context, _, string maps) = Setup(temp, new MapPortOptions { Overwrite = false }, prompts);
         File.WriteAllText(Path.Combine(maps, "kz_test.bsp"), "old map");
 
         await new InstallStep().RunAsync(context);

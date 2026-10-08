@@ -74,7 +74,8 @@ public sealed class BspConvertJobTests : IDisposable
         Assert.Equal(state.ProducedFiles.Count, state.InstalledFiles.Count);
         Assert.Equal(InputKind.SourceBsp, InputDetector.Detect(Path.Combine(output, "maps", "gs_cs_assault.bsp")));
 
-        // Converting again doesn't replace the map unless asked to
+        // Converting again doesn't replace the map when overwriting is turned off
+        options.Overwrite = false;
         (job, state) = BspConvertJobs.Create(input, options);
         result = await Run(job, state, log);
         Assert.False(result.Succeeded);

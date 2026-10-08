@@ -43,9 +43,9 @@ public sealed class BspConvertOptions
     [PortOption("Don't pack assets", BspConvertHelp.NoPak, Group = GeneralGroup, Order = 40)]
     public bool NoPak { get; set; }
 
-    // Not a BSPConvert option: BSPConvert always overwrites, the porter asks first
+    // Not a BSPConvert option: BSPConvert always overwrites, and so does the porter unless this is turned off
     [PortOption("Overwrite existing files", BspConvertHelp.Overwrite, Group = GeneralGroup, Order = 50, Advanced = true)]
-    public bool Overwrite { get; set; }
+    public bool Overwrite { get; set; } = true;
 
     // --subdiv
     [PortOption("Displacement subdivisions", BspConvertHelp.Subdiv, Group = Quake3Group, Order = 0, Min = 2, Max = 4)]

@@ -27,7 +27,7 @@ public sealed class CopyConvertedFilesStep : IPortStep
             if (existing.Count > 0)
             {
                 string list = string.Join(", ", existing.Take(5)) + (existing.Count > 5 ? $" and {existing.Count - 5} more" : "");
-                throw new PortStepException($"{list} {(existing.Count == 1 ? "is" : "are")} already in {output}. Allow overwriting to replace {(existing.Count == 1 ? "it" : "them")}.");
+                throw new PortStepException($"{list} {(existing.Count == 1 ? "is" : "are")} already in {output}. Turn on overwriting existing maps to replace {(existing.Count == 1 ? "it" : "them")}.");
             }
         }
 
