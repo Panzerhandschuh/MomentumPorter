@@ -97,6 +97,40 @@ Not reproducible, and listed as warnings:
 - Sequential bhops act as single bhops per trigger; they don't share which triggers of the set were used.
 - Courses with no start or end aren't zoned; without a main course, no zone file is written.
 
+## Player sounds
+
+Builds a pack for Momentum's `custom` folder that gives the player Quake 3's movement sounds:
+
+```
+MomentumPorter sounds [--character ranger] [--jump q3|default] [--land q3|default|none] [--footsteps q3|default|silent]
+                      [--pure] [--output <folder>|auto] [--vpk|--folder] [--name <pack>] [--list]
+```
+
+- **Jump**: the character's `jump1.wav` (`MomPlayer.Jump`).
+- **Land**: `land1.wav` for soft landings, the character's `fall1.wav` for hard ones (`MomPlayer.LandSoft`/`LandHard`), or none.
+- **Footsteps**: Quake 3's on every surface. Like Quake 3, the set comes from the character's `animation.cfg` (normal,
+  boot, energy, flesh or mech; `--footstep-type` overrides it), metal surfaces clank and water splashes
+  (`--no-surface-footsteps` turns that off). `silent` mutes them and also writes `cfg/<pack>.cfg` with
+  `snd_volume_footsteps 0`; run `exec <pack>` or add it to `cfg/autoexec.cfg`. The cvar is saved in your config, so
+  set it back to 1 after removing the pack.
+- **`--pure`**: also mutes what Quake 3 doesn't have: `MomPlayer.AirJump`, `SprintStart`, `PowerSlide`, `WallRun`.
+
+Quake 3 and Momentum are found through Steam (`--q3-dir`, `--momentum-dir` override that); `--list` shows the characters.
+Quake Live works too, but its footsteps are Ogg Vorbis, which Momentum can't play, so those stay Momentum's. The pack
+goes to `momentum/custom/q3_sounds_<character>.vpk` (built with Momentum's `vpk.exe`) unless `--output` names another
+folder; delete it to get the default sounds back.
+
+The pack holds a full copy of Momentum's `scripts/game_sounds_momentum_player.txt` (the soundscript manifest lives in the
+base game, so the file is replaced whole) with only those entries changed, the WAVs they play under
+`sound/player/<character>/`, `sound/player/q3/` and `sound/player/footsteps/q3/` (own folders, so no mounted game's
+sounds are replaced), and the cfg. WAVs Source can't play (rates other than 11025/22050/44100 Hz, more than 16 bits,
+float) are re-encoded. Only one pack can replace the soundscript, so the tool warns about other `custom` folders that
+have their own copy (e.g. `custom/overrides/scripts/game_sounds_momentum_player.txt`). Folder packs are only replaced if
+MomentumPorter wrote them (`momentumporter_pack.txt`).
+
+In code, `PlayerSoundPackJob.Create(PlayerSoundPackOptions)` builds the job; `CustomPackWriter` (folder or VPK) and
+`SoundscriptFile` (edit soundscripts keeping comments) are reusable for other asset packs.
+
 ## Splitting brush entities
 
 `BrushModelEditor.SplitModel` gives each brush of a brush model its own model with a one node, one leaf collision
