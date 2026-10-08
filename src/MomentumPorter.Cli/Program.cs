@@ -27,6 +27,10 @@ internal static class Program
 {
     public static int Main(string[] args)
     {
+        // Verbs come first; anything else is the original "<input.bsp> <output.bsp>" map port
+        if (args.Length > 0 && args[0].Equals(SoundsCommand.Verb, StringComparison.OrdinalIgnoreCase))
+            return SoundsCommand.Run(args);
+
         return Parser.Default.ParseArguments<CliOptions>(args).MapResult(options => Run(options).GetAwaiter().GetResult(), _ => 1);
     }
 
