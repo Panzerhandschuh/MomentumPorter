@@ -1,0 +1,44 @@
+﻿qdir:    "C:\Users\tyler\AppData\Local\Temp\mp-player-spike\src\css_fit2\"
+gamedir: "C:\Users\tyler\AppData\Local\Temp\mp-player-spike\game\"
+g_path:  "C:\Users\tyler\AppData\Local\Temp\mp-player-spike\src\css_fit2\css_fit2.qc"
+Building binary model files...
+Working on "C:\Users\tyler\AppData\Local\Temp\mp-player-spike\src\css_fit2\css_fit2.qc"
+SMD MODEL body.smd
+Processing LOD for material: ct_urban
+Processing LOD for material: ct_urban_glass
+---------------------
+writing C:\Users\tyler\AppData\Local\Temp\mp-player-spike\game/models/player/spike/css_fit2.mdl:
+bones                  16320 bytes (61)
+   animation       x       y       ips    angle
+animations               116 bytes (1 anims) (1 frames) [0:00]
+sequences                460 bytes (1 seq) 
+ik/pose                  164 bytes
+eyeballs                   0 bytes (0 eyeballs)
+flexes                     0 bytes (0 flexes)
+textures                 136 bytes
+keyvalues                116 bytes
+bone transforms         8360 bytes
+bone flex driver           0 bytes
+bodygroup presets          0 bytes
+cloth                      0 bytes
+total                  26776
+---------------------
+writing C:\Users\tyler\AppData\Local\Temp\mp-player-spike\game/models/player/spike/css_fit2.vvd:
+vertices    188640 bytes (3930 vertices)
+tangents     62880 bytes (3930 vertices)
+total       251584 bytes
+---------------------
+Generating optimized mesh "C:\Users\tyler\AppData\Local\Temp\mp-player-spike\game/models/player/spike/css_fit2.dx90.vtx":
+body parts:         8 bytes
+models:            20 bytes
+model LODs:        12 bytes
+meshes:            18 bytes
+strip groups:      66 bytes
+strips:            70 bytes
+verts:          35370 bytes
+indices:        30144 bytes
+bone changes:     336 bytes
+everything:     66068 bytes
+
+Completed "C:\Users\tyler\AppData\Local\Temp\mp-player-spike\src\css_fit2\css_fit2.qc"
+

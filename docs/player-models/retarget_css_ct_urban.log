@@ -1,0 +1,80 @@
+﻿target skeleton: 61 bones (Euler vs quaternion rest pose differ by at most 0.0000 units)
+folded weighted bone ValveBiped.Bip01_R_Wrist into ValveBiped.Bip01_R_Forearm -> forearm.R
+folded weighted bone ValveBiped.Bip01_L_Wrist into ValveBiped.Bip01_L_Forearm -> forearm.L
+folded weighted bone ValveBiped.Bip01_L_Ulna into ValveBiped.Bip01_L_Forearm -> forearm.L
+folded weighted bone ValveBiped.Bip01_R_Ulna into ValveBiped.Bip01_R_Forearm -> forearm.R
+mapped ValveBiped.Bip01_Pelvis -> spine
+mapped ValveBiped.Bip01_L_Thigh -> thigh.L
+mapped ValveBiped.Bip01_L_Calf -> shin.L
+mapped ValveBiped.Bip01_L_Foot -> foot.L
+mapped ValveBiped.Bip01_L_Toe0 -> toe.L
+mapped ValveBiped.Bip01_R_Thigh -> thigh.R
+mapped ValveBiped.Bip01_R_Calf -> shin.R
+mapped ValveBiped.Bip01_R_Foot -> foot.R
+mapped ValveBiped.Bip01_R_Toe0 -> toe.R
+mapped ValveBiped.Bip01_Spine -> spine.001
+mapped ValveBiped.Bip01_Spine1 -> spine.002
+mapped ValveBiped.Bip01_Spine2 -> spine.003
+mapped ValveBiped.Bip01_Spine4 -> spine.003
+mapped ValveBiped.Bip01_Neck1 -> spine.005
+mapped ValveBiped.Bip01_Head1 -> spine.006
+mapped ValveBiped.Bip01_L_Clavicle -> shoulder.L
+mapped ValveBiped.Bip01_L_UpperArm -> upper_arm.L
+mapped ValveBiped.Bip01_L_Forearm -> forearm.L
+mapped ValveBiped.Bip01_L_Hand -> hand.L
+mapped ValveBiped.Bip01_L_Finger2 -> f_middle.01.L
+mapped ValveBiped.Bip01_L_Finger21 -> f_middle.02.L
+mapped ValveBiped.Bip01_L_Finger22 -> f_middle.03.L
+mapped ValveBiped.Bip01_L_Finger1 -> f_index.01.L
+mapped ValveBiped.Bip01_L_Finger11 -> f_index.02.L
+mapped ValveBiped.Bip01_L_Finger12 -> f_index.03.L
+mapped ValveBiped.Bip01_L_Finger0 -> thumb.01.L
+mapped ValveBiped.Bip01_L_Finger01 -> thumb.02.L
+mapped ValveBiped.Bip01_L_Finger02 -> thumb.03.L
+mapped ValveBiped.Bip01_R_Clavicle -> shoulder.R
+mapped ValveBiped.Bip01_R_UpperArm -> upper_arm.R
+mapped ValveBiped.Bip01_R_Forearm -> forearm.R
+mapped ValveBiped.Bip01_R_Hand -> hand.R
+mapped ValveBiped.Bip01_R_Finger2 -> f_middle.01.R
+mapped ValveBiped.Bip01_R_Finger21 -> f_middle.02.R
+mapped ValveBiped.Bip01_R_Finger22 -> f_middle.03.R
+mapped ValveBiped.Bip01_R_Finger1 -> f_index.01.R
+mapped ValveBiped.Bip01_R_Finger11 -> f_index.02.R
+mapped ValveBiped.Bip01_R_Finger12 -> f_index.03.R
+mapped ValveBiped.Bip01_R_Finger0 -> thumb.01.R
+mapped ValveBiped.Bip01_R_Finger01 -> thumb.02.R
+mapped ValveBiped.Bip01_R_Finger02 -> thumb.03.R
+target bones with no source bone (left unweighted): rootTransform, shoulder_helper.L, shoulder_helper.R, weapon_bone.R, palm.02.L, f_pinky.01.L, f_pinky.02.L, f_pinky.03.L, f_ring.01.L, f_ring.02.L, spine.004, thumb.01.helper.L, f_ring.03.L, thumb.01.helper.R, palm.02.R, f_ring.01.R, f_ring.02.R, f_ring.03.R, f_pinky.01.R, f_pinky.02.R, f_pinky.03.R
+source turned 90 degrees about z to face the target's way
+source scale: 0.939
+segment                                         source len  target len  ratio  bend (deg)
+  ValveBiped.Bip01_L_Thigh -> ValveBiped.Bip01_L_Calf      17.43      17.43   1.00      6.1
+  ValveBiped.Bip01_R_Thigh -> ValveBiped.Bip01_R_Calf      17.43      17.43   1.00      6.1
+  ValveBiped.Bip01_Spine -> ValveBiped.Bip01_Spine1       3.90       3.92   1.00     11.3
+  ValveBiped.Bip01_L_Calf -> ValveBiped.Bip01_L_Foot      16.14      16.45   1.02      0.5
+  ValveBiped.Bip01_R_Calf -> ValveBiped.Bip01_R_Foot      16.14      16.45   1.02      0.5
+  ValveBiped.Bip01_Spine1 -> ValveBiped.Bip01_Spine2       3.44       5.93   1.73      6.5
+  ValveBiped.Bip01_L_Foot -> ValveBiped.Bip01_L_Toe0       6.72       4.97   0.74      6.4
+  ValveBiped.Bip01_R_Foot -> ValveBiped.Bip01_R_Toe0       6.72       4.97   0.74      6.4
+  ValveBiped.Bip01_Spine2 -> ValveBiped.Bip01_Spine4       8.71       6.82   0.78      7.9
+  ValveBiped.Bip01_L_Clavicle -> ValveBiped.Bip01_L_UpperArm       5.89       7.40   1.26     12.3
+  ValveBiped.Bip01_R_Clavicle -> ValveBiped.Bip01_R_UpperArm       5.89       7.40   1.26     12.2
+  ValveBiped.Bip01_L_UpperArm -> ValveBiped.Bip01_L_Forearm      11.42      11.38   1.00     23.4
+  ValveBiped.Bip01_R_UpperArm -> ValveBiped.Bip01_R_Forearm      11.42      11.38   1.00     23.4
+  ValveBiped.Bip01_L_Forearm -> ValveBiped.Bip01_L_Hand      11.21       8.73   0.78     21.4
+  ValveBiped.Bip01_R_Forearm -> ValveBiped.Bip01_R_Hand      11.21       8.73   0.78     21.4
+  ValveBiped.Bip01_L_Hand -> ValveBiped.Bip01_L_Finger2       3.82       4.81   1.26     13.8
+  ValveBiped.Bip01_R_Hand -> ValveBiped.Bip01_R_Finger2       3.82       4.81   1.26     13.8
+  ValveBiped.Bip01_L_Finger2 -> ValveBiped.Bip01_L_Finger21       1.68       1.16   0.69      8.9
+  ValveBiped.Bip01_L_Finger1 -> ValveBiped.Bip01_L_Finger11       1.68       0.97   0.58     10.5
+  ValveBiped.Bip01_L_Finger0 -> ValveBiped.Bip01_L_Finger01       1.75       1.27   0.73     31.6
+  ValveBiped.Bip01_R_Finger2 -> ValveBiped.Bip01_R_Finger21       1.68       1.16   0.69      8.9
+  ValveBiped.Bip01_R_Finger1 -> ValveBiped.Bip01_R_Finger11       1.68       0.97   0.58      9.9
+  ValveBiped.Bip01_R_Finger0 -> ValveBiped.Bip01_R_Finger01       1.75       1.27   0.73     31.1
+  ValveBiped.Bip01_L_Finger21 -> ValveBiped.Bip01_L_Finger22       1.18       1.49   1.26     31.7
+  ValveBiped.Bip01_L_Finger11 -> ValveBiped.Bip01_L_Finger12       1.07       1.26   1.17     30.7
+  ValveBiped.Bip01_L_Finger01 -> ValveBiped.Bip01_L_Finger02       1.18       1.24   1.05     10.7
+  ValveBiped.Bip01_R_Finger21 -> ValveBiped.Bip01_R_Finger22       1.18       1.49   1.26     31.7
+  ValveBiped.Bip01_R_Finger11 -> ValveBiped.Bip01_R_Finger12       1.07       1.26   1.17     30.3
+  ValveBiped.Bip01_R_Finger01 -> ValveBiped.Bip01_R_Finger02       1.18       1.24   1.05     10.0
+wrote css2_fit.smd: 61 bones, 5024 triangles
