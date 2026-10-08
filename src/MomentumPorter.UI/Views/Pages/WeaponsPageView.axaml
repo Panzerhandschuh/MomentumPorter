@@ -47,8 +47,11 @@
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
-          <TextBlock Text="{Binding GameLimitations}" Classes="muted" FontSize="12" TextWrapping="Wrap"
-                     IsVisible="{Binding GameLimitations, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <!-- Collapsed by default: it's a paragraph per game, and the weapon list below it needs the room -->
+          <Expander Header="What carries over" IsExpanded="False" HorizontalAlignment="Stretch" Padding="0" MinHeight="0"
+                    IsVisible="{Binding GameLimitations, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding GameLimitations}" Classes="muted" FontSize="12" TextWrapping="Wrap" Margin="0 4 0 2" />
+          </Expander>
           <TextBlock Text="Weapon" Classes="h2" Margin="0 8 0 0" />
         </StackPanel>
         <ListBox ItemsSource="{Binding Weapons}" SelectedItem="{Binding SelectedWeapon}" Background="Transparent" Margin="4 0 4 4">
