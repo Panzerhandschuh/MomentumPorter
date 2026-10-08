@@ -28,7 +28,8 @@ public sealed class WeaponsPageViewModel : PageViewModel
         _settings = settings;
         Runner = runner;
         Catalog = catalog ?? WeaponCatalog.Default;
-        OptionsForm = new OptionsFormViewModel(_options);
+        // The page picks the game, weapon and slot with its own lists
+        OptionsForm = new OptionsFormViewModel(_options, exclude: [nameof(WeaponPackOptions.Game), nameof(WeaponPackOptions.Weapon), nameof(WeaponPackOptions.Slot)]);
         Games = Catalog.Games;
 
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);
@@ -111,7 +112,9 @@ public sealed class WeaponsPageViewModel : PageViewModel
     }
 
     /// <summary>What the selected game can't reproduce, from the catalog.</summary>
-    public string? GameLimitations => SelectedGame is { Limitations.Count: > 0 } game ? string.Join(" ", game.Limitations) : null;
+    public string? GameLimitations => SelectedGame is { Limitations.Count: > 0 } game
+        ? string.Join(" ", game.Limitations.Select(x => x.TrimEnd().EndsWith('.') ? x.Trim() : x.Trim() + "."))
+        : null;
 
     public WeaponPackBuildViewModel? SelectedBuild
     {
@@ -142,6 +145,9 @@ public sealed class WeaponsPageViewModel : PageViewModel
     public PreparedJob Prepare(WeaponPackBuildViewModel build)
     {
         WeaponPackOptions options = OptionsPreset.Clone(_options);
+        options.Game = SelectedGame?.Id ?? options.Game;
+        options.Weapon = SelectedWeapon?.Id ?? options.Weapon;
+        options.Slot = SelectedSlot ?? options.Slot;
         PorterSettings settings = _settings.Settings.Clone();
 
         if (string.IsNullOrWhiteSpace(options.MomentumDirectory) && !string.IsNullOrWhiteSpace(settings.MomentumDirectory))

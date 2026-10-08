@@ -29,7 +29,8 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
         _settings = settings;
         _post = post;
         Runner = runner;
-        OptionsForm = new OptionsFormViewModel(_options);
+        // The page picks the character from the installed game's list
+        OptionsForm = new OptionsFormViewModel(_options, exclude: [nameof(PlayerSoundPackOptions.Character)]);
         _selectedCharacter = _options.Character;
 
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);

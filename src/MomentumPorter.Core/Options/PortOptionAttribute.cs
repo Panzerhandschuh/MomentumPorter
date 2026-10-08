@@ -27,6 +27,17 @@ public sealed class PortOptionAttribute(string label, string help) : Attribute
 
     /// <summary>For strings: the kind of path, so the UI can show a browse button.</summary>
     public PathKind Path { get; init; } = PathKind.None;
+
+    /// <summary>For strings: a fixed list the UI offers instead of free text.</summary>
+    public OptionChoices Choices { get; init; } = OptionChoices.None;
+}
+
+public enum OptionChoices
+{
+    None,
+
+    /// <summary>A map game profile name (<c>GameProfiles.All</c>), or null to detect it.</summary>
+    GameProfile,
 }
 
 public enum PathKind
@@ -42,14 +53,23 @@ public enum PathKind
 /// </summary>
 public static class PortOptions
 {
+    /// <summary>
+    /// The options of a type, grouped in the order the groups first appear in the class (so the class decides which
+    /// group comes first), then by <see cref="PortOptionAttribute.Order"/> within each group.
+    /// </summary>
     public static IReadOnlyList<PortOptionInfo> Describe(Type optionsType)
     {
-        return optionsType
+        List<PortOptionInfo> options = optionsType
             .GetProperties()
+            .OrderBy(p => p.MetadataToken)
             .Select(p => (Property: p, Attribute: p.GetCustomAttributes(typeof(PortOptionAttribute), inherit: true).OfType<PortOptionAttribute>().FirstOrDefault()))
             .Where(x => x.Attribute is not null && x.Property.CanWrite)
             .Select(x => new PortOptionInfo(x.Property, x.Attribute!))
-            .OrderBy(x => x.Attribute.Group)
+            .ToList();
+
+        List<string> groupOrder = options.Select(x => x.Attribute.Group).Distinct().ToList();
+        return options
+            .OrderBy(x => groupOrder.IndexOf(x.Attribute.Group))
             .ThenBy(x => x.Attribute.Order)
             .ThenBy(x => x.Attribute.Label)
             .ToList();

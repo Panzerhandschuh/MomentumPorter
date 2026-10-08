@@ -14,7 +14,7 @@ public class OptionsFormTests
 
     public sealed class SampleOptions
     {
-        [PortOption("Game", "Which game.")]
+        [PortOption("Game", "Which game.", Choices = OptionChoices.GameProfile)]
         public string? Game { get; set; }
 
         [PortOption("Enabled", "Turns it on.", Order = 1)]
@@ -43,8 +43,8 @@ public class OptionsFormTests
     {
         var form = new OptionsFormViewModel(new SampleOptions());
 
-        // General first, then the others as PortOptions.Describe orders them
-        Assert.Equal(["General", "After", "Textures"], form.Groups.Select(x => x.Name));
+        // General first, then the others in the order the class declares them
+        Assert.Equal(["General", "Textures", "After"], form.Groups.Select(x => x.Name));
         Assert.Equal(7, form.Fields.Count());
         Assert.Null(form.Find(nameof(SampleOptions.NotAnOption)));
 

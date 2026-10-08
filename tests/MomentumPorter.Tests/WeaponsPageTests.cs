@@ -38,6 +38,34 @@ public class WeaponsPageTests
     }
 
     [Fact]
+    public void SwitchingGamesKeepsTheGameTheJobBuilds()
+    {
+        WeaponsPageViewModel page = CreatePage();
+
+        // The form must not offer map profiles for the weapon's game, which turned "q3" back into "css"
+        Assert.Null(page.OptionsForm.Find(nameof(WeaponPackOptions.Game)));
+        Assert.Null(page.OptionsForm.Find(nameof(WeaponPackOptions.Weapon)));
+        Assert.Null(page.OptionsForm.Find(nameof(WeaponPackOptions.Slot)));
+
+        foreach (string game in new[] { "q3", "tf2", "cs16", "css" })
+        {
+            page.SelectedGame = page.Games.First(x => x.Id == game);
+            page.OptionsForm.Reload();
+
+            var options = (WeaponPackOptions)page.OptionsForm.Options;
+            Assert.Equal(game, options.Game);
+            Assert.Equal(page.SelectedWeapon!.Id, options.Weapon);
+        }
+    }
+
+    [Fact]
+    public void MapOptionsStillOfferGameProfiles()
+    {
+        var form = new MomentumPorter.UI.ViewModels.Shared.OptionsFormViewModel(new MomentumPorter.Options.MapPortOptions());
+        Assert.IsType<MomentumPorter.UI.ViewModels.Shared.ChoiceOptionViewModel>(form.Find(nameof(MomentumPorter.Options.MapPortOptions.Game)));
+    }
+
+    [Fact]
     public void PreparesAWeaponPackJob()
     {
         WeaponsPageViewModel page = CreatePage();

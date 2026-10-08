@@ -7,7 +7,7 @@ namespace MomentumPorter.Options;
 public sealed class MapPortOptions
 {
     /// <summary>Game profile name (<c>GameProfiles.All</c>), or null to detect it from the map's entities.</summary>
-    [PortOption("Source game", "The game the map was made for. Detected from the map's entities when left empty.", Order = 0)]
+    [PortOption("Source game", "The game the map was made for. Detected from the map's entities when left empty.", Order = 0, Choices = OptionChoices.GameProfile)]
     public string? Game { get; set; }
 
     [PortOption("Compress output", "LZMA compress the ported map's lumps and packed files, like bspzip -repack -compress.", Order = 10)]

@@ -23,7 +23,11 @@ public class PlayerSoundsPageTests
 
         PlayerSoundPackOptions options = (PlayerSoundPackOptions)page.OptionsForm.Options;
         Assert.Equal("sarge", options.Character);
-        Assert.NotNull(page.OptionsForm.Find(nameof(PlayerSoundPackOptions.Character)));
+        // The page's character list replaces the form's free-text field
+        Assert.Null(page.OptionsForm.Find(nameof(PlayerSoundPackOptions.Character)));
+
+        // The sound options come before output and folder settings
+        Assert.Equal("Sounds", page.OptionsForm.Groups[0].Name);
     }
 
     [Fact]

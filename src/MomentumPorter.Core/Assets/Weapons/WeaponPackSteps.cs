@@ -405,7 +405,15 @@ public sealed class WriteWeaponPackStep : IPortStep
             context.Report.Change($"Wrote {file}");
 
         context.Set(new WeaponPackOutput(state.PackDirectory, sink.Files.ToList()));
-        context.Log.Info($"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/ and run weapon_reload_scripts (sounds need a restart).");
+        // Packs written straight into Momentum's custom folder are already live; anywhere else they have to be copied there
+        bool inCustom = state.Momentum is { } momentum &&
+            string.Equals(
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetDirectoryName(state.PackDirectory)!)),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(momentum.GameDirectory, "custom"))),
+                StringComparison.OrdinalIgnoreCase);
+        context.Log.Info(inCustom
+            ? $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Run weapon_reload_scripts in game (sounds need a restart)."
+            : $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/ and run weapon_reload_scripts (sounds need a restart).");
         state.Dispose();
         return Task.CompletedTask;
     }

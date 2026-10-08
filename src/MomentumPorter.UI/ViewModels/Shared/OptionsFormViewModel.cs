@@ -14,14 +14,16 @@ public sealed class OptionsFormViewModel : ViewModel
 {
     public const string DefaultGroup = "General";
 
-    public OptionsFormViewModel(object options, Type? optionsType = null)
+    /// <param name="exclude">Options the page edits with its own controls, left out of the form</param>
+    public OptionsFormViewModel(object options, Type? optionsType = null, IEnumerable<string>? exclude = null)
     {
         Options = options;
         OptionsType = optionsType ?? options.GetType();
         if (!OptionsType.IsInstanceOfType(options))
             throw new ArgumentException($"{options.GetType().Name} isn't a {OptionsType.Name}", nameof(options));
 
-        IReadOnlyList<PortOptionInfo> infos = PortOptions.Describe(OptionsType);
+        var excluded = new HashSet<string>(exclude ?? [], StringComparer.Ordinal);
+        IReadOnlyList<PortOptionInfo> infos = PortOptions.Describe(OptionsType).Where(x => !excluded.Contains(x.Name)).ToList();
         var fields = infos.Select(x => OptionFieldViewModel.Create(x, options)).OfType<OptionFieldViewModel>().ToList();
 
         // General first, then the rest in the order Describe sorts them
@@ -109,7 +111,7 @@ public abstract class OptionFieldViewModel(PortOptionInfo info, object target) :
 
         if (type == typeof(string))
         {
-            return info.Name == "Game" && info.Attribute.Path == PathKind.None
+            return info.Attribute.Choices == OptionChoices.GameProfile
                 ? new ChoiceOptionViewModel(info, target, GameChoices())
                 : new TextOptionViewModel(info, target);
         }

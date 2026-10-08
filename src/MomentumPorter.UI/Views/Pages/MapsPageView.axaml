@@ -15,7 +15,7 @@
     <DockPanel Grid.Row="0" Grid.ColumnSpan="3" Margin="0 0 0 12">
       <StackPanel DockPanel.Dock="Left" Spacing="2" VerticalAlignment="Center">
         <TextBlock Text="Maps" Classes="h1" />
-        <TextBlock Text="Port Source maps (KZ Mod), pack their assets and install them into Momentum Mod"
+        <TextBlock Text="Port KZ Mod, GOKZ, Quake 3 and GoldSrc maps, pack their assets and install them into Momentum Mod"
                    Classes="muted" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
