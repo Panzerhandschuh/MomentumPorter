@@ -141,6 +141,22 @@ public sealed class CheckMountedAssetsStep : IPortStep
             state.ArmsModel = Check(arms, "arms model");
 
         context.Log.Info($"Found {string.Join(", ", weapon.Models.Concat(state.ArmsModel is null ? [] : [state.ArmsModel]))} in {content.Name}");
+
+        // Momentum mounts CS:S, CS:GO, TF2 and HL2 together, and a path two of them ship (CS:S's and CS:GO's
+        // models/weapons/v_pist_deagle.mdl) is one game's file for every weapon script that names it. A model another
+        // mounted game ships too is copied into the pack under its own path; the pack's folder is mounted first.
+        using var copier = new MountedModelCopier(state);
+        bool sideIsView = state.ViewSideModel == state.ViewModel;
+        state.ViewModel = copier.Resolve(context, state, state.ViewModel);
+        state.ViewSideModel = sideIsView ? state.ViewModel : copier.Resolve(context, state, state.ViewSideModel);
+        state.ProjectileModel = copier.Resolve(context, state, state.ProjectileModel);
+        state.ArmsModel = copier.Resolve(context, state, state.ArmsModel);
+        if (!state.Options.FitWorldModel)
+        {
+            // Fitted world models are recompiled under the pack's own path anyway (FitWorldModelStep)
+            state.WorldModel = copier.Resolve(context, state, state.WorldModel);
+        }
+
         return Task.CompletedTask;
 
         string? Check(string? model, string what)
@@ -154,6 +170,98 @@ public sealed class CheckMountedAssetsStep : IPortStep
             context.Report.Warn($"The {what} {model} isn't in {content.Name}'s VPKs; Momentum's is kept");
             return null;
         }
+    }
+}
+
+/// <summary>
+/// Copies a mounted game's model into the pack when another game Momentum mounts ships the same path. See
+/// <see cref="CheckMountedAssetsStep"/>.
+/// </summary>
+file sealed class MountedModelCopier : IDisposable
+{
+    // A compiled model's files, next to its .mdl
+    private static readonly string[] Companions = [".mdl", ".vvd", ".dx90.vtx", ".dx80.vtx", ".sw.vtx", ".phy", ".ani"];
+
+    private readonly List<GameContent> _others = [];
+
+    public MountedModelCopier(WeaponPackState state)
+    {
+        foreach (SourceGameInfo other in SourceGames.All.Where(x => x.MountedByMomentum && !x.Id.Equals(state.GameInfo!.Id, StringComparison.OrdinalIgnoreCase)))
+        {
+            try
+            {
+                _others.Add(SourceGames.Open(other, state.Steam!, state.Momentum!.InstallDirectory));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                // Not installed, or unreadable: it can't be mounted either
+            }
+        }
+    }
+
+    /// <summary>The model's path in the pack when another mounted game ships it too, else the model as it is.</summary>
+    public string? Resolve(PortJobContext context, WeaponPackState state, string? model)
+    {
+        if (model is null)
+            return null;
+
+        GameContent? other = _others.FirstOrDefault(x => x.Exists(model));
+        if (other is null)
+            return model;
+
+        GameContent content = state.Content!;
+        string normalized = ContentPath.Normalize(model).ToLowerInvariant();
+        string bare = Path.ChangeExtension(normalized, null);
+        string target = $"models/porter/{state.Game!.Id}/{(bare.StartsWith("models/", StringComparison.Ordinal) ? bare["models/".Length..] : bare)}";
+        byte[]? mdl = null;
+        foreach (string extension in Companions)
+        {
+            if (content.Read(bare + extension) is not { } data)
+                continue;
+
+            state.Sink!.AddFile(target + extension, data);
+            if (extension == ".mdl")
+                mdl = data;
+        }
+
+        if (mdl is null)
+        {
+            context.Report.Warn($"{other.Name} ships {model} too and Momentum mounts both, but {content.Name}'s copy couldn't be read, so the game's own choice between them is used");
+            return model;
+        }
+
+        // The materials stay at their own paths; they're a problem only when the other game ships those too
+        var sharedTextures = new List<string>();
+        try
+        {
+            StudioModelHeader header = StudioModelHeader.Read(mdl);
+            foreach (string directory in header.TextureDirectories)
+            {
+                foreach (string texture in header.Textures)
+                {
+                    string material = ContentPath.Normalize("materials/" + directory.Trim('/', '\\') + "/" + texture.Trim('/', '\\') + ".vmt");
+                    if (other.Exists(material))
+                        sharedTextures.Add(material);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is InvalidDataException or ArgumentException or IndexOutOfRangeException)
+        {
+            context.Log.Info($"Couldn't read {model}'s materials to check them against {other.Name}: {ex.Message}");
+        }
+
+        context.Report.Change($"{Path.GetFileName(model)} copied into the pack: {other.Name} ships it too");
+        context.Log.Info($"{other.Name} ships {model} too, and Momentum mounts both, so {content.Name}'s copy is in the pack as {target}.mdl");
+        if (sharedTextures.Count > 0)
+            context.Report.Warn($"{other.Name} also ships {model}'s materials ({string.Join(", ", sharedTextures.Take(3))}{(sharedTextures.Count > 3 ? ", ..." : "")}), so the model may show {other.Name}'s textures");
+
+        return target + ".mdl";
+    }
+
+    public void Dispose()
+    {
+        foreach (GameContent other in _others)
+            other.Dispose();
     }
 }
 
@@ -189,8 +297,16 @@ public sealed class ConvertModelsStep : IPortStep
         {
             case ContentEngine.GoldSrc:
             {
+                // The sprite flash the view model's muzzle flash events draw (MUZZLEFLASH_* in shareddefs.h; in first
+                // person the engine has the shotgun's, the SMG's and the pistol's)
+                int muzzleFlash = state.Slot.Id switch
+                {
+                    "shotgun" or "df_shotgun" => 1,
+                    "machinegun" or "df_machinegun" => 2,
+                    _ => 4,
+                };
                 var converter = new GoldSrcWeaponConverter(state.Content!, compiler, info.Id, context.WorkDirectory);
-                convert = (path, viewKind, _) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation);
+                convert = (path, viewKind, _) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation, viewKind == ViewModelKind.Gun ? muzzleFlash : null);
                 break;
             }
             case ContentEngine.Quake3:

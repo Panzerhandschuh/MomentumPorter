@@ -1,5 +1,6 @@
 namespace MomentumPorter.Assets.Models;
 
+using System.Globalization;
 using System.Numerics;
 using System.Text;
 using BSPConvert.Lib.GoldSrc;
@@ -22,6 +23,9 @@ public enum ViewModelKind
 /// <param name="Sounds">The sounds its animation events play: the source game's path and the pack's (both sound/...)</param>
 public sealed record ConvertedModel(string GamePath, IReadOnlyList<(string GamePath, string File)> Files, IReadOnlyList<(string Source, string Pack)> Sounds);
 
+/// <summary>A GoldSrc model's attachment point (mstudioattachment_t): its origin is relative to its bone.</summary>
+public sealed record GoldSrcAttachment(string Name, int Bone, Vector3 Origin);
+
 /// <summary>
 /// Converts GoldSrc weapon models (v_, w_, p_ .mdl) to Source models with BSPConvert's <see cref="GoldSrcModel"/>
 /// reader and material converter. Unlike BSPConvert's map model compiler, view models keep their sequences with
@@ -32,6 +36,10 @@ public sealed class GoldSrcWeaponConverter
 {
     // Event that plays a sound on the client (CL_EVENT_SOUND), in GoldSrc and Source
     private const int SoundEvent = 5004;
+
+    // Events that draw a muzzle flash at attachment 0-3 (CL_EVENT_MUZZLEFLASH0-3), the same numbers in GoldSrc and Source
+    private const int MuzzleFlashEvent = 5001;
+    private const int MuzzleFlashEventStep = 10;
 
     private readonly GameContent _content;
     private readonly StudioMdlCompiler _compiler;
@@ -64,7 +72,11 @@ public sealed class GoldSrcWeaponConverter
 
     /// <param name="modelPath">Game path of the GoldSrc model, e.g. <c>models/v_ak47.mdl</c></param>
     /// <param name="kind">For view models, what activities its sequences get; null for world models</param>
-    public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation)
+    /// <param name="muzzleFlash">
+    /// The Source sprite flash (MUZZLEFLASH_*) the model's muzzle flash events draw, at the attachment GoldSrc drew
+    /// its own at; null drops the events.
+    /// </param>
+    public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation, int? muzzleFlash = null)
     {
         string file = Extract(modelPath) ?? throw new PortStepException($"{modelPath} isn't in {_content.Name}'s files");
         GoldSrcModel model = GoldSrcModel.Read(file, FindCompanion, out string? error)
@@ -124,6 +136,16 @@ public sealed class GoldSrcWeaponConverter
 
         WriteTextureGroup(qc, model, materialNames);
 
+        // View models' attachments, in GoldSrc's order: Source numbers them from 1 the same way, which is how a
+        // muzzle flash event finds its attachment
+        IReadOnlyList<GoldSrcAttachment> attachments = kind is null ? [] : ReadAttachments(data);
+        for (int i = 0; i < attachments.Count; i++)
+        {
+            GoldSrcAttachment attachment = attachments[i];
+            string bone = bones[Math.Clamp(attachment.Bone, 0, bones.Count - 1)].Name;
+            qc.Attachment(i == 0 ? "muzzle" : $"attachment{i}", bone, attachment.Origin.X, attachment.Origin.Y, attachment.Origin.Z);
+        }
+
         IReadOnlyList<List<(int Frame, int Event, string Options)>> events = ReadEvents(data, model.Sequences.Count);
         string[] sequenceNames = MakeUnique(model.Sequences.Select(x => Sanitize(x.Name, "sequence")));
         IReadOnlyList<string?> activities = kind is { } viewKind ? AssignActivities(sequenceNames, viewKind) : new string?[sequenceNames.Length];
@@ -140,13 +162,23 @@ public sealed class GoldSrcWeaponConverter
             var qcEvents = new List<QcEvent>();
             foreach ((int frame, int eventId, string options) in events[i])
             {
+                int clampedFrame = Math.Min(frame, Math.Max(sequence.FrameCount - 1, 0));
+                if (IsMuzzleFlashEvent(eventId, out int attachment))
+                {
+                    // Source draws its sprite flash (the options name which) at the same attachment
+                    if (muzzleFlash is { } flash && attachment < attachments.Count)
+                        qcEvents.Add(new QcEvent(eventId, clampedFrame, flash.ToString(CultureInfo.InvariantCulture)));
+
+                    continue;
+                }
+
                 if (eventId != SoundEvent || options.Length == 0)
                     continue;
 
                 string source = "sound/" + ContentPath.Normalize(options);
                 string pack = GetSoundPath(source);
                 sounds.Add((source, pack));
-                qcEvents.Add(new QcEvent(SoundEvent, Math.Min(frame, Math.Max(sequence.FrameCount - 1, 0)), SoundEntryName(_gameId, pack)));
+                qcEvents.Add(new QcEvent(SoundEvent, clampedFrame, SoundEntryName(_gameId, pack)));
             }
 
             qc.Sequence(new QcSequence(sequenceNames[i], smd, sequence.Fps > 0 ? sequence.Fps : 30, sequence.Looping, activities[i], qcEvents));
@@ -232,6 +264,37 @@ public sealed class GoldSrcWeaponConverter
 
         qc.TextureGroup("skinfamilies", families.Select(family => skinRefs.Select(skinRef =>
             family[skinRef] >= 0 && family[skinRef] < materialNames.Length ? materialNames[family[skinRef]] : materialNames[families[0][skinRef]])));
+    }
+
+    private static bool IsMuzzleFlashEvent(int eventId, out int attachment)
+    {
+        attachment = (eventId - MuzzleFlashEvent) / MuzzleFlashEventStep;
+        return eventId >= MuzzleFlashEvent && eventId <= MuzzleFlashEvent + 3 * MuzzleFlashEventStep && (eventId - MuzzleFlashEvent) % MuzzleFlashEventStep == 0;
+    }
+
+    /// <summary>
+    /// The model's attachments (studiohdr_t: numattachments at 212, attachmentindex at 216; mstudioattachment_t:
+    /// name[32], type, bone, org, vectors[3], 88 bytes).
+    /// </summary>
+    public static IReadOnlyList<GoldSrcAttachment> ReadAttachments(byte[] data)
+    {
+        var result = new List<GoldSrcAttachment>();
+        if (data.Length < 220)
+            return result;
+
+        int count = BitConverter.ToInt32(data, 212);
+        int index = BitConverter.ToInt32(data, 216);
+        for (int i = 0; i < count && index >= 0 && index + (i + 1) * 88 <= data.Length; i++)
+        {
+            int offset = index + i * 88;
+            int end = Array.IndexOf(data, (byte)0, offset, 32);
+            string name = Encoding.ASCII.GetString(data, offset, (end >= 0 ? end : offset + 32) - offset).Trim();
+            int bone = BitConverter.ToInt32(data, offset + 36);
+            var origin = new Vector3(BitConverter.ToSingle(data, offset + 40), BitConverter.ToSingle(data, offset + 44), BitConverter.ToSingle(data, offset + 48));
+            result.Add(new GoldSrcAttachment(name, bone, origin));
+        }
+
+        return result;
     }
 
     /// <summary>

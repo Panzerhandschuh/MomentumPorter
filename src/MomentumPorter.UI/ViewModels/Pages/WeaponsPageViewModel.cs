@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using Material.Icons;
+using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Settings;
@@ -120,8 +121,11 @@ public sealed class WeaponsPageViewModel : PageViewModel
                 return;
 
             _options.Game = value.Id;
+            // Only Quake 3 has the Quake 3 options; GoldSrc world models aren't fitted (nothing marks how they're held)
             bool quake3 = value.Id.Equals("q3", StringComparison.OrdinalIgnoreCase);
-            OptionsForm.SetFilter(x => quake3 || x.Info.Attribute.Group != WeaponPackOptions.Quake3Group);
+            bool goldSrc = SourceGames.Find(value.Id)?.Engine == ContentEngine.GoldSrc;
+            OptionsForm.SetFilter(x => (quake3 || x.Info.Attribute.Group != WeaponPackOptions.Quake3Group)
+                && (!goldSrc || x.Name != nameof(WeaponPackOptions.FitWorldModel)));
             foreach (CatalogWeapon weapon in value.Weapons.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
                 Weapons.Add(weapon);
 

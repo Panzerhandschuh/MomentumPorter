@@ -2,6 +2,7 @@ namespace MomentumPorter.Tests;
 
 using System.IO.Compression;
 using System.Text;
+using MomentumPorter.Assets.Models;
 using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Assets.Particles;
 using MomentumPorter.Assets.Weapons;
@@ -122,7 +123,18 @@ public class WeaponPackTests
             Assert.Equal(WeaponPackBuilder.SharedPackName, Path.GetFileName(pack));
 
             WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_machinegun.txt")));
-            Assert.Equal("models/weapons/v_rif_ak47.mdl", script.GetModel("view"));
+            // CS:GO ships models/weapons/v_rif_ak47.mdl too, and Momentum mounts both, so CS:S's copy goes in the pack
+            if (CanBuild("csgo"))
+            {
+                Assert.Equal("models/porter/css/weapons/v_rif_ak47.mdl", script.GetModel("view"));
+                Assert.True(File.Exists(Path.Combine(pack, "models", "porter", "css", "weapons", "v_rif_ak47.vvd")));
+                Assert.True(File.Exists(Path.Combine(pack, "models", "porter", "css", "weapons", "v_rif_ak47.dx90.vtx")));
+                Assert.Contains("Counter-Strike: Global Offensive (legacy) ships", Report(result));
+            }
+            else
+            {
+                Assert.Equal("models/weapons/v_rif_ak47.mdl", script.GetModel("view"));
+            }
             // The world model is recompiled to sit in Momentum's player's hand
             Assert.Equal("models/porter/css/w_rif_ak47.mdl", script.GetModel("world"));
             Assert.Equal("models/porter/css/w_rif_ak47.mdl", script.GetModel("spawner"));
@@ -445,6 +457,8 @@ public class WeaponPackTests
 
             WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_machinegun.txt")));
             Assert.Equal("models/porter/cs16/v_ak47.mdl", script.GetModel("view"));
+            // The model's attachments come along, so its muzzle flash events have somewhere to draw
+            Assert.Contains(StudioModelHeader.Read(Path.Combine(pack, "models", "porter", "cs16", "v_ak47.mdl")).Attachments, x => x.Name == "muzzle");
             Assert.Equal("Porter_cs16.ak47.single_shot", script.SoundOverrides["Weapon_SMG1.Single"]);
         }
         finally

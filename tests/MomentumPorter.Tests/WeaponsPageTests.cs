@@ -68,6 +68,11 @@ public class WeaponsPageTests
         Assert.Equal(WeaponPackOptions.AdvancedGroup, advanced.AdvancedHeader);
         Assert.Contains(advanced.AdvancedFields, x => x.Name == nameof(WeaponPackOptions.OutputDirectory));
 
+        // GoldSrc world models aren't fitted, so the option isn't offered
+        Assert.Contains(page.OptionsForm.Groups.SelectMany(x => x.Fields), x => x.Name == nameof(WeaponPackOptions.FitWorldModel));
+        page.SelectedGame = page.Games.First(x => x.Id == "cs16");
+        Assert.DoesNotContain(page.OptionsForm.Groups.SelectMany(x => x.Fields), x => x.Name == nameof(WeaponPackOptions.FitWorldModel));
+
         foreach (string game in new[] { "q3", "tf2", "cs16", "css" })
         {
             page.SelectedGame = page.Games.First(x => x.Id == game);
