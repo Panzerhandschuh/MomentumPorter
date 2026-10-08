@@ -1,0 +1,134 @@
+namespace MomentumPorter.Cli;
+
+using CommandLine;
+using MomentumPorter.Assets.Vpk;
+using MomentumPorter.Assets.Weapons;
+using MomentumPorter.Pipeline;
+
+[Verb("weapon", HelpText = "Port a weapon from another game into a Momentum weapon slot as a custom pack")]
+internal sealed class WeaponCliOptions
+{
+    [Option('g', "game", HelpText = "Game the weapon comes from: css, csgo, tf2, hl2 (mounted, scripts only), cs16, hl1 (GoldSrc) or q3")]
+    public string? Game { get; set; }
+
+    [Option('w', "weapon", HelpText = "Weapon id from the catalog (see --list)")]
+    public string? Weapon { get; set; }
+
+    [Option('s', "slot", HelpText = "Momentum weapon it replaces (pistol, machinegun, shotgun, sniper, knife, grenade, rocketlauncher, stickylauncher, concgrenade, df_*). Defaults to the weapon's best fit.")]
+    public string? Slot { get; set; }
+
+    [Option('o', "output", HelpText = "Folder to write the pack folder into")]
+    public string? Output { get; set; }
+
+    [Option("name", HelpText = "Pack name. Defaults to <game>_<weapon>_<slot>.")]
+    public string? Name { get; set; }
+
+    [Option("no-sounds", HelpText = "Keep Momentum's sounds")]
+    public bool NoSounds { get; set; }
+
+    [Option("arms", HelpText = "auto, momentum (draw Momentum's arms) or none", Default = "auto")]
+    public string Arms { get; set; } = "auto";
+
+    [Option("no-projectile", HelpText = "Keep Momentum's projectile model")]
+    public bool NoProjectile { get; set; }
+
+    [Option("no-particles", HelpText = "Keep Momentum's particles")]
+    public bool NoParticles { get; set; }
+
+    [Option("momentum-dir", HelpText = "Momentum Mod's install folder. Found through Steam by default.")]
+    public string? MomentumDirectory { get; set; }
+
+    [Option("game-dir", HelpText = "The source game's content folder (cstrike, tf, baseq3...). Found through Steam by default.")]
+    public string? GameDirectory { get; set; }
+
+    [Option("studiomdl", HelpText = "studiomdl.exe for converted models. Defaults to Momentum's.")]
+    public string? StudioMdl { get; set; }
+
+    [Option("list", HelpText = "List the catalog's weapons (of --game, if given) and exit")]
+    public bool List { get; set; }
+}
+
+/// <summary>
+/// <c>MomentumPorter weapon ...</c>: ports a weapon into a Momentum weapon slot.
+/// </summary>
+internal static class WeaponCommand
+{
+    public const string Verb = "weapon";
+
+    public static int Run(string[] args)
+    {
+        return new Parser(with =>
+            {
+                with.HelpWriter = Console.Error;
+                with.CaseSensitive = false;
+            })
+            .ParseArguments(args, typeof(WeaponCliOptions))
+            .MapResult((WeaponCliOptions options) => Run(options).GetAwaiter().GetResult(), _ => 1);
+    }
+
+    private static async Task<int> Run(WeaponCliOptions cli)
+    {
+        WeaponCatalog catalog = WeaponCatalog.Default;
+        if (cli.List)
+            return List(catalog, cli.Game);
+
+        if (cli.Game is null || cli.Weapon is null || cli.Output is null)
+        {
+            Console.Error.WriteLine("weapon needs --game, --weapon and --output (or --list)");
+            return 1;
+        }
+
+        if (!Enum.TryParse(cli.Arms, ignoreCase: true, out WeaponArms arms))
+        {
+            Console.Error.WriteLine($"Unknown --arms \"{cli.Arms}\"; use auto, momentum or none");
+            return 1;
+        }
+
+        var options = new WeaponPackOptions
+        {
+            Game = cli.Game,
+            Weapon = cli.Weapon,
+            Slot = cli.Slot,
+            OutputDirectory = cli.Output,
+            PackName = cli.Name,
+            Sounds = !cli.NoSounds,
+            Arms = arms,
+            Projectile = !cli.NoProjectile,
+            Particles = !cli.NoParticles,
+            MomentumDirectory = cli.MomentumDirectory,
+            GameDirectory = cli.GameDirectory,
+            StudioMdlPath = cli.StudioMdl,
+        };
+
+        PortJobResult result = await WeaponPackBuilder.RunAsync(options, ConsoleLog.Instance);
+        result.Report.Print(Console.Out);
+        return result.Succeeded ? 0 : 1;
+    }
+
+    private static int List(WeaponCatalog catalog, string? gameId)
+    {
+        IEnumerable<CatalogGame> games = catalog.Games;
+        if (gameId is not null)
+        {
+            CatalogGame? game = catalog.FindGame(gameId);
+            if (game is null)
+            {
+                Console.Error.WriteLine($"Unknown game \"{gameId}\". Known games: {string.Join(", ", catalog.Games.Select(x => x.Id))}");
+                return 1;
+            }
+
+            games = [game];
+        }
+
+        foreach (CatalogGame game in games)
+        {
+            SourceGameInfo? info = SourceGames.Find(game.Id);
+            string how = info?.MountedByMomentum == true ? "mounted by Momentum, scripts only" : "models and sounds are converted";
+            Console.WriteLine($"{game.Id}: {game.Name} ({how})");
+            foreach (CatalogWeapon weapon in game.Weapons)
+                Console.WriteLine($"  {weapon.Id,-20} {weapon.Name,-24} {string.Join(", ", weapon.Slots)}");
+        }
+
+        return 0;
+    }
+}

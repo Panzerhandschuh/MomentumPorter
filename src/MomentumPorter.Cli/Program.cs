@@ -27,6 +27,9 @@ internal static class Program
 {
     public static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0].Equals(WeaponCommand.Verb, StringComparison.OrdinalIgnoreCase))
+            return WeaponCommand.Run(args);
+
         return Parser.Default.ParseArguments<CliOptions>(args).MapResult(options => Run(options).GetAwaiter().GetResult(), _ => 1);
     }
 
