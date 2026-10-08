@@ -20,6 +20,30 @@ The output is written as a new file, uncompressed unless `--compress` is given, 
 and anything it couldn't. Pack assets afterwards (e.g. with bspPack) as usual. Packed files named after the map, such as
 cubemap materials, aren't renamed, so keep the map's name or rename it with Lumper afterwards.
 
+## Desktop app
+
+`src/MomentumPorter.UI` (`MomentumPorterUI.exe`) does what `pack_for_momentum.bat` did, with a window: drop maps on it
+(or pass them on the command line), pick options, Run. Each queued Source map is ported, packed with bspPack
+(`-M -C`) and copied into Momentum's `momentum/maps` folder, one map at a time. Everything happens in a temp work folder
+and the map is only moved into `maps/` once every step succeeded, so a failed or cancelled map never leaves a broken
+file there. If the map is already installed you're asked whether to overwrite it, unless "Overwrite existing maps" is
+on. Maps that aren't installed are saved to the output folder instead (Documents/MomentumPorter/maps by default).
+Files the conversion writes next to the map, such as GOKZ's `zones/local/<map>.json`, go along with it.
+
+- **Maps**: the queue (status per map, detected kind and game), the options form (generated from the
+  `[PortOption]` attributes on `MapPortOptions`), and the log and report of the selected map. Options can be saved and
+  loaded as JSON presets. Quake 3 and GoldSrc maps can be queued but are skipped until BSPConvert is integrated.
+- **Settings**: Momentum's folder (found in your Steam libraries unless overridden), bspPack's location, an optional
+  pre-pack command, the output and work folders, whether to install by default, and which known games were found.
+  Saved to `%AppData%/MomentumPorter/settings.json`.
+- **Weapons, Player Sounds, Player Models**: placeholders for later phases.
+
+bspPack reads its `config.ini` (the game folder it packs assets from) and `ResourceConfig.ini` from its own folder, so
+set those up for the source game, e.g. a stub game folder that only mounts KZ's content. The pre-pack command runs
+through the shell before every bspPack run; `{resourceconfig}`, `{bsppack}`, `{bsppackdir}` and `{bsp}` are replaced
+with paths, so the bat's ResourceConfig update becomes
+`python "<path>\kz_shadowed_excludes.py" "{resourceconfig}"`.
+
 ## Games
 
 | `--game` | Game |
