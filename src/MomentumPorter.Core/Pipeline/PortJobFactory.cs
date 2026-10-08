@@ -50,7 +50,13 @@ public static class PortJobFactory
             case InputKind.GoldSrcBsp:
             case InputKind.Pk3Archive:
             case InputKind.ZipArchive:
-                throw new PortStepException($"{Path.GetFileName(inputPath)} is a {Describe(kind)}; converting those (BSPConvert) isn't wired up yet");
+            {
+                // Converted with BSPConvert; outputPath is the game folder (e.g. momentum) the map and its files go into
+                var bspConvertOptions = new BspConvert.BspConvertOptions { OutputDirectory = outputPath, Compress = options.Compress, Overwrite = options.Overwrite };
+                BspConvert.BspConvertDefaults.Fill(bspConvertOptions, new Steam.SteamLocator(), inputPath, output: false);
+                (PortJob job, BspConvert.BspConvertState state) = BspConvert.BspConvertJobs.Create(inputPath, bspConvertOptions);
+                return (job, state);
+            }
             default:
                 throw new PortStepException($"{Path.GetFileName(inputPath)} isn't a map file the porter understands");
         }

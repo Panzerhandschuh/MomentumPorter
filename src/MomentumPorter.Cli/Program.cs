@@ -5,12 +5,13 @@ using MomentumPorter.Options;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
 
-internal sealed class CliOptions
+// BSPConvert's options (Quake 3 and GoldSrc maps) are in QuakeGoldSrcOptions.cs, listed after these in --help
+internal sealed partial class CliOptions
 {
-    [Value(0, Required = true, MetaName = "input", HelpText = "BSP to port")]
+    [Value(0, Required = true, MetaName = "input", HelpText = "BSP to port: a Source map, or a Quake 3 or GoldSrc (Half-Life, CS 1.6) .bsp/.pk3/.zip")]
     public required string Input { get; set; }
 
-    [Value(1, Required = true, MetaName = "output", HelpText = "Where to write the ported BSP")]
+    [Value(1, Required = true, MetaName = "output", HelpText = "Where to write the ported BSP. For Quake 3 and GoldSrc maps, the game folder (e.g. Momentum's momentum folder) the map goes into, as maps/<name>.bsp with its zone file.")]
     public required string Output { get; set; }
 
     [Option('g', "game", HelpText = "Game the map was made for (kzmod, ...). Detected from the map's entities if not given.")]
@@ -36,6 +37,9 @@ internal static class Program
 
     private static async Task<int> Run(CliOptions cli)
     {
+        if (BspConvertCommand.Handles(cli))
+            return await BspConvertCommand.RunAsync(cli);
+
         if (cli.Game is not null && GameProfiles.Find(cli.Game) is null)
         {
             Console.Error.WriteLine($"Unknown game \"{cli.Game}\". Known games: {string.Join(", ", GameProfiles.All.Select(x => x.Name))}");
@@ -84,7 +88,7 @@ internal static class Program
     /// <summary>
     /// Prints progress to stdout and problems to stderr, with no decoration, as the old CLI did.
     /// </summary>
-    private sealed class CliLog : IPortLog
+    internal sealed class CliLog : IPortLog
     {
         public void Info(string message) => Console.WriteLine(message);
 
