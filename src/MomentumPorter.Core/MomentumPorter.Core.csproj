@@ -7,6 +7,20 @@
   <ItemGroup>
     <!-- LibBSP's own dependency, for compressed lumps and the pakfile. Keep in step with BSPConvert.Lib's version. -->
     <PackageReference Include="SharpCompress" Version="0.39.0" />
+    <!-- Reads the VPKs of the games Momentum mounts (weapon packs check the paths they reference exist) -->
+    <PackageReference Include="ValvePak" Version="6.0.0.182" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(BspConvertDir)BSPConvert.Lib\BSPConvert.Lib.csproj" />
+    <!-- BSPConvert.Lib's VTF writer, used directly for Quake 3 weapon textures (assembly references don't flow) -->
+    <Reference Include="sourcepp">
+      <HintPath>$(BspConvertDir)BSPConvert.Lib\Dependencies\sourcepp.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Weapons\weapons.json" LogicalName="MomentumPorter.Assets.Weapons.weapons.json" />
   </ItemGroup>
 
   <ItemGroup>

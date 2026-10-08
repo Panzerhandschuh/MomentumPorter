@@ -1,0 +1,286 @@
+// Weapons MomentumPorter can port into Momentum's weapon slots, per source game.
+// Paths are game paths in the source game. "sounds" maps a sound role (the keys of Momentum's
+// scripts/server_weapon/weapon_momentum_<slot>.txt SoundData: single_shot, explosion, trail, fizzle, fizzle_alt,
+// deploy, swish, stab, hit, hit_wall, zoom, bounce, charge, ...) to a soundscript entry of the source game ("" silences
+// it). Games Momentum doesn't mount use "waves" (game paths under sound/) instead. "slots" lists the Momentum
+// weapons it fits, best first. See WeaponCatalog.cs for every field.
+{
+  "games": [
+    {
+      "id": "css",
+      "name": "Counter-Strike: Source",
+      "attachToHands": 0,
+      "builtRightHanded": false,
+      "soundscripts": [ "scripts/game_sounds_weapons.txt" ],
+      "momentumSoundscripts": [ "scripts/game_sounds_weapons_css.txt" ],
+      "limitations": [
+        "CS:S view models have their own arms, so Momentum's arms aren't drawn",
+        "CS:S view models are modelled left handed and are mirrored by cl_righthand like in CS:S",
+        "Animation events (reload, deploy sounds) play CS:S's soundscript entries; names Momentum also defines (Weapon_Knife.*, Weapon_Scout.Single) play Momentum's",
+        "View model FOV and bob differ from CS:S (viewmodel_fov)",
+        "Third person and ghosts show the CS:S world model at Momentum's hand position, which may be off"
+      ],
+      "weapons": [
+        { "id": "glock", "name": "Glock-18", "slots": [ "pistol" ], "view": "models/weapons/v_pist_glock18.mdl", "world": "models/weapons/w_pist_glock18.mdl", "sounds": { "single_shot": "Weapon_Glock.Single" }, "soundPrefixes": [ "Weapon_Glock." ] },
+        { "id": "usp", "name": "USP .45", "slots": [ "pistol" ], "view": "models/weapons/v_pist_usp.mdl", "world": "models/weapons/w_pist_usp.mdl", "sounds": { "single_shot": "Weapon_USP.Single" }, "soundPrefixes": [ "Weapon_USP." ], "notes": [ "The USP is drawn without its silencer; the silencer animations aren't used" ] },
+        { "id": "p228", "name": "P228", "slots": [ "pistol" ], "view": "models/weapons/v_pist_p228.mdl", "world": "models/weapons/w_pist_p228.mdl", "sounds": { "single_shot": "Weapon_P228.Single" }, "soundPrefixes": [ "Weapon_P228." ] },
+        { "id": "deagle", "name": "Desert Eagle", "slots": [ "pistol" ], "view": "models/weapons/v_pist_deagle.mdl", "world": "models/weapons/w_pist_deagle.mdl", "sounds": { "single_shot": "Weapon_DEagle.Single" }, "soundPrefixes": [ "Weapon_DEagle." ] },
+        { "id": "fiveseven", "name": "Five-SeveN", "slots": [ "pistol" ], "view": "models/weapons/v_pist_fiveseven.mdl", "world": "models/weapons/w_pist_fiveseven.mdl", "sounds": { "single_shot": "Weapon_FiveSeven.Single" }, "soundPrefixes": [ "Weapon_FiveSeven." ] },
+        { "id": "elite", "name": "Dual Berettas", "slots": [ "pistol" ], "view": "models/weapons/v_pist_elite.mdl", "world": "models/weapons/w_pist_elite_single.mdl", "sounds": { "single_shot": "Weapon_ELITE.Single" }, "soundPrefixes": [ "Weapon_ELITE." ], "notes": [ "Only the right pistol fires; Momentum's pistol has no left/right alternation" ] },
+        { "id": "mac10", "name": "MAC-10", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_mac10.mdl", "world": "models/weapons/w_smg_mac10.mdl", "sounds": { "single_shot": "Weapon_MAC10.Single" }, "soundPrefixes": [ "Weapon_MAC10." ] },
+        { "id": "tmp", "name": "TMP", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_tmp.mdl", "world": "models/weapons/w_smg_tmp.mdl", "sounds": { "single_shot": "Weapon_TMP.Single" }, "soundPrefixes": [ "Weapon_TMP." ] },
+        { "id": "mp5navy", "name": "MP5 Navy", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_mp5.mdl", "world": "models/weapons/w_smg_mp5.mdl", "sounds": { "single_shot": "Weapon_MP5Navy.Single" }, "soundPrefixes": [ "Weapon_MP5Navy." ] },
+        { "id": "ump45", "name": "UMP45", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_ump45.mdl", "world": "models/weapons/w_smg_ump45.mdl", "sounds": { "single_shot": "Weapon_UMP45.Single" }, "soundPrefixes": [ "Weapon_UMP45." ] },
+        { "id": "p90", "name": "P90", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_p90.mdl", "world": "models/weapons/w_smg_p90.mdl", "sounds": { "single_shot": "Weapon_P90.Single" }, "soundPrefixes": [ "Weapon_P90." ] },
+        { "id": "galil", "name": "Galil", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_galil.mdl", "world": "models/weapons/w_rif_galil.mdl", "sounds": { "single_shot": "Weapon_Galil.Single" }, "soundPrefixes": [ "Weapon_Galil." ] },
+        { "id": "famas", "name": "FAMAS", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_famas.mdl", "world": "models/weapons/w_rif_famas.mdl", "sounds": { "single_shot": "Weapon_FAMAS.Single" }, "soundPrefixes": [ "Weapon_FAMAS." ] },
+        { "id": "ak47", "name": "AK-47", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_ak47.mdl", "world": "models/weapons/w_rif_ak47.mdl", "sounds": { "single_shot": "Weapon_AK47.Single" }, "soundPrefixes": [ "Weapon_AK47." ] },
+        { "id": "m4a1", "name": "M4A1", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_m4a1.mdl", "world": "models/weapons/w_rif_m4a1.mdl", "sounds": { "single_shot": "Weapon_M4A1.Single" }, "soundPrefixes": [ "Weapon_M4A1." ], "notes": [ "The M4A1 is drawn without its silencer; the silencer animations aren't used" ] },
+        { "id": "sg552", "name": "SG 552", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_sg552.mdl", "world": "models/weapons/w_rif_sg552.mdl", "sounds": { "single_shot": "Weapon_SG552.Single" }, "soundPrefixes": [ "Weapon_SG552." ] },
+        { "id": "aug", "name": "AUG", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_aug.mdl", "world": "models/weapons/w_rif_aug.mdl", "sounds": { "single_shot": "Weapon_AUG.Single" }, "soundPrefixes": [ "Weapon_AUG." ] },
+        { "id": "m249", "name": "M249", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_mach_m249para.mdl", "world": "models/weapons/w_mach_m249para.mdl", "sounds": { "single_shot": "Weapon_M249.Single" }, "soundPrefixes": [ "Weapon_M249." ] },
+        { "id": "m3", "name": "M3 Super 90", "slots": [ "shotgun", "df_shotgun" ], "view": "models/weapons/v_shot_m3super90.mdl", "world": "models/weapons/w_shot_m3super90.mdl", "sounds": { "single_shot": "Weapon_M3.Single" }, "soundPrefixes": [ "Weapon_M3." ] },
+        { "id": "xm1014", "name": "XM1014", "slots": [ "shotgun", "df_shotgun" ], "view": "models/weapons/v_shot_xm1014.mdl", "world": "models/weapons/w_shot_xm1014.mdl", "sounds": { "single_shot": "Weapon_XM1014.Single" }, "soundPrefixes": [ "Weapon_XM1014." ] },
+        { "id": "scout", "name": "Scout", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_snip_scout.mdl", "world": "models/weapons/w_snip_scout.mdl", "sounds": { "single_shot": "Weapon_Scout.Single", "zoom": "Default.Zoom" }, "soundPrefixes": [ "Weapon_Scout." ] },
+        { "id": "awp", "name": "AWP", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_snip_awp.mdl", "world": "models/weapons/w_snip_awp.mdl", "sounds": { "single_shot": "Weapon_AWP.Single", "zoom": "Default.Zoom" }, "soundPrefixes": [ "Weapon_AWP." ] },
+        { "id": "g3sg1", "name": "G3SG1", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_snip_g3sg1.mdl", "world": "models/weapons/w_snip_g3sg1.mdl", "sounds": { "single_shot": "Weapon_G3SG1.Single", "zoom": "Default.Zoom" }, "soundPrefixes": [ "Weapon_G3SG1." ] },
+        { "id": "sg550", "name": "SG 550", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_snip_sg550.mdl", "world": "models/weapons/w_snip_sg550.mdl", "sounds": { "single_shot": "Weapon_SG550.Single", "zoom": "Default.Zoom" }, "soundPrefixes": [ "Weapon_SG550." ] },
+        { "id": "knife", "name": "Knife", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_knife_t.mdl", "world": "models/weapons/w_knife_t.mdl", "sounds": { "deploy": "Weapon_Knife.Deploy", "swish": "Weapon_Knife.Slash", "stab": "Weapon_Knife.Stab", "hit": "Weapon_Knife.Hit", "hit_wall": "Weapon_Knife.HitWall" } },
+        { "id": "hegrenade", "name": "HE Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_eq_fraggrenade.mdl", "world": "models/weapons/w_eq_fraggrenade.mdl", "sounds": { "bounce": "HEGrenade.Bounce" } },
+        { "id": "flashbang", "name": "Flashbang", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_eq_flashbang.mdl", "world": "models/weapons/w_eq_flashbang.mdl", "sounds": { "bounce": "Flashbang.Bounce" } },
+        { "id": "smokegrenade", "name": "Smoke Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_eq_smokegrenade.mdl", "world": "models/weapons/w_eq_smokegrenade.mdl", "sounds": { "bounce": "SmokeGrenade.Bounce" } }
+      ]
+    },
+    {
+      "id": "csgo",
+      "name": "Counter-Strike: Global Offensive (legacy)",
+      "attachToHands": 1,
+      "builtRightHanded": true,
+      "soundscripts": [ "scripts/game_sounds_weapons.txt" ],
+      "momentumSoundscripts": [],
+      "limitations": [
+        "CS:GO view models have no arms; Momentum's arms are bone-merged onto them (attach_to_hands 1), CS:GO's gloves aren't used",
+        "Momentum doesn't load CS:GO's soundscripts, so the sounds the weapon and its animations play are copied into the pack's game_sounds_momentum_weapons.txt without CS:GO's operator stacks (no distant sounds)",
+        "View model FOV differs from CS:GO's (viewmodel_fov 68, viewmodel_offset_*)",
+        "Inspect and other CS:GO-only animations aren't used"
+      ],
+      "weapons": [
+        { "id": "glock", "name": "Glock-18", "slots": [ "pistol" ], "view": "models/weapons/v_pist_glock18.mdl", "world": "models/weapons/w_pist_glock18.mdl", "sounds": { "single_shot": "Weapon_Glock.Single" }, "soundPrefixes": [ "Weapon_Glock." ] },
+        { "id": "hkp2000", "name": "P2000", "slots": [ "pistol" ], "view": "models/weapons/v_pist_hkp2000.mdl", "world": "models/weapons/w_pist_hkp2000.mdl", "sounds": { "single_shot": "Weapon_hkp2000.Single" }, "soundPrefixes": [ "Weapon_hkp2000." ] },
+        { "id": "usp_silencer", "name": "USP-S", "slots": [ "pistol" ], "view": "models/weapons/v_pist_223.mdl", "world": "models/weapons/w_pist_223.mdl", "sounds": { "single_shot": "Weapon_USP.SilencedShot" }, "soundPrefixes": [ "Weapon_USP." ] },
+        { "id": "p250", "name": "P250", "slots": [ "pistol" ], "view": "models/weapons/v_pist_p250.mdl", "world": "models/weapons/w_pist_p250.mdl", "sounds": { "single_shot": "Weapon_P250.Single" }, "soundPrefixes": [ "Weapon_P250." ] },
+        { "id": "fiveseven", "name": "Five-SeveN", "slots": [ "pistol" ], "view": "models/weapons/v_pist_fiveseven.mdl", "world": "models/weapons/w_pist_fiveseven.mdl", "sounds": { "single_shot": "Weapon_FiveSeven.Single" }, "soundPrefixes": [ "Weapon_FiveSeven." ] },
+        { "id": "tec9", "name": "Tec-9", "slots": [ "pistol" ], "view": "models/weapons/v_pist_tec9.mdl", "world": "models/weapons/w_pist_tec9.mdl", "sounds": { "single_shot": "Weapon_tec9.Single" }, "soundPrefixes": [ "Weapon_tec9." ] },
+        { "id": "cz75a", "name": "CZ75-Auto", "slots": [ "pistol" ], "view": "models/weapons/v_pist_cz_75.mdl", "world": "models/weapons/w_pist_cz_75.mdl", "sounds": { "single_shot": "Weapon_CZ75A.Single" }, "soundPrefixes": [ "Weapon_CZ75A." ] },
+        { "id": "deagle", "name": "Desert Eagle", "slots": [ "pistol" ], "view": "models/weapons/v_pist_deagle.mdl", "world": "models/weapons/w_pist_deagle.mdl", "sounds": { "single_shot": "Weapon_DEagle.Single" }, "soundPrefixes": [ "Weapon_DEagle." ] },
+        { "id": "revolver", "name": "R8 Revolver", "slots": [ "pistol" ], "view": "models/weapons/v_pist_revolver.mdl", "world": "models/weapons/w_pist_revolver.mdl", "sounds": { "single_shot": "Weapon_Revolver.Single" }, "soundPrefixes": [ "Weapon_Revolver." ] },
+        { "id": "elite", "name": "Dual Berettas", "slots": [ "pistol" ], "view": "models/weapons/v_pist_elite.mdl", "world": "models/weapons/w_pist_elite_single.mdl", "sounds": { "single_shot": "Weapon_ELITE.Single" }, "soundPrefixes": [ "Weapon_ELITE." ] },
+        { "id": "mac10", "name": "MAC-10", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_mac10.mdl", "world": "models/weapons/w_smg_mac10.mdl", "sounds": { "single_shot": "Weapon_MAC10.Single" }, "soundPrefixes": [ "Weapon_MAC10." ] },
+        { "id": "mp9", "name": "MP9", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_mp9.mdl", "world": "models/weapons/w_smg_mp9.mdl", "sounds": { "single_shot": "Weapon_MP9.Single" }, "soundPrefixes": [ "Weapon_MP9." ] },
+        { "id": "mp7", "name": "MP7", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_mp7.mdl", "world": "models/weapons/w_smg_mp7.mdl", "sounds": { "single_shot": "Weapon_MP7.Single" }, "soundPrefixes": [ "Weapon_MP7." ] },
+        { "id": "mp5sd", "name": "MP5-SD", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_mp5sd.mdl", "world": "models/weapons/w_smg_mp5sd.mdl", "sounds": { "single_shot": "Weapon_MP5.Single" }, "soundPrefixes": [ "Weapon_MP5." ] },
+        { "id": "ump45", "name": "UMP-45", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_ump45.mdl", "world": "models/weapons/w_smg_ump45.mdl", "sounds": { "single_shot": "Weapon_UMP45.Single" }, "soundPrefixes": [ "Weapon_UMP45." ] },
+        { "id": "p90", "name": "P90", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_p90.mdl", "world": "models/weapons/w_smg_p90.mdl", "sounds": { "single_shot": "Weapon_P90.Single" }, "soundPrefixes": [ "Weapon_P90." ] },
+        { "id": "bizon", "name": "PP-Bizon", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg_bizon.mdl", "world": "models/weapons/w_smg_bizon.mdl", "sounds": { "single_shot": "Weapon_bizon.Single" }, "soundPrefixes": [ "Weapon_bizon." ] },
+        { "id": "galilar", "name": "Galil AR", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_galilar.mdl", "world": "models/weapons/w_rif_galilar.mdl", "sounds": { "single_shot": "Weapon_GalilAR.Single" }, "soundPrefixes": [ "Weapon_GalilAR." ] },
+        { "id": "famas", "name": "FAMAS", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_famas.mdl", "world": "models/weapons/w_rif_famas.mdl", "sounds": { "single_shot": "Weapon_FAMAS.Single" }, "soundPrefixes": [ "Weapon_FAMAS." ] },
+        { "id": "ak47", "name": "AK-47", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_ak47.mdl", "world": "models/weapons/w_rif_ak47.mdl", "sounds": { "single_shot": "Weapon_AK47.Single" }, "soundPrefixes": [ "Weapon_AK47." ] },
+        { "id": "m4a4", "name": "M4A4", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_m4a1.mdl", "world": "models/weapons/w_rif_m4a1.mdl", "sounds": { "single_shot": "Weapon_M4A1.Single" }, "soundPrefixes": [ "Weapon_M4A1.", "Weapon_M4A4." ] },
+        { "id": "m4a1_silencer", "name": "M4A1-S", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_m4a1_s.mdl", "world": "models/weapons/w_rif_m4a1_s.mdl", "sounds": { "single_shot": "Weapon_M4A1.Silenced" }, "soundPrefixes": [ "Weapon_M4A1.", "Weapon_M4A1S." ] },
+        { "id": "sg556", "name": "SG 553", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_sg556.mdl", "world": "models/weapons/w_rif_sg556.mdl", "sounds": { "single_shot": "Weapon_sg556.Single" }, "soundPrefixes": [ "Weapon_sg556.", "Weapon_SG556." ] },
+        { "id": "aug", "name": "AUG", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_rif_aug.mdl", "world": "models/weapons/w_rif_aug.mdl", "sounds": { "single_shot": "Weapon_AUG.Single" }, "soundPrefixes": [ "Weapon_AUG." ] },
+        { "id": "m249", "name": "M249", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_mach_m249para.mdl", "world": "models/weapons/w_mach_m249para.mdl", "sounds": { "single_shot": "Weapon_M249.Single" }, "soundPrefixes": [ "Weapon_M249." ] },
+        { "id": "negev", "name": "Negev", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_mach_negev.mdl", "world": "models/weapons/w_mach_negev.mdl", "sounds": { "single_shot": "Weapon_Negev.Single" }, "soundPrefixes": [ "Weapon_Negev." ] },
+        { "id": "nova", "name": "Nova", "slots": [ "shotgun", "df_shotgun" ], "view": "models/weapons/v_shot_nova.mdl", "world": "models/weapons/w_shot_nova.mdl", "sounds": { "single_shot": "Weapon_Nova.Single" }, "soundPrefixes": [ "Weapon_Nova." ] },
+        { "id": "xm1014", "name": "XM1014", "slots": [ "shotgun", "df_shotgun" ], "view": "models/weapons/v_shot_xm1014.mdl", "world": "models/weapons/w_shot_xm1014.mdl", "sounds": { "single_shot": "Weapon_XM1014.Single" }, "soundPrefixes": [ "Weapon_XM1014." ] },
+        { "id": "sawedoff", "name": "Sawed-Off", "slots": [ "shotgun", "df_shotgun" ], "view": "models/weapons/v_shot_sawedoff.mdl", "world": "models/weapons/w_shot_sawedoff.mdl", "sounds": { "single_shot": "Weapon_Sawedoff.Single" }, "soundPrefixes": [ "Weapon_Sawedoff." ] },
+        { "id": "ssg08", "name": "SSG 08", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_snip_ssg08.mdl", "world": "models/weapons/w_snip_ssg08.mdl", "sounds": { "single_shot": "Weapon_SSG08.Single", "zoom": "Weapon_SSG08.Zoom" }, "soundPrefixes": [ "Weapon_SSG08." ] },
+        { "id": "awp", "name": "AWP", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_snip_awp.mdl", "world": "models/weapons/w_snip_awp.mdl", "sounds": { "single_shot": "Weapon_AWP.Single", "zoom": "Weapon_AWP.Zoom" }, "soundPrefixes": [ "Weapon_AWP." ] },
+        { "id": "g3sg1", "name": "G3SG1", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_snip_g3sg1.mdl", "world": "models/weapons/w_snip_g3sg1.mdl", "sounds": { "single_shot": "Weapon_G3SG1.Single", "zoom": "Weapon_G3SG1.Zoom" }, "soundPrefixes": [ "Weapon_G3SG1." ] },
+        { "id": "scar20", "name": "SCAR-20", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_snip_scar20.mdl", "world": "models/weapons/w_snip_scar20.mdl", "sounds": { "single_shot": "Weapon_SCAR20.Single", "zoom": "Weapon_SCAR20.Zoom" }, "soundPrefixes": [ "Weapon_SCAR20." ] },
+        { "id": "knife", "name": "Knife (CT)", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_knife_default_ct.mdl", "world": "models/weapons/w_knife_default_ct.mdl", "sounds": { "deploy": "Weapon_Knife.Deploy", "swish": "Weapon_Knife.Slash", "stab": "Weapon_Knife.Stab", "hit": "Weapon_Knife.Hit", "hit_wall": "Weapon_Knife.HitWall" } },
+        { "id": "knife_t", "name": "Knife (T)", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_knife_default_t.mdl", "world": "models/weapons/w_knife_default_t.mdl", "sounds": { "deploy": "Weapon_Knife.Deploy", "swish": "Weapon_Knife.Slash", "stab": "Weapon_Knife.Stab", "hit": "Weapon_Knife.Hit", "hit_wall": "Weapon_Knife.HitWall" } },
+        { "id": "hegrenade", "name": "HE Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_eq_fraggrenade.mdl", "world": "models/weapons/w_eq_fraggrenade.mdl", "sounds": { "bounce": "HEGrenade.Bounce" }, "soundPrefixes": [ "HEGrenade." ] },
+        { "id": "flashbang", "name": "Flashbang", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_eq_flashbang.mdl", "world": "models/weapons/w_eq_flashbang.mdl", "sounds": { "bounce": "Flashbang.Bounce" }, "soundPrefixes": [ "Flashbang." ] },
+        { "id": "smokegrenade", "name": "Smoke Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_eq_smokegrenade.mdl", "world": "models/weapons/w_eq_smokegrenade.mdl", "sounds": { "bounce": "SmokeGrenade.Bounce" }, "soundPrefixes": [ "SmokeGrenade." ] },
+        { "id": "incgrenade", "name": "Incendiary Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_eq_incendiarygrenade.mdl", "world": "models/weapons/w_eq_incendiarygrenade.mdl", "sounds": { "bounce": "IncGrenade.Bounce" }, "soundPrefixes": [ "IncGrenade." ] },
+        { "id": "molotov", "name": "Molotov", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_eq_molotov.mdl", "world": "models/weapons/w_eq_molotov.mdl", "soundPrefixes": [ "Molotov." ] },
+        { "id": "decoy", "name": "Decoy Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_eq_decoy.mdl", "world": "models/weapons/w_eq_decoy.mdl", "soundPrefixes": [ "Decoy." ] }
+      ]
+    },
+    {
+      "id": "tf2",
+      "name": "Team Fortress 2",
+      "attachToHands": 0,
+      "builtRightHanded": true,
+      "soundscripts": [ "scripts/game_sounds_weapons.txt" ],
+      "momentumSoundscripts": [ "scripts/game_sounds_weapons_tf.txt" ],
+      "limitations": [
+        "Uses TF2's older v_models, which have their own arms; c_models (arms with the weapon merged on, attach_to_hands 2) don't work in Momentum",
+        "Taunts, inspect animations and class-specific arms aren't available",
+        "View model FOV differs from TF2's (viewmodel_fov 54)"
+      ],
+      "weapons": [
+        {
+          "id": "rocketlauncher", "name": "Rocket Launcher", "slots": [ "rocketlauncher", "df_rocketlauncher" ],
+          "view": "models/weapons/v_models/v_rocketlauncher_soldier.mdl", "world": "models/weapons/w_models/w_rocketlauncher.mdl", "projectile": "models/weapons/w_models/w_rocket.mdl",
+          "sounds": { "single_shot": "Weapon_RPG.Single.SoundTF2", "explosion": "BaseExplosionEffect.SoundTF2", "trail": "", "fizzle": "", "fizzle_alt": "" },
+          "particles": { "ExplosionEffect": "ExplosionCore_sapperdestroyed", "ExplosionMidAirEffect": "ExplosionCore_MidAir", "ExplosionWaterEffect": "ExplosionCore_MidAir_underwater", "RocketTrail": "rockettrail" }
+        },
+        {
+          "id": "stickybomblauncher", "name": "Stickybomb Launcher", "slots": [ "stickylauncher" ],
+          "view": "models/weapons/v_models/v_stickybomb_launcher_demo.mdl", "world": "models/weapons/w_models/w_stickybomb_launcher.mdl", "projectile": "models/weapons/w_models/w_stickybomb.mdl",
+          "sounds": {
+            "single_shot": "Weapon_StickyBombLauncher.Single", "charged_shot": "Weapon_StickyBombLauncher.Single", "explosion": "BaseExplosionEffect.SoundTF2",
+            "detonate": "Weapon_StickyBombLauncher.ModeSwitch", "deny": "HL2Player.UseDeny", "charge": "Weapon_StickyBombLauncher.ChargeUp", "chargestop": "HL2Player.UseDeny",
+            "fizzle": "", "fizzle_alt": ""
+          },
+          "particles": { "ExplosionEffect": "ExplosionCore_sapperdestroyed", "ExplosionMidAirEffect": "ExplosionCore_MidAir", "ExplosionWaterEffect": "ExplosionCore_MidAir_underwater", "StickybombTrail": "stickybombtrail_red", "StickybombPulse": "stickybomb_pulse_red" }
+        },
+        {
+          "id": "grenadelauncher", "name": "Grenade Launcher", "slots": [ "df_grenadelauncher" ],
+          "view": "models/weapons/v_models/v_grenadelauncher_demo.mdl", "world": "models/weapons/w_models/w_grenadelauncher.mdl", "projectile": "models/weapons/w_models/w_grenade_grenadelauncher.mdl",
+          "sounds": { "single_shot": "Weapon_GrenadeLauncher.Single", "explosion": "BaseExplosionEffect.SoundTF2", "bounce": "Weapon_Grenade_Pipebomb.Bounce", "fizzle": "" }
+        },
+        { "id": "scattergun", "name": "Scattergun", "slots": [ "shotgun", "df_shotgun" ], "view": "models/weapons/v_models/v_scattergun_scout.mdl", "world": "models/weapons/w_models/w_scattergun.mdl", "sounds": { "single_shot": "Weapon_Scatter_Gun.Single" } },
+        { "id": "shotgun", "name": "Shotgun", "slots": [ "shotgun", "df_shotgun" ], "view": "models/weapons/v_models/v_shotgun_soldier.mdl", "world": "models/weapons/w_models/w_shotgun.mdl", "sounds": { "single_shot": "Weapon_Shotgun.Single" } },
+        { "id": "pistol", "name": "Pistol", "slots": [ "pistol" ], "view": "models/weapons/v_models/v_pistol_scout.mdl", "world": "models/weapons/w_models/w_pistol.mdl", "sounds": { "single_shot": "Weapon_Pistol.Single" } },
+        { "id": "revolver", "name": "Revolver", "slots": [ "pistol" ], "view": "models/weapons/v_models/v_revolver_spy.mdl", "world": "models/weapons/w_models/w_revolver.mdl", "sounds": { "single_shot": "Weapon_Revolver.Single" } },
+        { "id": "smg", "name": "SMG", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_models/v_smg_sniper.mdl", "world": "models/weapons/w_models/w_smg.mdl", "sounds": { "single_shot": "Weapon_SMG.Single" } },
+        { "id": "syringegun", "name": "Syringe Gun", "slots": [ "machinegun", "df_plasmagun" ], "view": "models/weapons/v_models/v_syringegun_medic.mdl", "world": "models/weapons/w_models/w_syringegun.mdl", "sounds": { "single_shot": "Weapon_SyringeGun.Single" } },
+        { "id": "sniperrifle", "name": "Sniper Rifle", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_models/v_sniperrifle_sniper.mdl", "world": "models/weapons/w_models/w_sniperrifle.mdl", "sounds": { "single_shot": "Weapon_SniperRifle.Single" } },
+        { "id": "knife", "name": "Knife", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_models/v_knife_spy.mdl", "world": "models/weapons/w_models/w_knife.mdl", "sounds": { "deploy": "Weapon_Knife.Draw", "swish": "Weapon_Knife.Miss", "stab": "Weapon_Knife.HitFlesh", "hit": "Weapon_Knife.HitFlesh", "hit_wall": "Weapon_Knife.HitWorld" } },
+        { "id": "shovel", "name": "Shovel", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_models/v_shovel_soldier.mdl", "world": "models/weapons/w_models/w_shovel.mdl", "sounds": { "deploy": "Weapon_Shovel.Draw", "swish": "Weapon_Shovel.Miss", "stab": "Weapon_Shovel.HitFlesh", "hit": "Weapon_Shovel.HitFlesh", "hit_wall": "Weapon_Shovel.HitWorld" } },
+        { "id": "bat", "name": "Bat", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_models/v_bat_scout.mdl", "world": "models/weapons/w_models/w_bat.mdl", "sounds": { "deploy": "Weapon_Bat.Draw", "swish": "Weapon_Bat.Miss", "stab": "Weapon_Bat.HitFlesh", "hit": "Weapon_Bat.HitFlesh", "hit_wall": "Weapon_Bat.HitWorld" } },
+        { "id": "bottle", "name": "Bottle", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_models/v_bottle_demoman.mdl", "world": "models/weapons/w_models/w_bottle.mdl", "sounds": { "deploy": "Weapon_Bottle.Draw", "swish": "Weapon_Bottle.Miss", "stab": "Weapon_Bottle.HitFlesh", "hit": "Weapon_Bottle.HitFlesh", "hit_wall": "Weapon_Bottle.HitWorld" } },
+        { "id": "fireaxe", "name": "Fire Axe", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_models/v_fireaxe_pyro.mdl", "world": "models/weapons/w_models/w_fireaxe.mdl", "sounds": { "deploy": "Weapon_FireAxe.Draw", "swish": "Weapon_FireAxe.Miss", "stab": "Weapon_FireAxe.HitFlesh", "hit": "Weapon_FireAxe.HitFlesh", "hit_wall": "Weapon_FireAxe.HitWorld" } },
+        { "id": "wrench", "name": "Wrench", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_models/v_wrench_engineer.mdl", "world": "models/weapons/w_models/w_wrench.mdl", "sounds": { "deploy": "Weapon_Wrench.Draw", "swish": "Weapon_Wrench.Miss", "stab": "Weapon_Wrench.HitFlesh", "hit": "Weapon_Wrench.HitFlesh", "hit_wall": "Weapon_Wrench.HitWorld" } },
+        { "id": "bonesaw", "name": "Bonesaw", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_models/v_bonesaw_medic.mdl", "world": "models/weapons/w_models/w_bonesaw.mdl", "sounds": { "swish": "Weapon_BoneSaw.Miss", "stab": "Weapon_BoneSaw.HitFlesh", "hit": "Weapon_BoneSaw.HitFlesh", "hit_wall": "Weapon_BoneSaw.HitWorld" } }
+      ]
+    },
+    {
+      "id": "hl2",
+      "name": "Half-Life 2",
+      "attachToHands": 0,
+      "builtRightHanded": true,
+      "soundscripts": [ "scripts/game_sounds_weapons.txt" ],
+      "momentumSoundscripts": [ "scripts/game_sounds_weapons.txt" ],
+      "limitations": [
+        "HL2 view models have their own arms (the HEV suit), so Momentum's arms aren't drawn",
+        "Paths are checked against the HL2 content Momentum ships (mount/hl2_dir.vpk)",
+        "View model FOV differs from HL2's (viewmodel_fov 54)"
+      ],
+      "weapons": [
+        { "id": "pistol", "name": "9mm Pistol", "slots": [ "pistol" ], "view": "models/weapons/v_pistol.mdl", "world": "models/weapons/w_pistol.mdl", "sounds": { "single_shot": "Weapon_Pistol.Single" } },
+        { "id": "357", "name": ".357 Magnum", "slots": [ "pistol" ], "view": "models/weapons/v_357.mdl", "world": "models/weapons/w_357.mdl", "sounds": { "single_shot": "Weapon_357.Single" } },
+        { "id": "smg1", "name": "SMG", "slots": [ "machinegun", "df_machinegun" ], "view": "models/weapons/v_smg1.mdl", "world": "models/weapons/w_smg1.mdl", "sounds": { "single_shot": "Weapon_SMG1.Single" } },
+        { "id": "ar2", "name": "Pulse Rifle", "slots": [ "machinegun", "df_machinegun", "df_plasmagun" ], "view": "models/weapons/v_irifle.mdl", "world": "models/weapons/w_irifle.mdl", "sounds": { "single_shot": "Weapon_AR2.Single" } },
+        { "id": "shotgun", "name": "Shotgun", "slots": [ "shotgun", "df_shotgun" ], "view": "models/weapons/v_shotgun.mdl", "world": "models/weapons/w_shotgun.mdl", "sounds": { "single_shot": "Weapon_Shotgun.Single" } },
+        { "id": "crossbow", "name": "Crossbow", "slots": [ "sniper", "df_railgun" ], "view": "models/weapons/v_crossbow.mdl", "world": "models/weapons/w_crossbow.mdl", "sounds": { "single_shot": "Weapon_Crossbow.Single" } },
+        { "id": "crowbar", "name": "Crowbar", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_crowbar.mdl", "world": "models/weapons/w_crowbar.mdl", "sounds": { "swish": "Weapon_Crowbar.Single", "stab": "Weapon_Crowbar.Melee_Hit", "hit": "Weapon_Crowbar.Melee_Hit", "hit_wall": "Weapon_Crowbar.Melee_HitWorld" } },
+        { "id": "stunstick", "name": "Stunstick", "slots": [ "knife", "df_knife" ], "view": "models/weapons/v_stunbaton.mdl", "world": "models/weapons/w_stunbaton.mdl", "sounds": { "deploy": "Weapon_StunStick.Activate", "swish": "Weapon_StunStick.Swing", "stab": "Weapon_StunStick.Melee_Hit", "hit": "Weapon_StunStick.Melee_Hit", "hit_wall": "Weapon_StunStick.Melee_HitWorld" } },
+        { "id": "rpg", "name": "RPG", "slots": [ "rocketlauncher", "df_rocketlauncher" ], "view": "models/weapons/v_rpg.mdl", "world": "models/weapons/w_rocket_launcher.mdl", "projectile": "models/weapons/w_missile.mdl", "sounds": { "single_shot": "Weapon_RPG.NPC_Single", "explosion": "BaseExplosionEffect.Sound" }, "notes": [ "Momentum's copy of HL2's soundscripts has no player RPG shot, so the NPC one is used" ] },
+        { "id": "grenade", "name": "Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/weapons/v_grenade.mdl", "world": "models/weapons/w_grenade.mdl" }
+      ]
+    },
+    {
+      "id": "cs16",
+      "name": "Counter-Strike 1.6",
+      "attachToHands": 0,
+      "builtRightHanded": false,
+      "limitations": [
+        "CS 1.6 view models are modelled left handed and are mirrored by cl_righthand like in CS 1.6",
+        "GoldSrc models are converted with studiomdl; view model sequences get Source activities from their names (idle, shoot, reload, draw...)",
+        "Animation sound events play the converted waves; muzzle flash and shell events are dropped",
+        "GoldSrc view models are drawn at the world's FOV; in Momentum they use viewmodel_fov, so they may sit differently",
+        "The p_ (held in third person) models aren't used: Momentum's player rig differs, so the world model is the w_ (dropped) one",
+        "Textures are converted at their GoldSrc size and keep GoldSrc's texture gamma"
+      ],
+      "weapons": [
+        { "id": "glock18", "name": "Glock-18", "slots": [ "pistol" ], "view": "models/v_glock18.mdl", "world": "models/w_glock18.mdl", "waves": { "single_shot": [ "sound/weapons/glock18-1.wav", "sound/weapons/glock18-2.wav" ] } },
+        { "id": "usp", "name": "USP .45", "slots": [ "pistol" ], "view": "models/v_usp.mdl", "world": "models/w_usp.mdl", "waves": { "single_shot": [ "sound/weapons/usp_unsil-1.wav" ] }, "notes": [ "Drawn without the silencer" ] },
+        { "id": "p228", "name": "P228", "slots": [ "pistol" ], "view": "models/v_p228.mdl", "world": "models/w_p228.mdl", "waves": { "single_shot": [ "sound/weapons/p228-1.wav" ] } },
+        { "id": "deagle", "name": "Desert Eagle", "slots": [ "pistol" ], "view": "models/v_deagle.mdl", "world": "models/w_deagle.mdl", "waves": { "single_shot": [ "sound/weapons/deagle-1.wav", "sound/weapons/deagle-2.wav" ] } },
+        { "id": "fiveseven", "name": "Five-SeveN", "slots": [ "pistol" ], "view": "models/v_fiveseven.mdl", "world": "models/w_fiveseven.mdl", "waves": { "single_shot": [ "sound/weapons/fiveseven-1.wav" ] } },
+        { "id": "elite", "name": "Dual Berettas", "slots": [ "pistol" ], "view": "models/v_elite.mdl", "world": "models/w_elite.mdl", "waves": { "single_shot": [ "sound/weapons/elite_fire.wav" ] } },
+        { "id": "mac10", "name": "MAC-10", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_mac10.mdl", "world": "models/w_mac10.mdl", "waves": { "single_shot": [ "sound/weapons/mac10-1.wav" ] } },
+        { "id": "tmp", "name": "TMP", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_tmp.mdl", "world": "models/w_tmp.mdl", "waves": { "single_shot": [ "sound/weapons/tmp-1.wav", "sound/weapons/tmp-2.wav" ] } },
+        { "id": "mp5", "name": "MP5 Navy", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_mp5.mdl", "world": "models/w_mp5.mdl", "waves": { "single_shot": [ "sound/weapons/mp5-1.wav", "sound/weapons/mp5-2.wav" ] } },
+        { "id": "ump45", "name": "UMP45", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_ump45.mdl", "world": "models/w_ump45.mdl", "waves": { "single_shot": [ "sound/weapons/ump45-1.wav" ] } },
+        { "id": "p90", "name": "P90", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_p90.mdl", "world": "models/w_p90.mdl", "waves": { "single_shot": [ "sound/weapons/p90-1.wav" ] } },
+        { "id": "galil", "name": "Galil", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_galil.mdl", "world": "models/w_galil.mdl", "waves": { "single_shot": [ "sound/weapons/galil-1.wav", "sound/weapons/galil-2.wav" ] } },
+        { "id": "famas", "name": "FAMAS", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_famas.mdl", "world": "models/w_famas.mdl", "waves": { "single_shot": [ "sound/weapons/famas-1.wav", "sound/weapons/famas-2.wav" ] } },
+        { "id": "ak47", "name": "AK-47", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_ak47.mdl", "world": "models/w_ak47.mdl", "waves": { "single_shot": [ "sound/weapons/ak47-1.wav", "sound/weapons/ak47-2.wav" ] } },
+        { "id": "m4a1", "name": "M4A1", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_m4a1.mdl", "world": "models/w_m4a1.mdl", "waves": { "single_shot": [ "sound/weapons/m4a1_unsil-1.wav", "sound/weapons/m4a1_unsil-2.wav" ] }, "notes": [ "Drawn without the silencer" ] },
+        { "id": "sg552", "name": "SG 552", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_sg552.mdl", "world": "models/w_sg552.mdl", "waves": { "single_shot": [ "sound/weapons/sg552-1.wav", "sound/weapons/sg552-2.wav" ] } },
+        { "id": "aug", "name": "AUG", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_aug.mdl", "world": "models/w_aug.mdl", "waves": { "single_shot": [ "sound/weapons/aug-1.wav" ] } },
+        { "id": "m249", "name": "M249", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_m249.mdl", "world": "models/w_m249.mdl", "waves": { "single_shot": [ "sound/weapons/m249-1.wav", "sound/weapons/m249-2.wav" ] } },
+        { "id": "m3", "name": "M3 Super 90", "slots": [ "shotgun", "df_shotgun" ], "view": "models/v_m3.mdl", "world": "models/w_m3.mdl", "waves": { "single_shot": [ "sound/weapons/m3-1.wav" ] } },
+        { "id": "xm1014", "name": "XM1014", "slots": [ "shotgun", "df_shotgun" ], "view": "models/v_xm1014.mdl", "world": "models/w_xm1014.mdl", "waves": { "single_shot": [ "sound/weapons/xm1014-1.wav" ] } },
+        { "id": "scout", "name": "Scout", "slots": [ "sniper", "df_railgun" ], "view": "models/v_scout.mdl", "world": "models/w_scout.mdl", "waves": { "single_shot": [ "sound/weapons/scout_fire-1.wav" ], "zoom": [ "sound/weapons/zoom.wav" ] } },
+        { "id": "awp", "name": "AWP", "slots": [ "sniper", "df_railgun" ], "view": "models/v_awp.mdl", "world": "models/w_awp.mdl", "waves": { "single_shot": [ "sound/weapons/awp1.wav" ], "zoom": [ "sound/weapons/zoom.wav" ] } },
+        { "id": "g3sg1", "name": "G3SG1", "slots": [ "sniper", "df_railgun" ], "view": "models/v_g3sg1.mdl", "world": "models/w_g3sg1.mdl", "waves": { "single_shot": [ "sound/weapons/g3sg1-1.wav" ], "zoom": [ "sound/weapons/zoom.wav" ] } },
+        { "id": "sg550", "name": "SG 550", "slots": [ "sniper", "df_railgun" ], "view": "models/v_sg550.mdl", "world": "models/w_sg550.mdl", "waves": { "single_shot": [ "sound/weapons/sg550-1.wav" ], "zoom": [ "sound/weapons/zoom.wav" ] } },
+        {
+          "id": "knife", "name": "Knife", "slots": [ "knife", "df_knife" ], "view": "models/v_knife.mdl", "world": "models/w_knife.mdl",
+          "waves": {
+            "deploy": [ "sound/weapons/knife_deploy1.wav" ], "swish": [ "sound/weapons/knife_slash1.wav", "sound/weapons/knife_slash2.wav" ], "stab": [ "sound/weapons/knife_stab.wav" ],
+            "hit": [ "sound/weapons/knife_hit1.wav", "sound/weapons/knife_hit2.wav", "sound/weapons/knife_hit3.wav", "sound/weapons/knife_hit4.wav" ], "hit_wall": [ "sound/weapons/knife_hitwall1.wav" ]
+          }
+        },
+        { "id": "hegrenade", "name": "HE Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/v_hegrenade.mdl", "world": "models/w_hegrenade.mdl", "waves": { "bounce": [ "sound/weapons/he_bounce-1.wav" ] } },
+        { "id": "flashbang", "name": "Flashbang", "slots": [ "grenade", "concgrenade" ], "view": "models/v_flashbang.mdl", "world": "models/w_flashbang.mdl", "waves": { "bounce": [ "sound/weapons/grenade_hit1.wav", "sound/weapons/grenade_hit2.wav", "sound/weapons/grenade_hit3.wav" ] } },
+        { "id": "smokegrenade", "name": "Smoke Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/v_smokegrenade.mdl", "world": "models/w_smokegrenade.mdl", "waves": { "bounce": [ "sound/weapons/grenade_hit1.wav", "sound/weapons/grenade_hit2.wav", "sound/weapons/grenade_hit3.wav" ] } }
+      ]
+    },
+    {
+      "id": "hl1",
+      "name": "Half-Life",
+      "attachToHands": 0,
+      "builtRightHanded": true,
+      "limitations": [
+        "GoldSrc models are converted with studiomdl; view model sequences get Source activities from their names (idle, shoot, reload, draw...)",
+        "Animation sound events play the converted waves; muzzle flash and shell events are dropped",
+        "GoldSrc view models are drawn at the world's FOV; in Momentum they use viewmodel_fov, so they may sit differently",
+        "Textures are converted at their GoldSrc size and keep GoldSrc's texture gamma"
+      ],
+      "weapons": [
+        { "id": "glock", "name": "9mm Handgun", "slots": [ "pistol" ], "view": "models/v_9mmhandgun.mdl", "world": "models/w_9mmhandgun.mdl", "waves": { "single_shot": [ "sound/weapons/pl_gun3.wav" ] } },
+        { "id": "357", "name": ".357 Magnum", "slots": [ "pistol" ], "view": "models/v_357.mdl", "world": "models/w_357.mdl", "waves": { "single_shot": [ "sound/weapons/357_shot1.wav", "sound/weapons/357_shot2.wav" ] } },
+        { "id": "mp5", "name": "MP5", "slots": [ "machinegun", "df_machinegun" ], "view": "models/v_9mmar.mdl", "world": "models/w_9mmar.mdl", "waves": { "single_shot": [ "sound/weapons/hks1.wav", "sound/weapons/hks2.wav", "sound/weapons/hks3.wav" ] } },
+        { "id": "shotgun", "name": "Shotgun", "slots": [ "shotgun", "df_shotgun" ], "view": "models/v_shotgun.mdl", "world": "models/w_shotgun.mdl", "waves": { "single_shot": [ "sound/weapons/sbarrel1.wav" ] } },
+        { "id": "crossbow", "name": "Crossbow", "slots": [ "sniper", "df_railgun" ], "view": "models/v_crossbow.mdl", "world": "models/w_crossbow.mdl", "waves": { "single_shot": [ "sound/weapons/xbow_fire1.wav" ] } },
+        { "id": "gauss", "name": "Tau Cannon", "slots": [ "df_railgun", "sniper" ], "view": "models/v_gauss.mdl", "world": "models/w_gauss.mdl", "waves": { "single_shot": [ "sound/weapons/gauss2.wav" ] } },
+        {
+          "id": "crowbar", "name": "Crowbar", "slots": [ "knife", "df_knife" ], "view": "models/v_crowbar.mdl", "world": "models/w_crowbar.mdl",
+          "waves": { "swish": [ "sound/weapons/cbar_miss1.wav" ], "stab": [ "sound/weapons/cbar_hitbod1.wav", "sound/weapons/cbar_hitbod2.wav", "sound/weapons/cbar_hitbod3.wav" ], "hit": [ "sound/weapons/cbar_hitbod1.wav", "sound/weapons/cbar_hitbod2.wav", "sound/weapons/cbar_hitbod3.wav" ], "hit_wall": [ "sound/weapons/cbar_hit1.wav", "sound/weapons/cbar_hit2.wav" ] }
+        },
+        { "id": "rpg", "name": "RPG", "slots": [ "rocketlauncher", "df_rocketlauncher" ], "view": "models/v_rpg.mdl", "world": "models/w_rpg.mdl", "projectile": "models/rpgrocket.mdl", "waves": { "single_shot": [ "sound/weapons/rocketfire1.wav" ], "explosion": [ "sound/weapons/explode3.wav", "sound/weapons/explode4.wav", "sound/weapons/explode5.wav" ], "trail": [ "sound/weapons/rocket1.wav" ] } },
+        { "id": "grenade", "name": "Hand Grenade", "slots": [ "grenade", "concgrenade" ], "view": "models/v_grenade.mdl", "world": "models/w_grenade.mdl", "waves": { "bounce": [ "sound/weapons/grenade_hit1.wav", "sound/weapons/grenade_hit2.wav", "sound/weapons/grenade_hit3.wav" ] } }
+      ]
+    },
+    {
+      "id": "q3",
+      "name": "Quake III Arena",
+      "attachToHands": 0,
+      "builtRightHanded": true,
+      "limitations": [
+        "MD3 weapons are converted to a single-bone model: the weapon and its barrel, hung from the hand model's tag_weapon for the view model. Barrels don't spin and the muzzle flash isn't drawn",
+        "The view model's idle, fire and raise animations come from the hand model's frames; Quake 3 has no reload or other animations",
+        "Shaders become plain VertexLitGeneric (or additive UnlitGeneric) materials from their first stage; scrolling, environment maps and glow stages aren't converted",
+        "Quake 3 has no arms on its view weapons, so none are drawn"
+      ],
+      "weapons": [
+        { "id": "gauntlet", "name": "Gauntlet", "slots": [ "df_knife", "knife" ], "view": "models/weapons2/gauntlet/gauntlet.md3", "world": "models/weapons2/gauntlet/gauntlet.md3", "waves": { "hit_wall": [ "sound/weapons/melee/fstatck.wav" ], "swish": [ "sound/weapons/melee/fstatck.wav" ], "hit": [ "sound/weapons/melee/fstatck.wav" ], "stab": [ "sound/weapons/melee/fstatck.wav" ] } },
+        { "id": "machinegun", "name": "Machinegun", "slots": [ "df_machinegun", "machinegun" ], "view": "models/weapons2/machinegun/machinegun.md3", "world": "models/weapons2/machinegun/machinegun.md3", "waves": { "single_shot": [ "sound/weapons/machinegun/machgf1b.wav", "sound/weapons/machinegun/machgf2b.wav", "sound/weapons/machinegun/machgf3b.wav", "sound/weapons/machinegun/machgf4b.wav" ] } },
+        { "id": "shotgun", "name": "Shotgun", "slots": [ "df_shotgun", "shotgun" ], "view": "models/weapons2/shotgun/shotgun.md3", "world": "models/weapons2/shotgun/shotgun.md3", "waves": { "single_shot": [ "sound/weapons/shotgun/sshotf1b.wav" ] } },
+        { "id": "grenadelauncher", "name": "Grenade Launcher", "slots": [ "df_grenadelauncher" ], "view": "models/weapons2/grenadel/grenadel.md3", "world": "models/weapons2/grenadel/grenadel.md3", "projectile": "models/ammo/grenade1.md3", "waves": { "single_shot": [ "sound/weapons/grenade/grenlf1a.wav" ], "bounce": [ "sound/weapons/grenade/hgrenb1a.wav", "sound/weapons/grenade/hgrenb2a.wav" ], "explosion": [ "sound/weapons/rocket/rocklx1a.wav" ] } },
+        { "id": "rocketlauncher", "name": "Rocket Launcher", "slots": [ "df_rocketlauncher", "rocketlauncher" ], "view": "models/weapons2/rocketl/rocketl.md3", "world": "models/weapons2/rocketl/rocketl.md3", "projectile": "models/ammo/rocket/rocket.md3", "waves": { "single_shot": [ "sound/weapons/rocket/rocklf1a.wav" ], "explosion": [ "sound/weapons/rocket/rocklx1a.wav" ], "trail": [ "sound/weapons/rocket/rockfly.wav" ] } },
+        { "id": "lightning", "name": "Lightning Gun", "slots": [ "df_lightninggun" ], "view": "models/weapons2/lightning/lightning.md3", "world": "models/weapons2/lightning/lightning.md3", "waves": { "single_shot": [ "sound/weapons/lightning/lg_fire.wav" ] } },
+        { "id": "railgun", "name": "Railgun", "slots": [ "df_railgun", "sniper" ], "view": "models/weapons2/railgun/railgun.md3", "world": "models/weapons2/railgun/railgun.md3", "waves": { "single_shot": [ "sound/weapons/railgun/railgf1a.wav" ] } },
+        { "id": "plasmagun", "name": "Plasma Gun", "slots": [ "df_plasmagun" ], "view": "models/weapons2/plasma/plasma.md3", "world": "models/weapons2/plasma/plasma.md3", "waves": { "single_shot": [ "sound/weapons/plasma/hyprbf1a.wav" ], "explosion": [ "sound/weapons/plasma/plasmx1a.wav" ], "trail": [ "sound/weapons/plasma/lasfly.wav" ] } },
+        { "id": "bfg", "name": "BFG10K", "slots": [ "df_bfg" ], "view": "models/weapons2/bfg/bfg.md3", "world": "models/weapons2/bfg/bfg.md3", "waves": { "single_shot": [ "sound/weapons/bfg/bfg_fire.wav" ], "explosion": [ "sound/weapons/rocket/rocklx1a.wav" ] } }
+      ]
+    }
+  ]
+}
