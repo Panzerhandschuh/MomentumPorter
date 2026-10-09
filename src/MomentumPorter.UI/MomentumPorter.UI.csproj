@@ -36,4 +36,9 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The bundled bspPack, next to the app where BspPackTool looks first -->
+    <None Include="$(RepoRoot)tools\bspPack\**" Exclude="$(RepoRoot)tools\bspPack\README.md" LinkBase="bspPack" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
 </Project>

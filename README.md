@@ -23,8 +23,8 @@ and the map installed into Momentum.
 - **Source maps** from Kreedz Climbing Mod and CS:GO (GOKZ): the game's own
   entities become Momentum's (bhop blocks, teleports, anti-bhop and
   checkpoint triggers), GOKZ's timer entities become a Momentum zone file, and
-  [bspPack](https://github.com/Natanxp2/bspPack) packs the assets the map
-  needs from its game.
+  [bspPack](https://github.com/Natanxp2/bspPack) (bundled) packs the assets
+  the map needs from its game.
 - **Quake 3 and GoldSrc maps** convert in process through
   [BSPConvert](https://github.com/momentum-mod/BSPConvert), with the base game
   content and WADs found automatically. GoldSrc bhop blocks become

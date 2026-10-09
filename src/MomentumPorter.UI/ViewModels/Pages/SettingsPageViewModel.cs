@@ -124,7 +124,7 @@ public sealed class SettingsPageViewModel : PageViewModel
 
             return tool.ReadConfiguredGameFolder() is { } game
                 ? $"Using {path}, packing assets from {game}"
-                : $"Using {path}; it has no config.ini yet, run it once to create one";
+                : $"Using {path}; it needs a config.ini naming the game folder to pack assets from";
         }
     }
 

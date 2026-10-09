@@ -24,8 +24,13 @@ public sealed class BspPackTool(string executablePath)
     public bool Exists => File.Exists(ExecutablePath);
 
     /// <summary>
-    /// Places bspPack is looked for when the settings don't name one: next to the app, then a local build in
-    /// Documents/Code/bspPack.
+    /// Whether it has a config.ini. Without one, bspPack asks which game to pack from and waits for an answer.
+    /// </summary>
+    public bool IsConfigured => File.Exists(ConfigPath);
+
+    /// <summary>
+    /// Places bspPack is looked for when the settings don't name one: the copy bundled next to the app, then a local
+    /// build in Documents/Code/bspPack.
     /// </summary>
     public static IEnumerable<string> DefaultCandidates()
     {
@@ -36,7 +41,14 @@ public sealed class BspPackTool(string executablePath)
             yield return Path.Combine(documents, "Code", "bspPack", "bin", "Release", "net9.0", OperatingSystem.IsWindows() ? "win-x64" : "linux-x64", ExecutableName);
     }
 
-    public static string? FindDefault() => DefaultCandidates().FirstOrDefault(File.Exists);
+    /// <summary>
+    /// The first <see cref="DefaultCandidates"/> with a config.ini, or else the first that exists.
+    /// </summary>
+    public static string? FindDefault()
+    {
+        string[] found = DefaultCandidates().Where(File.Exists).ToArray();
+        return found.FirstOrDefault(x => new BspPackTool(x).IsConfigured) ?? found.FirstOrDefault();
+    }
 
     /// <summary>
     /// The game folder bspPack's config.ini points at, to tell the user where assets will come from.

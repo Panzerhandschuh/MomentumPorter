@@ -42,8 +42,11 @@ go along with it.
   the pack (see [player-sounds.md](player-sounds.md)).
 - **Player Models**: placeholder; see [player-models.md](player-models.md) for the feasibility study.
 
-bspPack reads its `config.ini` (the game folder it packs assets from) and `ResourceConfig.ini` from its own folder, so
-set those up for the source game, e.g. a stub game folder that only mounts KZ's content. The pre-pack command runs
+A Windows build of bspPack with the fixes these ports need comes with the porter (`bspPack/` next to the app, from
+[tools/bspPack](../tools/bspPack)). bspPack reads its `config.ini` (the game folder it packs assets from) and
+`ResourceConfig.ini` from its own folder, so set those up for the source game, e.g. a stub game folder that only
+mounts KZ's content. bspPack runs bspzip from `<game folder>/../bin/win64`. The porter won't run a bspPack without a
+`config.ini`, and when Settings doesn't name one it uses the first copy it finds that has one. The pre-pack command runs
 through the shell before every bspPack run; `{resourceconfig}`, `{bsppack}`, `{bsppackdir}` and `{bsp}` are replaced
 with paths, so the bat's ResourceConfig update becomes
 `python "<path>\kz_shadowed_excludes.py" "{resourceconfig}"`.

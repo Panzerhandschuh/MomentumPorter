@@ -29,6 +29,12 @@ public sealed class BspPackStep : IPortStep
         if (!tool.Exists)
             throw new PortStepException($"bspPack wasn't found at {executable}. Set its location in Settings.");
 
+        if (!tool.IsConfigured)
+        {
+            throw new PortStepException($"bspPack has no config.ini ({tool.ConfigPath}). Create one naming the game folder to pack "
+                + "assets from (the folder with gameinfo.txt, with bspzip in ../bin/win64), or set bspPack's location in Settings to a copy that has one.");
+        }
+
         if (!File.Exists(state.OutputPath))
             throw new PortStepException($"{state.OutputPath} doesn't exist, there's nothing to pack");
 
