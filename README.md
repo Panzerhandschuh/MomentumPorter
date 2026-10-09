@@ -207,7 +207,7 @@ Builds a pack for Momentum's `custom` folder that gives the player another game'
 
 ```
 MomentumPorter sounds [--game q3|css|csgo|tf2|hl2|cs16|hl1] [--character <name>] [--jump game|default|none]
-                      [--land game|default|none] [--footsteps game|default|silent] [--pure]
+                      [--land game|default|none] [--footsteps game|default|silent] [--sprint game|default|hl2|none] [--pure]
                       [--output <folder>|auto] [--vpk|--folder] [--name <pack>] [--list]
 ```
 
@@ -232,8 +232,12 @@ MomentumPorter sounds [--game q3|css|csgo|tf2|hl2|cs16|hl1] [--character <name>]
   the default footsteps everywhere. `silent` mutes them and also writes `cfg/<pack>.cfg` with `snd_volume_footsteps 0`;
   run `exec <pack>` or add it to `cfg/autoexec.cfg`. The cvar is saved in your config, so set it back to 1 after removing
   the pack. Footsteps play at the volume Momentum's movement gives them (the engine ignores the entry's volume).
-- **`--pure`**: also mutes what the game doesn't have: `MomPlayer.AirJump`, `SprintStart`, `PowerSlide`, `WallRun`, and
-  the jump sound for games without one.
+- **Sprint** (`MomPlayer.SprintStart`, played when sprint starts in Accelerated Hop; `mom_ahop_sprint_sound` turns it
+  off): `game` gives HL2 its suit sprint sound (`HL2Player.SprintStart`, `player/suit_sprint.wav`) and keeps Momentum's
+  for the other games; `hl2` uses HL2's with any game's sounds. HL2's comes from Momentum's own copy of HL2
+  (`mount/hl2_dir.vpk` and its `scripts/game_sounds_player.txt`), so HL2 needn't be installed for it.
+- **`--pure`**: also mutes what the game doesn't have: `MomPlayer.AirJump`, `PowerSlide`, `WallRun`, and the jump and
+  sprint sounds for games without them (unless `--sprint` picks one).
 
 The games and Momentum are found through Steam (`--q3-dir`, `--game-dir`, `--momentum-dir` override that); `--list`
 lists the games and the chosen game's characters or teams. HL2's footsteps are defined in the HL2 install's loose
@@ -315,7 +319,10 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   them ship (CS:S's and CS:GO's `models/weapons/v_pist_deagle.mdl`) is one game's file for every script that names it,
   so a model another mounted game ships too is copied into the pack as `models/porter/<game>/...` (reported; its
   materials keep their paths, with a warning when the other game ships those too).
-- **Muzzle flashes**: Momentum's view models have no muzzle flash events, and the ones on other games' models
+- **Muzzle flashes**: a gun whose catalog entry names no `MuzzleFlashEffect` (CS:S, HL2, CS 1.6, HL1) gets CS:GO's
+  flash for its slot when CS:GO is mounted (pistol, assault rifle, auto shotgun or AWP, with CS:GO's particle file added
+  to the manifest), else the assault rifle flash Momentum ships in `particles/weapons.pcf`; the engine's sprite flash is
+  only the fallback for scripts without one. Momentum's view models have no muzzle flash events, and the ones on other games' models
   (`CL_EVENT_MUZZLEFLASH0`, which CS:GO, CS:S and HL2 models all carry) are drawn by the base engine on the player
   entity rather than the view model, so nothing shows. With `docs/engine-patches/viewmodel-muzzle-flash.patch` the
   engine draws the weapon script's `ParticleData MuzzleFlashEffect` at the attachment the event names (CS:GO), or its

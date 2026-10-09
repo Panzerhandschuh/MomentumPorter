@@ -213,6 +213,13 @@ public class WeaponPackTests
             Assert.True(File.Exists(Path.Combine(pack, "scripts", "weapon_momentum_machinegun.txt")));
             Assert.Equal(2, Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Length);
 
+            // Pistols from other games get CS:GO's pistol flash when CS:GO is mounted, with its particle file
+            (PortJobResult cssPistol, _, _) = await BuildAsync("css", "usp", "pistol", output);
+            Assert.True(cssPistol.Succeeded, cssPistol.Error);
+            WeaponScript usp = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_pistol.txt")));
+            Assert.Equal("weapon_muzzle_flash_pistol", usp.GetParticle("MuzzleFlashEffect"));
+            Assert.Equal(1, File.ReadAllText(Path.Combine(pack, "particles", "particles_manifest.txt")).Split("cs_weapon_fx.pcf").Length - 1);
+
             // Another weapon over the pistol replaces the deagle's entries rather than adding to them
             (PortJobResult third, _, _) = await BuildAsync("csgo", "glock", "pistol", output);
             Assert.True(third.Succeeded, third.Error);
@@ -457,8 +464,10 @@ public class WeaponPackTests
 
             WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_machinegun.txt")));
             Assert.Equal("models/porter/cs16/v_ak47.mdl", script.GetModel("view"));
-            // The model's attachments come along, so its muzzle flash events have somewhere to draw
+            // The model's attachments come along, so its muzzle flash events have somewhere to draw, and the script
+            // names the rifle flash Momentum ships for them
             Assert.Contains(StudioModelHeader.Read(Path.Combine(pack, "models", "porter", "cs16", "v_ak47.mdl")).Attachments, x => x.Name == "muzzle");
+            Assert.Equal("weapon_muzzle_flash_assaultrifle", script.GetParticle("MuzzleFlashEffect"));
             Assert.Equal("Porter_cs16.ak47.single_shot", script.SoundOverrides["Weapon_SMG1.Single"]);
         }
         finally

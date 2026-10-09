@@ -647,6 +647,18 @@ public sealed class WriteWeaponPackStep : IPortStep
             foreach ((string key, string particle) in weapon.Particles.Concat(state.Particles))
                 script.SetParticle(key, particle);
 
+            // Guns from other games fire muzzle flash events (CS:S's and HL2's models, converted GoldSrc ones), which
+            // the engine draws the script's MuzzleFlashEffect for; a gun the catalog gives none gets one for its slot
+            if (script.GetParticle(MuzzleFlashes.Key) is null or "" && MuzzleFlashes.SlotFamily(slot) is { } family)
+            {
+                (string effect, string? file) = MuzzleFlashes.Pick(state, family);
+                script.SetParticle(MuzzleFlashes.Key, effect);
+                if (file is not null)
+                    state.ParticleFiles.Add(file);
+
+                context.Log.Info($"Muzzle flash: {effect}{(file is null ? " (Momentum's own)" : $" from {file}")}");
+            }
+
             // The game's own particle files (CS:GO's muzzle flashes), from the content Momentum mounts
             foreach (string file in game.ParticleFiles)
             {
@@ -736,6 +748,52 @@ public sealed class WriteWeaponPackStep : IPortStep
             : $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/. {ReloadHint}");
         state.Dispose();
         return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// The particle muzzle flash a gun's script names when its catalog entry has none. CS:GO's flashes (its
+/// particles/weapons/cs_weapon_fx.pcf) have one per weapon family and are used when CS:GO is mounted; Momentum's own
+/// particles/weapons.pcf, always loaded, carries only the assault rifle's, which every family falls back to.
+/// </summary>
+file static class MuzzleFlashes
+{
+    public const string Key = "MuzzleFlashEffect";
+    public const string CsgoParticleFile = "particles/weapons/cs_weapon_fx.pcf";
+    public const string MomentumRifleFlash = "weapon_muzzle_flash_assaultrifle";
+
+    /// <summary>The CS:GO flash family for a slot's guns, null for weapons without a muzzle.</summary>
+    public static string? SlotFamily(WeaponSlot slot) => slot.Id switch
+    {
+        "pistol" => "pistol",
+        "machinegun" or "df_machinegun" => "assaultrifle",
+        "shotgun" or "df_shotgun" => "autoshotgun",
+        "sniper" or "df_railgun" => "awp",
+        _ => null,
+    };
+
+    public static (string Effect, string? File) Pick(WeaponPackState state, string family)
+    {
+        if (family != "assaultrifle" && CsgoHasParticles(state))
+            return ($"weapon_muzzle_flash_{family}", CsgoParticleFile);
+
+        return (MomentumRifleFlash, null);
+    }
+
+    private static bool CsgoHasParticles(WeaponPackState state)
+    {
+        if (state.GameInfo!.Id.Equals(SourceGames.CounterStrikeGlobalOffensive.Id, StringComparison.OrdinalIgnoreCase))
+            return state.Content!.Exists(CsgoParticleFile);
+
+        try
+        {
+            using GameContent csgo = SourceGames.Open(SourceGames.CounterStrikeGlobalOffensive, state.Steam!, state.Momentum!.InstallDirectory);
+            return csgo.Exists(CsgoParticleFile);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return false;
+        }
     }
 }
 
