@@ -7,7 +7,8 @@ Ports maps and assets from other games to Momentum Mod, as a desktop app (`Momen
   become their Momentum equivalents, brush entities are restructured where Momentum's work differently, timer entities
   become zone files, then bspPack packs the assets and the map is installed into Momentum.
 - **Quake 3 and GoldSrc (Half-Life, CS 1.6) maps**, through [BSPConvert](https://github.com/Panzerhandschuh/BSPConvert) in process.
-- **Player sounds**: packs that give the player Quake 3's jump, landing and footstep sounds.
+- **Player sounds**: packs that give the player the jump, landing and footstep sounds of Quake 3, CS:S, CS:GO, TF2, HL2,
+  CS 1.6 or Half-Life.
 - **Weapons**: packs that put weapons from CS:S, CS:GO, TF2, HL2, CS 1.6, HL1 and Quake 3 into Momentum's weapon slots.
 - **Player models**: a feasibility study so far, see `docs/player-models.md`.
 
@@ -66,7 +67,8 @@ Files the conversion writes next to the map, such as GOKZ's `zones/local/<map>.j
   pre-pack command, the output and work folders, whether to install by default, and which known games were found.
   Saved to `%AppData%/MomentumPorter/settings.json`.
 - **Weapons**: pick a game, a weapon and the Momentum weapon it replaces, then build the pack (see Weapons below).
-- **Player Sounds**: pick a Quake 3 character and the jump/land/footstep options, then build the pack (see Player sounds).
+- **Player Sounds**: pick a game (and a Quake 3 character or CS:GO team) and the jump/land/footstep options, then build
+  the pack (see Player sounds).
 - **Player Models**: placeholder; see `docs/player-models.md` for the feasibility study.
 
 bspPack reads its `config.ini` (the game folder it packs assets from) and `ResourceConfig.ini` from its own folder, so
@@ -201,34 +203,54 @@ Not reproducible, and listed as warnings:
 
 ## Player sounds
 
-Builds a pack for Momentum's `custom` folder that gives the player Quake 3's movement sounds:
+Builds a pack for Momentum's `custom` folder that gives the player another game's movement sounds:
 
 ```
-MomentumPorter sounds [--character ranger] [--jump q3|default] [--land q3|default|none] [--footsteps q3|default|silent]
-                      [--pure] [--output <folder>|auto] [--vpk|--folder] [--name <pack>] [--list]
+MomentumPorter sounds [--game q3|css|csgo|tf2|hl2|cs16|hl1] [--character <name>] [--jump game|default|none]
+                      [--land game|default|none] [--footsteps game|default|silent] [--pure]
+                      [--output <folder>|auto] [--vpk|--folder] [--name <pack>] [--list]
 ```
 
-- **Jump**: the character's `jump1.wav` (`MomPlayer.Jump`).
-- **Land**: `land1.wav` for soft landings, the character's `fall1.wav` for hard ones (`MomPlayer.LandSoft`/`LandHard`), or none.
-- **Footsteps**: Quake 3's on every surface. Like Quake 3, the set comes from the character's `animation.cfg` (normal,
-  boot, energy, flesh or mech; `--footstep-type` overrides it), metal surfaces clank and water splashes
-  (`--no-surface-footsteps` turns that off). `silent` mutes them and also writes `cfg/<pack>.cfg` with
-  `snd_volume_footsteps 0`; run `exec <pack>` or add it to `cfg/autoexec.cfg`. The cvar is saved in your config, so
-  set it back to 1 after removing the pack.
-- **`--pure`**: also mutes what Quake 3 doesn't have: `MomPlayer.AirJump`, `SprintStart`, `PowerSlide`, `WallRun`.
+| `--game` | Jump | Land | Footsteps |
+|---|---|---|---|
+| `q3` (default) | the character's `jump1.wav` | `land1.wav` soft, the character's `fall1.wav` hard | the character's set; metal clanks, water splashes |
+| `css`, `tf2`, `hl2` | none | the default footsteps | the game's soundscript entries |
+| `csgo` | none | `Land_Default.StepLeft` (`player/land*.wav`) | the team's (`--character ct` or `t`) |
+| `cs16`, `hl1` | none | the concrete footsteps | the `pl_<type>` sets |
 
-Quake 3 and Momentum are found through Steam (`--q3-dir`, `--momentum-dir` override that); `--list` shows the characters.
-Quake Live works too, but its footsteps are Ogg Vorbis, which Momentum can't play, so those stay Momentum's. The pack
-goes to `momentum/custom/q3_sounds_<character>.vpk` (built with Momentum's `vpk.exe`) unless `--output` names another
+- **Jump** (`MomPlayer.Jump`) and **Land** (`MomPlayer.LandSoft`/`LandHard`): Momentum only plays these in Defrag modes
+  unless `mom_movement_sound_jump`/`mom_movement_sound_land` are on; otherwise jumps and landings play the footstep, as
+  in the Valve games. Games without a jump sound keep Momentum's (`--pure` mutes it). The Valve games play the footstep
+  on landing, so `game` landings play their (concrete) footsteps.
+- **Footsteps**: every surface's. Source games are matched by entry name (they share most of Momentum's, e.g.
+  `SolidMetal.StepLeft`; CS:GO's are `CT_`/`T_` prefixed), then through the surfaces that use the entry in Momentum's
+  `surfaceproperties` and what the same surface uses in the game's, then the game's `Default.StepLeft`/`StepRight`; the
+  game's pitch and sound level come along. GoldSrc has no soundscripts: surfaces are matched by name to the
+  `sound/player/pl_<type>N.wav` sets (step, metal, dirt, duct, grate, tile, slosh, wade, ladder, CS 1.6's snow), one foot
+  playing 1 and 3 and the other 2 and 4, as GoldSrc does. For Quake 3 the set comes from the character's
+  `animation.cfg` (normal, boot, energy, flesh or mech; `--footstep-type` overrides it). `--no-surface-footsteps` plays
+  the default footsteps everywhere. `silent` mutes them and also writes `cfg/<pack>.cfg` with `snd_volume_footsteps 0`;
+  run `exec <pack>` or add it to `cfg/autoexec.cfg`. The cvar is saved in your config, so set it back to 1 after removing
+  the pack. Footsteps play at the volume Momentum's movement gives them (the engine ignores the entry's volume).
+- **`--pure`**: also mutes what the game doesn't have: `MomPlayer.AirJump`, `SprintStart`, `PowerSlide`, `WallRun`, and
+  the jump sound for games without one.
+
+The games and Momentum are found through Steam (`--q3-dir`, `--game-dir`, `--momentum-dir` override that); `--list`
+lists the games and the chosen game's characters or teams. HL2's footsteps are defined in the HL2 install's loose
+`hl2/scripts` (Momentum's own HL2 mount has the WAVs but not those definitions), so HL2 has to be installed; CS:S and TF2
+read HL2's footstep WAVs from their own `hl2` folder. Quake Live works too, but its footsteps are Ogg Vorbis, which
+Momentum can't play, so those stay Momentum's. The pack goes to `momentum/custom/<game>_sounds[_<character>].vpk` (e.g.
+`q3_sounds_ranger`, `csgo_sounds_ct`, `css_sounds`; built with Momentum's `vpk.exe`) unless `--output` names another
 folder; delete it to get the default sounds back.
 
 The pack holds a full copy of Momentum's `scripts/game_sounds_momentum_player.txt` (the soundscript manifest lives in the
-base game, so the file is replaced whole) with only those entries changed, the WAVs they play under
-`sound/player/<character>/`, `sound/player/q3/` and `sound/player/footsteps/q3/` (own folders, so no mounted game's
-sounds are replaced), and the cfg. WAVs Source can't play (rates other than 11025/22050/44100 Hz, more than 16 bits,
-float) are re-encoded. Only one pack can replace the soundscript, so the tool warns about other `custom` folders that
-have their own copy (e.g. `custom/overrides/scripts/game_sounds_momentum_player.txt`). Folder packs are only replaced if
-MomentumPorter wrote them (`momentumporter_pack.txt`).
+base game, so the file is replaced whole) with only those entries changed, the WAVs they play, and the cfg. Quake 3's go
+under `sound/player/<character>/`, `sound/player/q3/` and `sound/player/footsteps/q3/`, the other games' under
+`sound/porter/<game>/` with their own paths (own folders, so no mounted game's sounds are replaced, and HL2's and CS:S's
+same-named footsteps can't stand in for each other). WAVs Source can't play (rates other than 11025/22050/44100 Hz, more
+than 16 bits, float) are re-encoded. Only one pack can replace the soundscript, so the tool warns about other `custom`
+folders that have their own copy (e.g. `custom/overrides/scripts/game_sounds_momentum_player.txt`). Folder packs are only
+replaced if MomentumPorter wrote them (`momentumporter_pack.txt`).
 
 In code, `PlayerSoundPackJob.Create(PlayerSoundPackOptions)` builds the job; `CustomPackWriter` (folder or VPK) and
 `SoundscriptFile` (edit soundscripts keeping comments) are reusable for other asset packs.

@@ -55,23 +55,12 @@ public static class SourceGames
     /// <exception cref="DirectoryNotFoundException">The game isn't installed (or the folder given doesn't exist)</exception>
     public static GameContent Open(SourceGameInfo game, SteamLocator steam, string? momentumDirectory = null, string? contentDirectory = null)
     {
-        // The first install whose content folder has the file the game can't be without. Leftover folders of games
-        // that moved to another library (no manifest, no VPKs) are skipped.
-        string Locate(string requiredFile, params KnownGame[] candidates)
+        string Locate()
         {
             if (contentDirectory is not null)
                 return Directory.Exists(contentDirectory) ? contentDirectory : throw new DirectoryNotFoundException($"{contentDirectory} doesn't exist");
 
-            foreach (KnownGame candidate in candidates)
-            {
-                foreach (string found in FindContentDirectories(steam, candidate))
-                {
-                    if (File.Exists(Path.Combine(found, requiredFile)) || Directory.Exists(Path.Combine(found, requiredFile)))
-                        return found;
-                }
-            }
-
-            throw new DirectoryNotFoundException($"{game.Name} isn't installed (looked for {string.Join(", ", candidates.Select(x => $"{x.InstallFolder}/{x.ContentFolder}/{requiredFile}"))} in the Steam libraries)");
+            return LocateContentDirectory(game, steam);
         }
 
         var sources = new List<IContentSource>();
@@ -81,21 +70,21 @@ public static class SourceGames
             {
                 case "css":
                 {
-                    string dir = Locate("cstrike_pak_dir.vpk", KnownGame.CounterStrikeSource);
+                    string dir = Locate();
                     AddVpks(sources, dir, "cstrike_pak");
                     AddFolder(sources, Path.Combine(dir, "download"));
                     break;
                 }
                 case "tf2":
                 {
-                    string dir = Locate("tf2_misc_dir.vpk", KnownGame.TeamFortress2);
+                    string dir = Locate();
                     AddVpks(sources, dir, "tf2_misc", "tf2_sound_misc", "tf2_sound_vo_english", "tf2_textures");
                     AddFolder(sources, Path.Combine(dir, "download"));
                     break;
                 }
                 case "csgo":
                 {
-                    string dir = Locate("pak01_dir.vpk", CounterStrikeGlobalOffensiveLegacy, KnownGame.CounterStrikeGlobalOffensive);
+                    string dir = Locate();
                     AddVpks(sources, dir, "pak01");
                     break;
                 }
@@ -109,7 +98,7 @@ public static class SourceGames
                     }
                     else
                     {
-                        string dir = Locate("hl2_misc_dir.vpk", KnownGame.HalfLife2);
+                        string dir = Locate();
                         AddVpks(sources, dir, "hl2_misc", "hl2_sound_misc", "hl2_textures");
                     }
 
@@ -117,7 +106,7 @@ public static class SourceGames
                 }
                 case "cs16":
                 {
-                    string dir = Locate("models", KnownGame.CounterStrike16);
+                    string dir = Locate();
                     AddGoldSrc(sources, dir);
                     // CS 1.6 uses Half-Life's files for anything it doesn't have
                     string valve = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(dir))!, "valve");
@@ -126,11 +115,11 @@ public static class SourceGames
                     break;
                 }
                 case "hl1":
-                    AddGoldSrc(sources, Locate("models", KnownGame.HalfLife));
+                    AddGoldSrc(sources, Locate());
                     break;
                 case "q3":
                 {
-                    string dir = Locate("pak0.pk3", KnownGame.Quake3);
+                    string dir = Locate();
                     AddFolder(sources, dir);
                     // pak8 overrides pak0
                     foreach (string pk3 in Directory.EnumerateFiles(dir, "*.pk3").OrderByDescending(x => Path.GetFileName(x), StringComparer.OrdinalIgnoreCase))
@@ -149,6 +138,38 @@ public static class SourceGames
         }
 
         return new GameContent(game.Name, sources);
+    }
+
+    /// <summary>
+    /// The game's content folder (e.g. <c>cstrike</c>, <c>baseq3</c>): the first install in the Steam libraries whose
+    /// content folder has the file the game can't be without. Leftover folders of games that moved to another library
+    /// (no manifest, no VPKs) are skipped.
+    /// </summary>
+    /// <exception cref="DirectoryNotFoundException">The game isn't installed</exception>
+    public static string LocateContentDirectory(SourceGameInfo game, SteamLocator steam)
+    {
+        (string requiredFile, KnownGame[] candidates) = game.Id switch
+        {
+            "css" => ("cstrike_pak_dir.vpk", new[] { KnownGame.CounterStrikeSource }),
+            "tf2" => ("tf2_misc_dir.vpk", [KnownGame.TeamFortress2]),
+            "csgo" => ("pak01_dir.vpk", [CounterStrikeGlobalOffensiveLegacy, KnownGame.CounterStrikeGlobalOffensive]),
+            "hl2" => ("hl2_misc_dir.vpk", [KnownGame.HalfLife2]),
+            "cs16" => ("models", [KnownGame.CounterStrike16]),
+            "hl1" => ("models", [KnownGame.HalfLife]),
+            "q3" => ("pak0.pk3", [KnownGame.Quake3]),
+            _ => throw new ArgumentException($"Unknown game {game.Id}", nameof(game)),
+        };
+
+        foreach (KnownGame candidate in candidates)
+        {
+            foreach (string found in FindContentDirectories(steam, candidate))
+            {
+                if (File.Exists(Path.Combine(found, requiredFile)) || Directory.Exists(Path.Combine(found, requiredFile)))
+                    return found;
+            }
+        }
+
+        throw new DirectoryNotFoundException($"{game.Name} isn't installed (looked for {string.Join(", ", candidates.Select(x => $"{x.InstallFolder}/{x.ContentFolder}/{requiredFile}"))} in the Steam libraries)");
     }
 
     /// <summary>

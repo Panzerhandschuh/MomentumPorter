@@ -3,36 +3,41 @@ namespace MomentumPorter.Cli;
 using CommandLine;
 using MomentumPorter.Assets.Output;
 using MomentumPorter.Assets.Sounds;
+using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Pipeline;
+using MomentumPorter.Steam;
 
-[Verb("sounds", HelpText = "Build a custom pack with Quake 3's player movement sounds (jump, land, footsteps)")]
+[Verb("sounds", HelpText = "Build a custom pack with another game's player movement sounds (jump, land, footsteps)")]
 internal sealed class SoundsCliOptions
 {
-    [Option("character", HelpText = "Quake 3 character whose sounds to use (ranger, sarge, ...). See --list.", Default = "ranger")]
-    public string Character { get; set; } = "ranger";
+    [Option('g', "game", HelpText = "Game whose sounds to use: q3, css, csgo, tf2, hl2, cs16 or hl1", Default = "q3")]
+    public string Game { get; set; } = "q3";
 
-    [Option("jump", HelpText = "q3 (character's jump1.wav) or default (Momentum's)", Default = "q3")]
-    public string Jump { get; set; } = "q3";
+    [Option("character", HelpText = "Quake 3 character whose sounds to use (ranger, sarge, ...; ranger by default), or CS:GO team (ct or t; ct by default). See --list.")]
+    public string? Character { get; set; }
 
-    [Option("land", HelpText = "q3 (land1.wav soft, character's fall1.wav hard), default or none", Default = "q3")]
-    public string Land { get; set; } = "q3";
+    [Option("jump", HelpText = "game (Quake 3: the character's jump1.wav; the other games have none and keep Momentum's), default (Momentum's) or none", Default = "game")]
+    public string Jump { get; set; } = "game";
 
-    [Option("footsteps", HelpText = "q3 (Quake 3's on every surface), default or silent (also writes a cfg setting snd_volume_footsteps 0)", Default = "q3")]
-    public string Footsteps { get; set; } = "q3";
+    [Option("land", HelpText = "game (Quake 3: land1.wav soft, the character's fall1.wav hard; CS:GO: its landing sound; the others: their footsteps), default or none", Default = "game")]
+    public string Land { get; set; } = "game";
 
-    [Option("footstep-type", HelpText = "character (the character's own), normal, boot, energy, flesh or mech", Default = "character")]
+    [Option("footsteps", HelpText = "game (the game's on every surface), default or silent (also writes a cfg setting snd_volume_footsteps 0)", Default = "game")]
+    public string Footsteps { get; set; } = "game";
+
+    [Option("footstep-type", HelpText = "Quake 3: character (the character's own), normal, boot, energy, flesh or mech", Default = "character")]
     public string FootstepType { get; set; } = "character";
 
-    [Option("no-surface-footsteps", HelpText = "Don't use Quake 3's metal (clank) and water (splash) footsteps on metal and water surfaces")]
+    [Option("no-surface-footsteps", HelpText = "Play the game's default (concrete) footsteps on every surface instead of its metal, dirt, water... ones")]
     public bool NoSurfaceFootsteps { get; set; }
 
-    [Option("pure", HelpText = "Pure Quake 3: also mute air jump, sprint, power slide and wall run sounds")]
+    [Option("pure", HelpText = "Also mute the sounds the game doesn't have: air jump, sprint, power slide, wall run, and the jump sound for games without one")]
     public bool Pure { get; set; }
 
-    [Option("volume", HelpText = "Volume of the Quake 3 jump and land sounds, 0 to 1", Default = 0.35f)]
+    [Option("volume", HelpText = "Volume of the game's jump and land sounds, 0 to 1", Default = 0.35f)]
     public float Volume { get; set; } = 0.35f;
 
-    [Option("name", HelpText = "Pack name. Defaults to q3_sounds_<character>.")]
+    [Option("name", HelpText = "Pack name. Defaults to <game>_sounds, plus the character or team (q3_sounds_ranger, csgo_sounds_ct).")]
     public string? Name { get; set; }
 
     [Option('o', "output", HelpText = "Folder to write the pack to, or auto for Momentum's custom folder", Default = "auto")]
@@ -47,15 +52,21 @@ internal sealed class SoundsCliOptions
     [Option("q3-dir", HelpText = "Quake 3's baseq3 folder or a pk3. Found through Steam by default (Quake 3, then Quake Live).")]
     public string? Quake3Path { get; set; }
 
+    [Option("game-dir", HelpText = "The game's content folder (cstrike, csgo, tf, hl2, valve; for Quake 3, like --q3-dir). Found through Steam by default.")]
+    public string? GameDirectory { get; set; }
+
     [Option("momentum-dir", HelpText = "Momentum Mod's install or momentum folder. Found through Steam by default.")]
     public string? MomentumDirectory { get; set; }
 
-    [Option("list", HelpText = "List the Quake 3 characters and exit")]
+    [Option("list", HelpText = "List the games, and the game's characters or teams, and exit")]
     public bool List { get; set; }
+
+    /// <summary>The folder given for the game's sounds: --q3-dir or --game-dir for Quake 3, --game-dir for the others.</summary>
+    public string? GetGameDirectory(SourceGameInfo game) => game.Engine == ContentEngine.Quake3 ? Quake3Path ?? GameDirectory : GameDirectory;
 }
 
 /// <summary>
-/// <c>MomentumPorter sounds ...</c>: builds a Quake 3 player sound pack.
+/// <c>MomentumPorter sounds ...</c>: builds a player sound pack.
 /// </summary>
 internal static class SoundsCommand
 {
@@ -75,7 +86,7 @@ internal static class SoundsCommand
     private static async Task<int> RunAsync(SoundsCliOptions cli)
     {
         if (cli.List)
-            return ListCharacters(cli.Quake3Path);
+            return List(cli);
 
         if (cli.Vpk && cli.Folder)
         {
@@ -86,22 +97,26 @@ internal static class SoundsCommand
         PlayerSoundPackOptions options;
         try
         {
+            SourceGameInfo game = PlayerSoundSources.Find(cli.Game)
+                ?? throw new ArgumentException($"Unknown --game \"{cli.Game}\"; use {string.Join(", ", PlayerSoundSources.Games.Select(x => x.Id))}");
             options = new PlayerSoundPackOptions
             {
+                Game = game.Id,
                 Character = cli.Character,
-                JumpSound = ParseMode(cli.Jump, "jump", ("q3", JumpSoundMode.Quake3), ("default", JumpSoundMode.MomentumDefault)),
-                LandSound = ParseMode(cli.Land, "land", ("q3", LandSoundMode.Quake3), ("default", LandSoundMode.MomentumDefault), ("none", LandSoundMode.None)),
-                Footsteps = ParseMode(cli.Footsteps, "footsteps", ("q3", FootstepMode.Quake3), ("default", FootstepMode.MomentumDefault), ("silent", FootstepMode.Silent)),
+                JumpSound = ParseMode(cli.Jump, "jump", ("game", JumpSoundMode.Game), ("default", JumpSoundMode.MomentumDefault), ("none", JumpSoundMode.None)),
+                LandSound = ParseMode(cli.Land, "land", ("game", LandSoundMode.Game), ("default", LandSoundMode.MomentumDefault), ("none", LandSoundMode.None)),
+                Footsteps = ParseMode(cli.Footsteps, "footsteps", ("game", FootstepMode.Game), ("default", FootstepMode.MomentumDefault), ("silent", FootstepMode.Silent)),
                 FootstepType = Enum.TryParse(cli.FootstepType, ignoreCase: true, out Quake3FootstepType type)
                     ? type
                     : throw new ArgumentException($"Unknown --footstep-type \"{cli.FootstepType}\""),
                 SurfaceFootsteps = !cli.NoSurfaceFootsteps,
-                PureQuake3 = cli.Pure,
+                Pure = cli.Pure,
                 Volume = Math.Clamp(cli.Volume, 0, 1),
                 PackName = cli.Name,
                 OutputAsVpk = !cli.Folder,
                 OutputDirectory = cli.Output.Equals("auto", StringComparison.OrdinalIgnoreCase) ? null : cli.Output,
-                Quake3Path = cli.Quake3Path,
+                Quake3Path = game.Engine == ContentEngine.Quake3 ? cli.GetGameDirectory(game) : null,
+                GameDirectory = game.Engine == ContentEngine.Quake3 ? null : cli.GameDirectory,
                 MomentumDirectory = cli.MomentumDirectory,
             };
         }
@@ -142,19 +157,41 @@ internal static class SoundsCommand
         }
     }
 
-    private static int ListCharacters(string? quake3Path)
+    private static int List(SoundsCliOptions cli)
     {
-        string? path = quake3Path ?? Quake3SoundSource.FindInstalled();
-        if (path is null)
+        Console.WriteLine("Games (--game):");
+        foreach (SourceGameInfo each in PlayerSoundSources.Games)
+            Console.WriteLine($"  {each.Id,-5} {each.Name}");
+
+        SourceGameInfo? game = PlayerSoundSources.Find(cli.Game);
+        if (game is null)
         {
-            Console.Error.WriteLine("Quake 3 wasn't found through Steam; pass --q3-dir");
+            Console.Error.WriteLine($"Unknown --game \"{cli.Game}\"");
             return 1;
         }
 
-        using Quake3SoundSource source = Quake3SoundSource.Open(path);
-        Console.WriteLine($"Characters in {source.Path}:");
+        var steam = new SteamLocator();
+        string? path = PlayerSoundSources.Locate(game, cli.GetGameDirectory(game), steam);
+        if (path is null)
+        {
+            Console.Error.WriteLine($"{game.Name} wasn't found through Steam; pass --game-dir");
+            return 1;
+        }
+
+        using PlayerSoundSource source = PlayerSoundSources.Open(game, path, steam);
+        if (source.Characters.Count == 0)
+        {
+            Console.WriteLine($"{game.Name} ({source.Path}) has one set of sounds");
+            return 0;
+        }
+
+        Console.WriteLine($"{char.ToUpperInvariant(source.CharacterKind[0])}{source.CharacterKind[1..]}s (--character) in {source.Path}:");
         foreach (string character in source.Characters)
-            Console.WriteLine($"  {character,-10} footsteps: {PlayerSoundPackBuilder.FootstepSetName(source.GetFootstepType(character))}");
+        {
+            Console.WriteLine(source is Quake3SoundSource quake3
+                ? $"  {character,-10} footsteps: {Quake3SoundSource.FootstepSetName(quake3.GetFootstepType(character))}"
+                : $"  {character}");
+        }
 
         return 0;
     }
@@ -163,7 +200,7 @@ internal static class SoundsCommand
     {
         string name = value.Trim().ToLowerInvariant() switch
         {
-            "quake3" or "q3" => "q3",
+            "game" or "quake3" or "q3" => "game",
             "momentum" or "momentumdefault" or "default" => "default",
             var other => other,
         };

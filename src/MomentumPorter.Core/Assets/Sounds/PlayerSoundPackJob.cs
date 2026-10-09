@@ -2,6 +2,7 @@ namespace MomentumPorter.Assets.Sounds;
 
 using System.Text.RegularExpressions;
 using MomentumPorter.Assets.Output;
+using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Steam;
 
@@ -12,8 +13,12 @@ public sealed class PlayerSoundPackState(PlayerSoundPackOptions options)
 {
     public PlayerSoundPackOptions Options { get; } = options;
 
-    /// <summary>Quake 3's baseq3 folder or pk3.</summary>
-    public string? Quake3Path { get; set; }
+    public SourceGameInfo? Game { get; set; }
+
+    /// <summary>The game's folder (Quake 3's baseq3 folder or a pk3, the content folder of the others).</summary>
+    public string? GamePath { get; set; }
+
+    public SteamLocator? Steam { get; set; }
 
     /// <summary>Momentum's content folder (the one with gameinfo.txt and scripts/).</summary>
     public string? MomentumContentDirectory { get; set; }
@@ -26,11 +31,14 @@ public sealed class PlayerSoundPackState(PlayerSoundPackOptions options)
 
     public IReadOnlyList<string> SurfaceFootsteps { get; set; } = [];
 
+    /// <summary>Momentum's surfaces, to match footsteps through for Source games.</summary>
+    public SurfaceProperties? MomentumSurfaces { get; set; }
+
     public PlayerSoundPackResult? Result { get; set; }
 }
 
 /// <summary>
-/// Builds the job that makes a Quake 3 player sound pack: find the games, build the pack, write it.
+/// Builds the job that makes a player sound pack: find the games, build the pack, write it.
 /// </summary>
 public static class PlayerSoundPackJob
 {
@@ -81,7 +89,7 @@ public static class PlayerSoundPackJob
 }
 
 /// <summary>
-/// Finds Quake 3's pk3s, Momentum's soundscript and vpk.exe, and where the pack goes.
+/// Finds the game's sounds, Momentum's soundscript and vpk.exe, and where the pack goes.
 /// </summary>
 public sealed class FindPlayerSoundInputsStep : IPortStep
 {
@@ -93,11 +101,22 @@ public sealed class FindPlayerSoundInputsStep : IPortStep
         PlayerSoundPackOptions options = state.Options;
         var locator = new Lazy<SteamLocator>(() => new SteamLocator());
 
-        state.Quake3Path = string.IsNullOrWhiteSpace(options.Quake3Path) ? Quake3SoundSource.FindInstalled(locator.Value) : options.Quake3Path;
-        if (state.Quake3Path is null)
-            throw new PortStepException("Quake 3 (or Quake Live) wasn't found through Steam; set its baseq3 folder");
-        if (!File.Exists(state.Quake3Path) && !Directory.Exists(state.Quake3Path))
-            throw new PortStepException($"{state.Quake3Path} doesn't exist");
+        state.Game = PlayerSoundSources.Find(options.Game)
+            ?? throw new PortStepException($"Unknown game \"{options.Game}\"; use {string.Join(", ", PlayerSoundSources.Games.Select(x => x.Id))}");
+        string? directory = options.ResolveGameDirectory();
+        state.GamePath = PlayerSoundSources.Locate(state.Game, directory, directory is null ? locator.Value : null);
+        if (state.GamePath is null)
+        {
+            throw new PortStepException(state.Game.Engine == ContentEngine.Quake3
+                ? "Quake 3 (or Quake Live) wasn't found through Steam; set its baseq3 folder"
+                : $"{state.Game.Name} wasn't found through Steam; set its folder");
+        }
+
+        if (!File.Exists(state.GamePath) && !Directory.Exists(state.GamePath))
+            throw new PortStepException($"{state.GamePath} doesn't exist");
+
+        if (state.Game.Engine != ContentEngine.Quake3)
+            state.Steam = locator.Value;
 
         string? content = PlayerSoundPackJob.FindMomentumContent(options.MomentumDirectory, string.IsNullOrWhiteSpace(options.MomentumDirectory) ? locator.Value : null);
         if (content is null)
@@ -120,6 +139,11 @@ public sealed class FindPlayerSoundInputsStep : IPortStep
         }
 
         state.SurfaceFootsteps = PlayerSoundPackJob.ReadSurfaceFootsteps(Path.Combine(content, "scripts"));
+        state.MomentumSurfaces = SurfaceProperties.Load(path =>
+        {
+            string file = Path.Combine(content, path.Replace('/', Path.DirectorySeparatorChar));
+            return File.Exists(file) ? File.ReadAllText(file) : null;
+        });
         state.OutputDirectory = string.IsNullOrWhiteSpace(options.OutputDirectory) || options.OutputDirectory.Equals("auto", StringComparison.OrdinalIgnoreCase)
             ? Path.Combine(content, "custom")
             : options.OutputDirectory;
@@ -129,7 +153,7 @@ public sealed class FindPlayerSoundInputsStep : IPortStep
         if (options.OutputAsVpk && state.VpkTool is null)
             throw new PortStepException($"Momentum's vpk.exe wasn't found ({vpk}); turn off \"Build a VPK\" to write a folder");
 
-        context.Log.Info($"Quake 3 sounds: {state.Quake3Path}");
+        context.Log.Info($"{state.Game.Name} sounds: {state.GamePath}");
         context.Log.Info($"Momentum: {content}");
         WarnAboutShadowingOverrides(context, state);
         return Task.CompletedTask;
@@ -156,7 +180,7 @@ public sealed class FindPlayerSoundInputsStep : IPortStep
 }
 
 /// <summary>
-/// Reads the Quake 3 sounds and assembles the pack's files (nothing is written to the output yet).
+/// Reads the game's sounds and assembles the pack's files (nothing is written to the output yet).
 /// </summary>
 public sealed class BuildPlayerSoundPackStep : IPortStep
 {
@@ -177,9 +201,9 @@ public sealed class BuildPlayerSoundPackStep : IPortStep
             throw new PortStepException(ex.Message, ex);
         }
 
-        using (Quake3SoundSource quake3 = OpenQuake3(state.Quake3Path!))
+        using (PlayerSoundSource source = OpenSource(state))
         {
-            var builder = new PlayerSoundPackBuilder(quake3, context.Log, context.Report);
+            var builder = new PlayerSoundPackBuilder(source, context.Log, context.Report);
             state.Result = builder.Build(options, state.Soundscript!, pack, state.SurfaceFootsteps);
         }
 
@@ -188,15 +212,18 @@ public sealed class BuildPlayerSoundPackStep : IPortStep
         return Task.CompletedTask;
     }
 
-    private static Quake3SoundSource OpenQuake3(string path)
+    private static PlayerSoundSource OpenSource(PlayerSoundPackState state)
     {
+        SourceGameInfo game = state.Game!;
         try
         {
-            return Quake3SoundSource.Open(path);
+            return PlayerSoundSources.Open(game, state.GamePath!, state.Steam ?? new SteamLocator(), state.MomentumSurfaces);
         }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or InvalidDataException)
         {
-            throw new PortStepException($"Couldn't open Quake 3's pk3s in {path}: {ex.Message}", ex);
+            throw new PortStepException(game.Engine == ContentEngine.Quake3
+                ? $"Couldn't open Quake 3's pk3s in {state.GamePath}: {ex.Message}"
+                : $"Couldn't open {game.Name}'s files in {state.GamePath}: {ex.Message}", ex);
         }
     }
 }

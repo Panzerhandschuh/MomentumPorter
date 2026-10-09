@@ -4,22 +4,24 @@ using System.Globalization;
 using System.Text;
 using MomentumPorter.Assets.Common;
 using MomentumPorter.Assets.Output;
+using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
 
 /// <summary>
 /// What a player sound pack build produced, beyond the files.
 /// </summary>
+/// <param name="Character">The Quake 3 character or CS:GO team, or null for games with one set of sounds</param>
 /// <param name="ExecCommand">The console command that applies the pack's cfg (e.g. <c>exec q3_sounds_ranger</c>), or null if it has none</param>
-public sealed record PlayerSoundPackResult(string PackName, string Character, string? ExecCommand);
+public sealed record PlayerSoundPackResult(string PackName, string? Character, string? ExecCommand);
 
 /// <summary>
-/// Builds a custom pack that gives the player Quake 3's movement sounds. Like the hand-made overrides it automates,
-/// the pack ships a full copy of Momentum's scripts/game_sounds_momentum_player.txt with the movement and footstep
-/// entries changed (the manifest that lists the file lives in the base game, so the file can only be replaced
+/// Builds a custom pack that gives the player another game's movement sounds. Like the hand-made overrides it
+/// automates, the pack ships a full copy of Momentum's scripts/game_sounds_momentum_player.txt with the movement and
+/// footstep entries changed (the manifest that lists the file lives in the base game, so the file can only be replaced
 /// whole), the WAVs those entries play, and optionally a cfg.
 /// </summary>
-public sealed class PlayerSoundPackBuilder(Quake3SoundSource quake3, IPortLog log, PortReport report)
+public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog log, PortReport report)
 {
     /// <summary>The soundscript with Momentum's movement sounds and every surface's footsteps.</summary>
     public const string SoundscriptPath = "scripts/game_sounds_momentum_player.txt";
@@ -28,13 +30,11 @@ public sealed class PlayerSoundPackBuilder(Quake3SoundSource quake3, IPortLog lo
     public const string LandSoft = "MomPlayer.LandSoft";
     public const string LandHard = "MomPlayer.LandHard";
 
-    /// <summary>Momentum-only movement sounds Quake 3 has nothing like, muted by Pure Quake 3.</summary>
-    public static readonly IReadOnlyList<string> NonQuake3Sounds = ["MomPlayer.AirJump", "MomPlayer.SprintStart", "MomPlayer.PowerSlide", "MomPlayer.WallRun"];
+    /// <summary>Momentum-only movement sounds the other games have nothing like, muted by Pure.</summary>
+    public static readonly IReadOnlyList<string> MomentumOnlySounds = ["MomPlayer.AirJump", "MomPlayer.SprintStart", "MomPlayer.PowerSlide", "MomPlayer.WallRun"];
 
-    // Pack-relative folders. Shared Q3 sounds get their own folders so they never replace a mounted game's files.
-    private const string SharedFolder = "player/q3";
-    private const string FootstepFolder = "player/footsteps/q3";
-    private const string SilentWave = SharedFolder + "/silent.wav";
+    // Pack-relative, in a folder of its own so it never replaces a mounted game's file
+    private const string SilentWave = "player/q3/silent.wav";
 
     /// <summary>
     /// Adds the pack's files to <paramref name="pack"/>.
@@ -43,27 +43,45 @@ public sealed class PlayerSoundPackBuilder(Quake3SoundSource quake3, IPortLog lo
     /// <param name="surfaceFootsteps">The stepleft/stepright sounds surfaceproperties*.txt names, so footsteps it uses but the soundscript doesn't define get one too</param>
     public PlayerSoundPackResult Build(PlayerSoundPackOptions options, SoundscriptFile soundscript, CustomPackWriter pack, IEnumerable<string>? surfaceFootsteps = null)
     {
-        string character = options.Character.Trim().ToLowerInvariant();
-        if (!quake3.HasCharacter(character))
-            throw new PortStepException($"{quake3.Path} has no character \"{options.Character}\". Characters: {string.Join(", ", quake3.Characters)}");
-
+        string? character = ResolveCharacter(options);
         string volume = options.Volume.ToString("0.###", CultureInfo.InvariantCulture);
 
-        if (options.JumpSound == JumpSoundMode.Quake3)
+        switch (options.JumpSound)
         {
-            string? wave = AddQuake3Sound($"{Quake3SoundSource.PlayerSoundFolder}/{character}/jump1.wav", $"player/{character}/jump1.wav", pack);
-            if (wave is not null)
-                SetMovementSound(soundscript, Jump, wave, "CHAN_VOICE", volume);
+            case JumpSoundMode.Game:
+                if (source.GetJump(character) is { } jump)
+                {
+                    if (AddSound(jump, pack) is { } waves)
+                        SetMovementSound(soundscript, Jump, waves, jump, "CHAN_VOICE", volume);
+                }
+                else if (options.Pure)
+                {
+                    Mute(soundscript, Jump, pack);
+                }
+                else
+                {
+                    report.Change($"{source.Game.Name} has no jump sound (it plays the footstep, as Momentum does), so {Jump} is Momentum's");
+                }
+
+                break;
+            case JumpSoundMode.None:
+                Mute(soundscript, Jump, pack);
+                break;
         }
 
         switch (options.LandSound)
         {
-            case LandSoundMode.Quake3:
-                if (AddQuake3Sound($"{Quake3SoundSource.PlayerSoundFolder}/land1.wav", $"{SharedFolder}/land1.wav", pack) is { } soft)
-                    SetMovementSound(soundscript, LandSoft, soft, "CHAN_AUTO", volume);
-                if (AddQuake3Sound($"{Quake3SoundSource.PlayerSoundFolder}/{character}/fall1.wav", $"player/{character}/fall1.wav", pack) is { } hard)
-                    SetMovementSound(soundscript, LandHard, hard, "CHAN_AUTO", volume);
+            case LandSoundMode.Game:
+            {
+                (GameSound? soft, GameSound? hard) = source.GetLand(character);
+                if (soft is not null && AddSound(soft, pack) is { } softWaves)
+                    SetMovementSound(soundscript, LandSoft, softWaves, soft, "CHAN_AUTO", volume);
+                if (hard is not null && AddSound(hard, pack) is { } hardWaves)
+                    SetMovementSound(soundscript, LandHard, hardWaves, hard, "CHAN_AUTO", volume);
+                if (soft is null && hard is null)
+                    report.Change($"{source.Game.Name} has no landing sounds, so Momentum's are kept");
                 break;
+            }
             case LandSoundMode.None:
                 Mute(soundscript, LandSoft, pack);
                 Mute(soundscript, LandHard, pack);
@@ -73,8 +91,8 @@ public sealed class PlayerSoundPackBuilder(Quake3SoundSource quake3, IPortLog lo
         string? execCommand = null;
         switch (options.Footsteps)
         {
-            case FootstepMode.Quake3:
-                SetQuake3Footsteps(options, character, soundscript, pack, surfaceFootsteps);
+            case FootstepMode.Game:
+                SetFootsteps(options, character, soundscript, pack, surfaceFootsteps);
                 break;
             case FootstepMode.Silent:
             {
@@ -97,9 +115,9 @@ public sealed class PlayerSoundPackBuilder(Quake3SoundSource quake3, IPortLog lo
             }
         }
 
-        if (options.PureQuake3)
+        if (options.Pure)
         {
-            foreach (string name in NonQuake3Sounds)
+            foreach (string name in MomentumOnlySounds)
                 Mute(soundscript, name, pack);
         }
 
@@ -137,93 +155,70 @@ public sealed class PlayerSoundPackBuilder(Quake3SoundSource quake3, IPortLog lo
         return name.EndsWith("StepLeft", StringComparison.OrdinalIgnoreCase) || name.EndsWith("StepRight", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// The Quake 3 footstep set a Momentum footstep sound gets: metal clanks and water splashes (Quake 3's surface
-    /// footsteps), flesh is flesh, and everything else uses the character's set.
-    /// </summary>
-    public static string ClassifyFootstep(string soundName, string characterSet, bool surfaceFootsteps)
+    private string? ResolveCharacter(PlayerSoundPackOptions options)
     {
-        if (!surfaceFootsteps)
-            return characterSet;
+        if (source.Characters.Count == 0)
+            return null;
 
-        string surface = soundName.Split('.')[0].ToLowerInvariant();
-        bool woodLadder = soundName.Contains("wood", StringComparison.OrdinalIgnoreCase);
-        if (surface.Contains("metal") || surface.Contains("grate") || surface.Contains("vent") || surface.Contains("chainlink")
-            || surface is "grenade" or "weapon" || (surface == "ladder" && !woodLadder))
-            return "clank";
+        string character = options.ResolveCharacter() ?? source.DefaultCharacter ?? source.Characters[0];
+        if (!source.Characters.Contains(character, StringComparer.OrdinalIgnoreCase))
+            throw new PortStepException($"{source.Path} has no {source.CharacterKind} \"{options.Character}\". {char.ToUpperInvariant(source.CharacterKind[0])}{source.CharacterKind[1..]}s: {string.Join(", ", source.Characters)}");
 
-        if (surface.Contains("water") || surface.Contains("wade") || surface.Contains("slosh"))
-            return "splash";
-
-        if (surface.Contains("flesh"))
-            return "flesh";
-
-        return characterSet;
+        return character.ToLowerInvariant();
     }
 
-    public static string FootstepSetName(Quake3FootstepType type)
+    private void SetFootsteps(PlayerSoundPackOptions options, string? character, SoundscriptFile soundscript, CustomPackWriter pack, IEnumerable<string>? surfaceFootsteps)
     {
-        return type switch
-        {
-            Quake3FootstepType.Boot => "boot",
-            Quake3FootstepType.Energy => "energy",
-            Quake3FootstepType.Flesh => "flesh",
-            Quake3FootstepType.Mech => "mech",
-            _ => "step",
-        };
-    }
+        if (source.DescribeFootsteps(character, options) is { } description)
+            log.Info(description);
 
-    private void SetQuake3Footsteps(PlayerSoundPackOptions options, string character, SoundscriptFile soundscript, CustomPackWriter pack, IEnumerable<string>? surfaceFootsteps)
-    {
-        Quake3FootstepType type = options.FootstepType == Quake3FootstepType.Character ? quake3.GetFootstepType(character) : options.FootstepType;
-        string characterSet = FootstepSetName(type);
-        log.Info($"Footsteps: {characterSet}{(options.FootstepType == Quake3FootstepType.Character ? $" ({character}'s)" : "")}");
-
-        // Each set is four files (step1..step4); the engine picks one at random each step, as Quake 3 does
-        var sets = new Dictionary<string, List<string>?>();
-        List<string>? GetSet(string set)
-        {
-            if (sets.TryGetValue(set, out List<string>? waves))
-                return waves;
-
-            waves = [];
-            for (int i = 1; i <= 4; i++)
-            {
-                if (AddQuake3Sound($"{Quake3SoundSource.FootstepFolder}/{set}{i}.wav", $"{FootstepFolder}/{set}{i}.wav", pack) is { } wave)
-                    waves.Add(wave);
-            }
-
-            sets[set] = waves.Count > 0 ? waves : null;
-            return sets[set];
-        }
-
+        // A sound whose files couldn't be read isn't tried (and warned about) again for the next entry
+        var added = new Dictionary<string, IReadOnlyList<string>?>();
         foreach (SoundscriptEntry entry in FootstepEntries(soundscript, surfaceFootsteps))
         {
-            string set = ClassifyFootstep(entry.Name, characterSet, options.SurfaceFootsteps);
-            List<string>? waves = GetSet(set) ?? GetSet(characterSet);
-            if (waves is null)
+            GameSound? used = null;
+            IReadOnlyList<string>? waves = null;
+            foreach (GameSound sound in source.GetFootsteps(entry.Name, character, options))
             {
-                report.Warn($"no Quake 3 \"{set}\" footsteps found, {entry.Name} left as Momentum's");
+                string key = string.Join('|', sound.Files.Select(x => x.Source));
+                if (!added.TryGetValue(key, out waves))
+                    added[key] = waves = AddSound(sound, pack);
+
+                if (waves is not null)
+                {
+                    used = sound;
+                    break;
+                }
+            }
+
+            if (used is null || waves is null)
+            {
+                report.Warn($"no {source.Game.Name} footsteps found for {entry.Name}, left as Momentum's");
                 continue;
             }
 
             entry.SetWaves(waves);
-            // Quake 3's footsteps are the same loudness and pitch everywhere
+            // The engine plays footsteps at the volume the movement gives them; the pitch and level are the game's
             entry.Volume = "1.0";
-            entry.Pitch = "PITCH_NORM";
-            report.Change($"footstep sounds -> Quake 3 {set}");
+            entry.Pitch = used.Pitch ?? "PITCH_NORM";
+            if (used.SoundLevel is not null)
+                entry.SoundLevel = used.SoundLevel;
+            // Most Source game footsteps have Momentum's names (CS:GO's with a team prefix); only the others are listed
+            bool sameName = used.Label.EndsWith(entry.Name, StringComparison.OrdinalIgnoreCase)
+                && (used.Label.Length == entry.Name.Length || used.Label[^(entry.Name.Length + 1)] == '_');
+            report.Change(sameName ? $"footstep sounds -> {source.Game.Name}'s of the same name" : $"footstep sounds -> {source.Game.Name} {used.Label}");
         }
     }
 
-    private void SetMovementSound(SoundscriptFile soundscript, string name, string wave, string channel, string volume)
+    private void SetMovementSound(SoundscriptFile soundscript, string name, IReadOnlyList<string> waves, GameSound sound, string channel, string volume)
     {
         SoundscriptEntry entry = FindOrAdd(soundscript, name);
         entry.Channel = channel;
         entry.Volume = volume;
         entry.SoundLevel = "SNDLVL_60dB";
-        entry.Pitch = null;
-        entry.SetWaves([wave]);
-        report.Change($"{name} -> {wave}");
+        entry.Pitch = sound.Pitch;
+        entry.SetWaves(waves);
+        report.Change($"{name} -> {(waves.Count == 1 ? waves[0] : $"{source.Game.Name} {sound.Label}")}");
     }
 
     private void Mute(SoundscriptFile soundscript, string name, CustomPackWriter pack)
@@ -254,40 +249,59 @@ public sealed class PlayerSoundPackBuilder(Quake3SoundSource quake3, IPortLog lo
     }
 
     /// <summary>
-    /// Copies a Quake 3 sound into the pack as sound/<paramref name="wave"/>, re-encoding it if Source can't play it.
-    /// Returns the wave path for soundscripts, or null (with a warning) if it's missing or unreadable.
+    /// Copies a sound's files into the pack. Returns the waves for soundscripts, or null if none of its files could be
+    /// read (each one that couldn't is warned about).
     /// </summary>
-    private string? AddQuake3Sound(string quake3Path, string wave, CustomPackWriter pack)
+    private IReadOnlyList<string>? AddSound(GameSound sound, CustomPackWriter pack)
     {
-        string packPath = "sound/" + wave;
-        if (pack.Contains(packPath))
-            return wave;
+        var waves = new List<string>();
+        foreach (GameSoundFile file in sound.Files)
+        {
+            if (AddFile(file, pack))
+                waves.Add(file.Wave);
+        }
 
-        byte[]? bytes = quake3.ReadSound(quake3Path, out bool foundOgg);
+        return waves.Count > 0 ? waves : null;
+    }
+
+    /// <summary>
+    /// Copies a game's sound into the pack as sound/&lt;wave&gt;, re-encoding it if Source can't play it. Returns false
+    /// (with a warning) if it's missing or unreadable.
+    /// </summary>
+    private bool AddFile(GameSoundFile file, CustomPackWriter pack)
+    {
+        string packPath = "sound/" + file.Wave;
+        if (pack.Contains(packPath))
+            return true;
+
+        byte[]? bytes = source.ReadSound(file.Source, out string? problem);
         if (bytes is null)
         {
-            report.Warn(foundOgg
-                ? $"{quake3Path} is only there as Ogg Vorbis, which Momentum can't play (Quake Live); use Quake 3's pk3s for it"
-                : $"{quake3Path} isn't in {System.IO.Path.GetFileName(quake3.Path)}");
-            return null;
+            report.Warn(problem ?? $"{file.Source} isn't in {System.IO.Path.GetFileName(source.Path.TrimEnd('/', '\\'))}");
+            return false;
         }
 
         if (!WavFile.TryParse(bytes, out WavFile? wav, out string? error))
         {
-            report.Warn($"{quake3Path} can't be read ({error})");
-            return null;
-        }
+            // A Source game's own sounds play in Momentum whatever they are (ADPCM WAVs, MP3s)
+            if (source.Game.Engine != ContentEngine.Source)
+            {
+                report.Warn($"{file.Source} can't be read ({error})");
+                return false;
+            }
 
-        if (!wav.IsSourceCompatible)
+            log.Info($"Copied {file.Source} as it is ({error})");
+        }
+        else if (!wav.IsSourceCompatible)
         {
             WavFile converted = wav.ToSourceCompatible();
             report.Change($"re-encoded for Source: {wav.Describe()} -> {converted.Describe()}");
-            log.Info($"Re-encoded {quake3Path} ({wav.Describe()} -> {converted.Describe()})");
+            log.Info($"Re-encoded {file.Source} ({wav.Describe()} -> {converted.Describe()})");
             bytes = converted.ToBytes();
         }
 
         pack.AddFile(packPath, bytes);
-        return wave;
+        return true;
     }
 
     private static string CfgText(string packName)

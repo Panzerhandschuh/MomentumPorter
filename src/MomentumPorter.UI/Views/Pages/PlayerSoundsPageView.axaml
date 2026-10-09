@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MomentumPorter.UI.ViewModels.Pages"
+             xmlns:vpk="using:MomentumPorter.Assets.Vpk"
              xmlns:shared="using:MomentumPorter.UI.ViewModels.Shared"
              xmlns:views="using:MomentumPorter.UI.Views.Shared"
              xmlns:conv="using:MomentumPorter.UI.Converters"
@@ -15,11 +16,11 @@
     <DockPanel Grid.Row="0" Grid.ColumnSpan="3" Margin="0 0 0 12">
       <StackPanel DockPanel.Dock="Left" Spacing="2" VerticalAlignment="Center">
         <TextBlock Text="Player Sounds" Classes="h1" />
-        <TextBlock Text="Give the player Quake 3's jump, landing and footstep sounds with a pack in Momentum's custom folder"
+        <TextBlock Text="Give the player another game's jump, landing and footstep sounds with a pack in Momentum's custom folder"
                    Classes="muted" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
-        <Button Command="{Binding RescanCommand}" ToolTip.Tip="Look for Quake 3 again (after changing the Quake 3 folder option)">
+        <Button Command="{Binding RescanCommand}" ToolTip.Tip="Look for the game again (after changing a game folder option)">
           <StackPanel>
             <materialIcons:MaterialIcon Kind="Refresh" />
             <TextBlock Text="Rescan" />
@@ -40,14 +41,23 @@
       </StackPanel>
     </DockPanel>
 
-    <!-- Character and options -->
+    <!-- Game, character and options -->
     <Border Grid.Row="1" Grid.Column="0" Classes="panel">
       <DockPanel>
         <TextBlock DockPanel.Dock="Top" Text="Options" Classes="h2" Margin="12 8 12 4" />
         <StackPanel DockPanel.Dock="Top" Margin="12 4 12 8" Spacing="4">
-          <TextBlock Text="Character" FontWeight="SemiBold" />
-          <ComboBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}" HorizontalAlignment="Stretch"
-                    PlaceholderText="No Quake 3 characters found" />
+          <TextBlock Text="Game" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}" HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+              <DataTemplate DataType="vpk:SourceGameInfo">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <StackPanel Spacing="4" Margin="0 4 0 0" IsVisible="{Binding !!Characters.Count}">
+            <TextBlock Text="{Binding CharacterLabel}" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}" HorizontalAlignment="Stretch" />
+          </StackPanel>
           <TextBlock Text="{Binding SourceDescription}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
         </StackPanel>
         <ScrollViewer Padding="12 0 12 4">
@@ -63,7 +73,7 @@
         <Panel>
           <StackPanel IsVisible="{Binding !Builds.Count}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="420">
             <materialIcons:MaterialIcon Kind="VolumeHigh" Width="40" Height="40" Opacity="0.5" />
-            <TextBlock Text="Pick a character and options, then Build pack. The pack goes to momentum/custom; delete it to get Momentum's sounds back."
+            <TextBlock Text="Pick a game and options, then Build pack. The pack goes to momentum/custom; delete it to get Momentum's sounds back. Only one player sound pack is used at a time."
                        Classes="muted" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
           </StackPanel>
           <ListBox ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}" Background="Transparent"

@@ -92,8 +92,19 @@ public sealed class FolderSource(string root) : IContentSource
         if (!Directory.Exists(Root))
             return [];
 
+        // Only walk the prefix's folder, not a whole game folder
         string normalized = ContentPath.Normalize(prefix);
-        return Directory.EnumerateFiles(Root, "*", SearchOption.AllDirectories)
+        int slash = normalized.LastIndexOf('/');
+        string start = slash < 0 ? Root : System.IO.Path.Combine(Root, normalized[..slash].Replace('/', System.IO.Path.DirectorySeparatorChar));
+        if (!Directory.Exists(start))
+        {
+            // The folder may be named in another case, which only Windows ignores
+            if (OperatingSystem.IsWindows())
+                return [];
+            start = Root;
+        }
+
+        return Directory.EnumerateFiles(start, "*", SearchOption.AllDirectories)
             .Select(x => System.IO.Path.GetRelativePath(Root, x).Replace('\\', '/'))
             .Where(x => x.StartsWith(normalized, StringComparison.OrdinalIgnoreCase));
     }

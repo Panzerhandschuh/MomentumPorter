@@ -1,6 +1,7 @@
 namespace MomentumPorter.Tests;
 
 using MomentumPorter.Assets.Sounds;
+using MomentumPorter.Assets.Vpk;
 using MomentumPorter.UI.Services;
 using MomentumPorter.UI.ViewModels.Pages;
 using Xunit;
@@ -43,5 +44,29 @@ public class PlayerSoundsPageTests
         Assert.Contains(prepared.Job.Steps, x => x is BuildPlayerSoundPackStep);
         Assert.True(Directory.Exists(prepared.WorkDirectory));
         Directory.Delete(prepared.WorkDirectory, recursive: true);
+    }
+
+    [Fact]
+    public void SelectingAGameShowsItsOptions()
+    {
+        PlayerSoundsPageViewModel page = CreatePage();
+        PlayerSoundPackOptions options = (PlayerSoundPackOptions)page.OptionsForm.Options;
+        IEnumerable<string> Shown() => page.OptionsForm.Groups.SelectMany(x => x.Fields.Concat(x.AdvancedFields)).Select(x => x.Name);
+
+        // Quake 3 first, with its own options
+        Assert.Equal("q3", page.SelectedGame.Id);
+        Assert.Contains(nameof(PlayerSoundPackOptions.FootstepType), Shown());
+        Assert.DoesNotContain(nameof(PlayerSoundPackOptions.GameDirectory), Shown());
+        Assert.Null(page.OptionsForm.Find(nameof(PlayerSoundPackOptions.Game)));
+
+        page.SelectedCharacter = "sarge";
+        page.SelectedGame = SourceGames.CounterStrikeSource;
+
+        Assert.Equal("css", options.Game);
+        Assert.Null(options.Character);
+        Assert.Equal("css_sounds", options.ResolvePackName());
+        Assert.DoesNotContain(nameof(PlayerSoundPackOptions.FootstepType), Shown());
+        Assert.DoesNotContain(nameof(PlayerSoundPackOptions.Quake3Path), Shown());
+        Assert.Contains(nameof(PlayerSoundPackOptions.GameDirectory), Shown());
     }
 }

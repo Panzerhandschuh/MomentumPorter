@@ -139,7 +139,7 @@ public sealed class PlayerSoundPackTests : IDisposable
         (PortJobResult result, PortJobContext context, PlayerSoundPackState state) = await RunAsync(new PlayerSoundPackOptions
         {
             Character = "Ranger",
-            PureQuake3 = true,
+            Pure = true,
             OutputAsVpk = false,
         });
 
@@ -173,7 +173,7 @@ public sealed class PlayerSoundPackTests : IDisposable
         Assert.Null(jump.Pitch);
         Assert.Equal(["player/q3/land1.wav"], script.Find("MomPlayer.LandSoft")!.Waves);
         Assert.Equal(["player/ranger/fall1.wav"], script.Find("MomPlayer.LandHard")!.Waves);
-        foreach (string muted in PlayerSoundPackBuilder.NonQuake3Sounds)
+        foreach (string muted in PlayerSoundPackBuilder.MomentumOnlySounds)
             Assert.Equal(["player/q3/silent.wav"], script.Find(muted)!.Waves);
 
         string[] steps = Enumerable.Range(1, 4).Select(i => $"player/footsteps/q3/step{i}.wav").ToArray();
@@ -201,7 +201,7 @@ public sealed class PlayerSoundPackTests : IDisposable
         (PortJobResult result, _, PlayerSoundPackState state) = await RunAsync(new PlayerSoundPackOptions
         {
             Character = "sarge",
-            JumpSound = JumpSoundMode.Quake3,
+            JumpSound = JumpSoundMode.Game,
             LandSound = LandSoundMode.None,
             Footsteps = FootstepMode.Silent,
             PackName = "quiet",
@@ -244,7 +244,7 @@ public sealed class PlayerSoundPackTests : IDisposable
             JumpSound = JumpSoundMode.MomentumDefault,
             LandSound = LandSoundMode.MomentumDefault,
             Footsteps = FootstepMode.MomentumDefault,
-            PureQuake3 = true,
+            Pure = true,
             OutputAsVpk = false,
         });
 
@@ -256,7 +256,7 @@ public sealed class PlayerSoundPackTests : IDisposable
         // Only the four muted entries changed; the rest is Momentum's text as it was
         foreach (SoundscriptEntry entry in original.Entries)
         {
-            IReadOnlyList<string> expected = PlayerSoundPackBuilder.NonQuake3Sounds.Contains(entry.Name) ? ["player/q3/silent.wav"] : entry.Waves;
+            IReadOnlyList<string> expected = PlayerSoundPackBuilder.MomentumOnlySounds.Contains(entry.Name) ? ["player/q3/silent.wav"] : entry.Waves;
             Assert.Equal(expected, script.Find(entry.Name)!.Waves);
         }
 
@@ -326,7 +326,7 @@ public sealed class PlayerSoundPackTests : IDisposable
         (PortJobResult result, PortJobContext context, _) = await RunAsync(new PlayerSoundPackOptions
         {
             Character = "ranger",
-            PureQuake3 = true,
+            Pure = true,
             Quake3Path = quake3,
             MomentumDirectory = momentum.InstallDirectory,
         });
