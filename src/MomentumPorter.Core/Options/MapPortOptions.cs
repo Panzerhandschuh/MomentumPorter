@@ -11,7 +11,7 @@ public sealed class MapPortOptions
     public string? Game { get; set; }
 
     [PortOption("Compress output", "LZMA compress the ported map's lumps and packed files, like bspzip -repack -compress.", Order = 10)]
-    public bool Compress { get; set; }
+    public bool Compress { get; set; } = true;
 
     [PortOption("Source game folder", "The source game's folder holding gameinfo.txt, for game files the map relies on (e.g. shared soundscapes). Defaults to the folder above the input's maps folder.", Order = 20, Path = PathKind.Folder, Advanced = true)]
     public string? GameDirectory { get; set; }
