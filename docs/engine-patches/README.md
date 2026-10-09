@@ -101,6 +101,27 @@ one (the porter sets CS:GO's `weapon_muzzle_flash_*` from `items_game.txt`), els
 
 Without it: ported weapons from CS:GO, CS:S and HL2 have no first-person muzzle flash.
 
+## viewmodel-sprite-flash-sequences.patch
+
+Two fixes for view models from other games, found with the CS 1.6 USP and the CS:S knife.
+
+- **Sprite muzzle flashes never drew.** `CParticleEffectBinding::SetDrawBeforeViewModel` took an effect out of the
+  leaf system so a "before the view model" pass could draw it, but nothing calls
+  `CParticleMgr::DrawBeforeViewModelEffects` (the 2013 SDK notes the same), so the effects were never drawn at all.
+  The legacy first-person flashes (`CTempEnts::MuzzleFlash_Pistol_Player` and the SMG, shotgun and Combine ones,
+  which `viewmodel-muzzle-flash.patch` dispatches for models whose events give a flash type) all ask for that pass.
+  They now stay in the leaf system like every other effect. Momentum's own content never used them, which is why it
+  went unnoticed.
+- **Activities an override model lacks.** The client remaps the reference model's sequence onto the override by
+  activity; when the override has no sequence for it, it kept the reference's index, which is a different animation on
+  the override or out of its range (`Bad sequence (-1 out of 6 max)` for every swing of the CS:S knife, which has
+  `ACT_VM_HITCENTER`/`MISSCENTER` but not the `ACT_VM_SWINGHIT`/`SWINGMISS` Momentum's knife alternates with). It now
+  tries the nearest activities (swing and stab either way, dry fire and secondary attack to the primary attack) and
+  otherwise keeps the sequence playing.
+
+Without it: converted GoldSrc weapons and CS:S/HL2 weapons show no muzzle flash, and the CS:S knife plays the wrong
+animation on every other swing.
+
 ## df-grenade-trail.patch
 
 `CMomDFGrenade` derives from `CMomExplosive`, not `CMomDFProjectile`, so it never made trail particles and its

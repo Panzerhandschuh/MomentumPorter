@@ -321,7 +321,8 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   events, which play the waves copied to `sound/porter/<game>/`. Unsilenced sequences are used for the M4A1 and USP.
   Chrome textures get GoldSrc's sphere-map coordinates from the vertex normals (fixed against the model, so no
   shimmer). The model's attachments come along and its muzzle flash events (5001 + 10 per attachment) stay, drawing
-  Momentum's sprite flash for the slot (pistol, SMG or shotgun) with `docs/engine-patches/viewmodel-muzzle-flash.patch`.
+  Momentum's sprite flash for the slot (pistol, SMG or shotgun) with `docs/engine-patches/viewmodel-muzzle-flash.patch`
+  and `viewmodel-sprite-flash-sequences.patch` (without the second, the engine never draws those sprite flashes).
   `p_` models aren't used (Momentum's player rig differs) and the view model FOV differs.
 - **Quake 3**: the weapon and its barrel become one model. The view model hangs it from the hand model's
   `tag_weapon`, and the hand's frames give it idle, fire (recoil) and draw sequences; the barrel rides its own bone,
