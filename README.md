@@ -32,7 +32,7 @@ and the map installed into Momentum.
 
 ![A Counter-Strike 1.6 map and CS 1.6's USP in Momentum](docs/images/cs16-map.webp)
 
-![Maps](docs/images/maps.png)
+![Converting maps](docs/images/convert-maps.webp)
 
 ### Weapons
 
