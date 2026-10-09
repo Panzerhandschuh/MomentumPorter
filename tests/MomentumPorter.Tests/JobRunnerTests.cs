@@ -169,12 +169,12 @@ public class JobRunnerTests
 
         item.ReportProgress(new StepProgress("Pack assets", 3, 5, null));
         Assert.Equal(60, item.Progress);
-        Assert.Equal("4/5 Pack assets", item.StepText);
+        Assert.Equal("Step 4 of 5, Pack assets", item.StepText);
 
         // A step reporting its own progress, in a job whose steps are weighted
         item.ReportProgress(new StepProgress("Convert map", 0, 3, 0.5, "Converting textures 12/67", JobFraction: 0.45));
         Assert.Equal(45, item.Progress, 3);
-        Assert.Equal("1/3 Convert map: Converting textures 12/67", item.StepText);
+        Assert.Equal("Step 1 of 3, Convert map: Converting textures 12/67", item.StepText);
 
         item.Report.Add(new ReportLine("1 x x", false));
         Assert.True(item.HasReport);

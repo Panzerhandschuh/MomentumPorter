@@ -112,9 +112,10 @@ public abstract class QueueItemViewModel : ViewModel
         double fraction = progress.JobFraction
             ?? (progress.StepCount == 0 ? 1 : (progress.StepIndex + (progress.Fraction ?? 0)) / progress.StepCount);
         Progress = Math.Clamp(fraction * 100, 0, 100);
+        // The job's own steps, spelt out: a bare "1/3" reads as the item's place in the queue
         string step = progress.Message is null ? progress.Step : $"{progress.Step}: {progress.Message}";
         StepText = progress.StepIndex < progress.StepCount
-            ? $"{progress.StepIndex + 1}/{progress.StepCount} {step}"
+            ? $"Step {progress.StepIndex + 1} of {progress.StepCount}, {step}"
             : step;
     }
 
