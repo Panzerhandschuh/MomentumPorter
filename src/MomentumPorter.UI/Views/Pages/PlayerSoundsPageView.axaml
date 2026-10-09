@@ -16,7 +16,7 @@
     <!-- The buttons dock first so they keep their width; the description takes what's left and trims -->
     <DockPanel Grid.Row="0" Grid.ColumnSpan="3" Margin="0 0 0 12">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="12 0 0 0">
-        <Button Command="{Binding RescanCommand}" ToolTip.Tip="Look for the game again (after changing a game folder option)">
+        <Button Command="{Binding RescanCommand}" ToolTip.Tip="Look for the game again (after installing it)">
           <StackPanel>
             <materialIcons:MaterialIcon Kind="Refresh" />
             <TextBlock Text="Rescan" />
@@ -42,18 +42,10 @@
       </StackPanel>
     </DockPanel>
 
-    <!-- Game, character and options -->
+    <!-- Game, character and the preview; everything else is fixed (PlayerSoundPackOptions.ApplyGameAccurate) -->
     <Border Grid.Row="1" Grid.Column="0" Classes="panel">
       <DockPanel>
-        <DockPanel DockPanel.Dock="Top" Margin="12 8 6 4">
-          <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding OptionsForm.ShowAdvanced}" Padding="8 5" ToolTip.Tip="Show the advanced options too">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <materialIcons:MaterialIcon Kind="Tune" Width="16" Height="16" />
-              <TextBlock Text="Advanced" FontSize="13" />
-            </StackPanel>
-          </ToggleButton>
-          <TextBlock Text="Options" Classes="h2" VerticalAlignment="Center" />
-        </DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Sounds" Classes="h2" Margin="12 8 12 4" />
         <StackPanel DockPanel.Dock="Top" Margin="12 4 12 8" Spacing="4">
           <TextBlock Text="Game" FontWeight="SemiBold" />
           <ComboBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}" HorizontalAlignment="Stretch">
@@ -67,10 +59,41 @@
             <TextBlock Text="{Binding CharacterLabel}" FontWeight="SemiBold" />
             <ComboBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}" HorizontalAlignment="Stretch" />
           </StackPanel>
-          <TextBlock Text="{Binding SourceDescription}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding SourceDescription}" Classes="muted" FontSize="12" TextWrapping="Wrap"
+                     IsVisible="{Binding SourceDescription, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
         <ScrollViewer Padding="12 0 12 4">
-          <views:OptionsForm Form="{Binding OptionsForm}" />
+          <StackPanel Spacing="4">
+            <!-- What the pack would play, one button per sound; each click plays the next of its files -->
+            <TextBlock Text="Preview" Classes="h3" Margin="0 0 0 2" />
+            <TextBlock Text="{Binding PreviewStatus}" Classes="muted" FontSize="12" TextWrapping="Wrap"
+                       IsVisible="{Binding PreviewStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <ItemsControl ItemsSource="{Binding PreviewSounds}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Spacing="6" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:PreviewSoundViewModel">
+                  <Grid ColumnDefinitions="Auto, *">
+                    <Button Grid.Column="0" Classes="icon" Command="{Binding PlayCommand}" VerticalAlignment="Top" Margin="0 0 8 0">
+                      <materialIcons:MaterialIcon Kind="PlayCircleOutline" Width="22" Height="22" />
+                    </Button>
+                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                 IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                      <TextBlock Text="{Binding Label}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Status}" FontSize="11" TextWrapping="Wrap" Classes.error="{Binding IsError}"
+                                 Classes.muted="{Binding !IsError}"
+                                 IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </ScrollViewer>
       </DockPanel>
     </Border>
@@ -82,7 +105,7 @@
         <Panel>
           <StackPanel IsVisible="{Binding !Builds.Count}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="420">
             <materialIcons:MaterialIcon Kind="VolumeHigh" Width="40" Height="40" Opacity="0.5" />
-            <TextBlock Text="Pick a game and options, then Build pack. The pack goes to momentum/custom; delete it to get Momentum's sounds back. Only one player sound pack is used at a time."
+            <TextBlock Text="Pick a game, then Build pack. Momentum's jump, landing, footstep and sprint sounds become the game's on every surface, and the ones it has nothing like are muted. The pack goes to momentum/custom; delete it to get Momentum's sounds back. Only one player sound pack is used at a time."
                        Classes="muted" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
           </StackPanel>
           <ListBox ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}" Background="Transparent"

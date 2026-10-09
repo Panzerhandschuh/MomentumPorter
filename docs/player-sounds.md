@@ -38,6 +38,17 @@ MomentumPorter sounds [--game q3|css|csgo|tf2|hl2|cs16|hl1] [--character <name>]
 - **`--pure`**: also mutes what the game doesn't have: `MomPlayer.AirJump`, `PowerSlide`, `WallRun`, and the jump and
   sprint sounds for games without them (unless `--sprint` picks one).
 
+The app always builds the pack that sounds most like the game: every sound set to `game`, surface footsteps on (the
+Quake 3 character's own footstep type), `--pure` on, and a VPK named as above in Momentum's `custom` folder that
+replaces the last build. It only asks for the game and the Quake 3 character or CS:GO team: the game is found through
+Steam and Momentum's folder comes from the Settings page. The command line keeps every option above, including the
+folder overrides.
+
+The app's **Preview** lists what the pack would play for the chosen game and character: the jump, soft and hard
+landings, sprint and the footsteps, with the surfaces that share each footstep set. Each click plays the next of a
+sound's files (the files a footstep or landing picks from at random in game). Playback uses Windows' own player, so a
+few Source game sounds stored in formats it lacks a codec for (e.g. MP3) can't be previewed, though Momentum plays them.
+
 The games and Momentum are found through Steam (`--q3-dir`, `--game-dir`, `--momentum-dir` override that); `--list`
 lists the games and the chosen game's characters or teams. HL2's footsteps are defined in the HL2 install's loose
 `hl2/scripts` (Momentum's own HL2 mount has the WAVs but not those definitions), so HL2 has to be installed; CS:S and TF2

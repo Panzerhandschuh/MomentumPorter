@@ -15,7 +15,8 @@ using ReactiveUI;
 
 /// <summary>
 /// Builds packs with another game's movement sounds (Quake 3, CS:S, CS:GO, TF2, HL2, CS 1.6, Half-Life) into
-/// Momentum's custom folder.
+/// Momentum's custom folder. The pack always sounds as much like the game as it can
+/// (<see cref="PlayerSoundPackOptions.ApplyGameAccurate"/>): only the game, its character and the folders are picked here.
 /// </summary>
 public sealed class PlayerSoundsPageViewModel : PageViewModel
 {
@@ -28,17 +29,20 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
     private string? _sourceDescription;
     private SoundPackBuildViewModel? _selectedBuild;
     private int _scan;
+    private readonly Lock _previewLock = new();
+    private PlayerSoundSource? _previewSource;
+    private string? _previewKey;
+    private string? _previewStatus;
+    private int _preview;
 
     public PlayerSoundsPageViewModel(SettingsService settings, JobRunnerService runner, Action<Action> post)
     {
         _settings = settings;
         _post = post;
         Runner = runner;
-        // The page picks the game, and the character from the installed game's list
-        OptionsForm = new OptionsFormViewModel(_options, exclude: [nameof(PlayerSoundPackOptions.Game), nameof(PlayerSoundPackOptions.Character)]);
+        _options.ApplyGameAccurate();
         _selectedGame = PlayerSoundSources.Find(_options.Game) ?? PlayerSoundSources.Games[0];
         _selectedCharacter = _options.ResolveCharacter();
-        FilterOptions();
 
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);
         BuildCommand = ReactiveCommand.CreateFromTask(BuildAsync, running.Select(x => !x));
@@ -53,7 +57,8 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
 
     public JobRunnerService Runner { get; }
 
-    public OptionsFormViewModel OptionsForm { get; }
+    /// <summary>The options the next build uses: the game and character picked here, everything else game accurate.</summary>
+    public PlayerSoundPackOptions Options => _options;
 
     public IReadOnlyList<SourceGameInfo> Games => PlayerSoundSources.Games;
 
@@ -67,12 +72,12 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
                 return;
 
             this.RaiseAndSetIfChanged(ref _selectedGame, value);
+            SoundPreviewPlayer.Stop();
+            PreviewSounds.Clear();
             _options.Game = value.Id;
             _options.Character = null;
             Characters.Clear();
             SelectedCharacter = null;
-            FilterOptions();
-            OptionsForm.Reload();
             _ = ScanAsync();
         }
     }
@@ -96,7 +101,7 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
         set => this.RaiseAndSetIfChanged(ref _selectedBuild, value);
     }
 
-    /// <summary>Where the sounds come from, or why none were found.</summary>
+    /// <summary>Why the game's sounds weren't found or couldn't be read; null when they were.</summary>
     public string? SourceDescription
     {
         get => _sourceDescription;
@@ -112,7 +117,8 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
             if (value is not null && !string.Equals(_options.Character, value, StringComparison.OrdinalIgnoreCase))
             {
                 _options.Character = value;
-                OptionsForm.Reload();
+                // Each Quake 3 character has its own jump, fall and footstep sounds
+                _ = RefreshPreviewAsync();
             }
         }
     }
@@ -134,7 +140,7 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
         SourceGameInfo game = SelectedGame;
         string? path = _options.ResolveGameDirectory();
         int scan = ++_scan;
-        (List<string> characters, string? defaultCharacter, string kind, string description) = await Task.Run(() =>
+        (List<string> characters, string? defaultCharacter, string kind, string? description) = await Task.Run(() =>
         {
             try
             {
@@ -142,19 +148,19 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
                 if (found is null)
                 {
                     return ([], null, "character", game.Engine == ContentEngine.Quake3
-                        ? "Quake 3 Arena or Quake Live wasn't found in your Steam libraries. Set the Quake 3 folder under Game folders."
-                        : $"{game.Name} wasn't found in your Steam libraries. Set the game folder under Game folders.");
+                        ? "Quake 3 Arena or Quake Live wasn't found in your Steam libraries"
+                        : $"{game.Name} wasn't found in your Steam libraries");
                 }
 
                 // Only Quake 3's characters come from its files; opening a Source game reads all its soundscripts
                 if (game.Engine != ContentEngine.Quake3)
                 {
                     IReadOnlyList<string> teams = SourceGameSoundSource.TeamsOf(game);
-                    return (teams.ToList(), teams.FirstOrDefault(), "team", $"Sounds from {found}");
+                    return (teams.ToList(), teams.FirstOrDefault(), "team", (string?)null);
                 }
 
                 using PlayerSoundSource source = PlayerSoundSources.Open(game, found, new Steam.SteamLocator());
-                return (source.Characters.ToList(), source.DefaultCharacter, source.CharacterKind, $"{source.Characters.Count} characters from {source.Path}");
+                return (source.Characters.ToList(), source.DefaultCharacter, source.CharacterKind, null);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
             {
@@ -176,7 +182,129 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
             SourceDescription = description;
             if (characters.Count > 0 && (SelectedCharacter is null || !characters.Contains(SelectedCharacter, StringComparer.OrdinalIgnoreCase)))
                 SelectedCharacter = defaultCharacter is not null && characters.Contains(defaultCharacter, StringComparer.OrdinalIgnoreCase) ? defaultCharacter : characters[0];
+
+            _ = RefreshPreviewAsync();
         });
+    }
+
+    /// <summary>The sounds the pack would use for the selected game and character, to listen to before building.</summary>
+    public ObservableCollection<PreviewSoundViewModel> PreviewSounds { get; } = [];
+
+    /// <summary>Why there's nothing to preview, or that it's loading; null when the sounds are listed.</summary>
+    public string? PreviewStatus
+    {
+        get => _previewStatus;
+        private set => this.RaiseAndSetIfChanged(ref _previewStatus, value);
+    }
+
+    /// <summary>
+    /// Lists the selected game's and character's sounds for the preview. The game's files stay open for playing them
+    /// until another game (or folder) is picked.
+    /// </summary>
+    public async Task RefreshPreviewAsync()
+    {
+        SourceGameInfo game = SelectedGame;
+        string? character = SelectedCharacter;
+        string? directory = _options.ResolveGameDirectory();
+        string? momentumDirectory = _settings.Settings.MomentumDirectory;
+        PlayerSoundPackOptions options = OptionsPreset.Clone(_options);
+        options.ApplyGameAccurate();
+        int preview = ++_preview;
+        PreviewSounds.Clear();
+        PreviewStatus = $"Reading {game.Name}'s sounds...";
+
+        (IReadOnlyList<PreviewSound> sounds, string? status) = await Task.Run(() =>
+        {
+            lock (_previewLock)
+            {
+                try
+                {
+                    if (OpenPreviewSource(game, directory, momentumDirectory) is not { } source)
+                        return ([], $"{game.Name} wasn't found, so there's nothing to preview");
+
+                    IReadOnlyList<PreviewSound> list = PlayerSoundPreview.List(source, character, options);
+                    return (list, list.Count == 0 ? $"None of {game.Name}'s movement sounds could be read" : null);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
+                {
+                    return ((IReadOnlyList<PreviewSound>)[], $"Couldn't read {game.Name}'s sounds: {ex.Message}");
+                }
+            }
+        });
+
+        _post(() =>
+        {
+            // A newer refresh (another game or character picked meanwhile) wins
+            if (preview != _preview)
+                return;
+
+            PreviewSounds.Clear();
+            foreach (PreviewSound sound in sounds)
+                PreviewSounds.Add(new PreviewSoundViewModel(sound, PlayAsync));
+
+            PreviewStatus = status;
+        });
+    }
+
+    /// <summary>Plays the sound's next file, reading it from the game on a worker thread.</summary>
+    public async Task PlayAsync(PreviewSoundViewModel item)
+    {
+        (GameSoundFile file, _) = item.TakeNextFile();
+        (byte[]? bytes, string? problem) = await Task.Run(() =>
+        {
+            lock (_previewLock)
+            {
+                if (_previewSource is null)
+                    return (null, "The game's files aren't open; pick the game again");
+
+                try
+                {
+                    byte[]? read = _previewSource.ReadSound(file.Source, out string? why);
+                    return (read, why ?? (read is null ? $"{file.Source} couldn't be read" : null));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or ObjectDisposedException)
+                {
+                    return ((byte[]?)null, ex.Message);
+                }
+            }
+        });
+
+        // Only a sound that can't be played says anything
+        string? error = bytes is null ? problem : SoundPreviewPlayer.Play(bytes);
+        item.IsError = error is not null;
+        item.Status = error;
+    }
+
+    // Opens the game's sounds, or keeps the ones already open for the same game and folders. Call under _previewLock.
+    private PlayerSoundSource? OpenPreviewSource(SourceGameInfo game, string? directory, string? momentumDirectory)
+    {
+        string key = $"{game.Id}|{directory}|{momentumDirectory}";
+        if (_previewSource is not null && _previewKey == key)
+            return _previewSource;
+
+        _previewSource?.Dispose();
+        _previewSource = null;
+        _previewKey = null;
+
+        var steam = new Steam.SteamLocator();
+        string? found = PlayerSoundSources.Locate(game, directory, steam);
+        if (found is null)
+            return null;
+
+        // Source games match footsteps through Momentum's surfaces, as the pack does
+        SurfaceProperties? surfaces = null;
+        if (game.Engine == ContentEngine.Source && PlayerSoundPackJob.FindMomentumContent(momentumDirectory, steam) is { } content)
+        {
+            surfaces = SurfaceProperties.Load(path =>
+            {
+                string file = Path.Combine(content, path.Replace('/', Path.DirectorySeparatorChar));
+                return File.Exists(file) ? File.ReadAllText(file) : null;
+            });
+        }
+
+        _previewSource = PlayerSoundSources.Open(game, found, steam, surfaces);
+        _previewKey = key;
+        return _previewSource;
     }
 
     public async Task BuildAsync()
@@ -193,6 +321,7 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
     public PreparedJob Prepare(SoundPackBuildViewModel build)
     {
         PlayerSoundPackOptions options = OptionsPreset.Clone(_options);
+        options.ApplyGameAccurate();
         PorterSettings settings = _settings.Settings.Clone();
         if (string.IsNullOrWhiteSpace(options.MomentumDirectory) && !string.IsNullOrWhiteSpace(settings.MomentumDirectory))
             options.MomentumDirectory = settings.MomentumDirectory;
@@ -221,13 +350,6 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
                 CustomPackOutput? output = context.TryGet<CustomPackOutput>();
                 return new JobOutcome(QueueStatus.Done, $"Pack written{warnings}", OutputPath: output?.Path);
             });
-    }
-
-    // Quake 3's footstep types and folder only for Quake 3, the game folder for the others
-    private void FilterOptions()
-    {
-        bool quake3 = SelectedGame.Engine == ContentEngine.Quake3;
-        OptionsForm.SetFilter(x => quake3 ? !PlayerSoundPackOptions.NotQuake3.Contains(x.Name) : !PlayerSoundPackOptions.Quake3Only.Contains(x.Name));
     }
 
     private void OpenPackFolder()

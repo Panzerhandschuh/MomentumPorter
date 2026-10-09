@@ -125,6 +125,32 @@ public sealed class PlayerSoundPackTests : IDisposable
     }
 
     [Fact]
+    public void PreviewListsEachCharactersSoundsAsThePackWouldUseThem()
+    {
+        using Quake3SoundSource source = Quake3SoundSource.Open(Path.GetDirectoryName(_quake3)!);
+        var options = new PlayerSoundPackOptions();
+        options.ApplyGameAccurate();
+
+        IReadOnlyList<PreviewSound> ranger = PlayerSoundPreview.List(source, "ranger", options);
+        Assert.Equal(["Jump", "Soft landing", "Hard landing", "Footsteps", "Footsteps", "Footsteps"], ranger.Select(x => x.Name));
+        Assert.Equal("sound/player/ranger/jump1.wav", Assert.Single(ranger[0].Sound.Files).Source);
+        Assert.Equal("sound/player/ranger/fall1.wav", Assert.Single(ranger[2].Sound.Files).Source);
+
+        // Footsteps sounding the same on several surfaces are one entry: the character's set, metal's clank, water's splash
+        Assert.Equal(["step", "clank", "splash"], ranger.Where(x => x.Name == "Footsteps").Select(x => x.Sound.Label));
+        Assert.StartsWith("Concrete, default", ranger[3].Detail);
+        Assert.Contains("metal grate", ranger[4].Detail);
+        Assert.Equal("Shallow water, wading", ranger[5].Detail);
+        Assert.Equal(4, ranger[3].Sound.Files.Count);
+
+        // Sarge: his own jump and boots; his fall1.wav isn't in the pk3, so there's no hard landing to hear
+        IReadOnlyList<PreviewSound> sarge = PlayerSoundPreview.List(source, "sarge", options);
+        Assert.Equal("sound/player/sarge/jump1.wav", Assert.Single(sarge[0].Sound.Files).Source);
+        Assert.DoesNotContain(sarge, x => x.Name == "Hard landing");
+        Assert.Equal("boot", sarge.First(x => x.Name == "Footsteps").Sound.Label);
+    }
+
+    [Fact]
     public void FindsCharactersAndFootstepTypes()
     {
         using Quake3SoundSource source = Quake3SoundSource.Open(Path.GetDirectoryName(_quake3)!);
