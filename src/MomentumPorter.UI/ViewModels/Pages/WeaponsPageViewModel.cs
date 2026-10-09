@@ -46,6 +46,8 @@ public sealed class WeaponsPageViewModel : PageViewModel
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);
         IObservable<bool> canBuild = this.WhenAnyValue(x => x.SelectedWeapon, x => x.Runner.IsRunning, (weapon, isRunning) => weapon is not null && !isRunning);
         BuildCommand = ReactiveCommand.CreateFromTask(BuildAsync, canBuild);
+        IObservable<bool> canBuildAll = this.WhenAnyValue(x => x.SelectedGame, x => x.Runner.IsRunning, (game, isRunning) => game is not null && !isRunning);
+        BuildAllCommand = ReactiveCommand.CreateFromTask(BuildAllAsync, canBuildAll);
         CancelCommand = ReactiveCommand.Create(runner.Cancel, running);
         OpenPackFolderCommand = ReactiveCommand.Create(OpenPackFolder);
 
@@ -116,6 +118,7 @@ public sealed class WeaponsPageViewModel : PageViewModel
         {
             this.RaiseAndSetIfChanged(ref _selectedGame, value);
             this.RaisePropertyChanged(nameof(GameLimitations));
+            this.RaisePropertyChanged(nameof(BuildAllTip));
             Weapons.Clear();
             if (value is null)
                 return;
@@ -205,6 +208,12 @@ public sealed class WeaponsPageViewModel : PageViewModel
         ? string.Join(" ", game.Limitations.Select(x => x.TrimEnd().EndsWith('.') ? x.Trim() : x.Trim() + "."))
         : null;
 
+    /// <summary>What Build all weapons builds for the selected game.</summary>
+    public string? BuildAllTip => SelectedGame is { } game
+        ? $"Build every {game.Name} weapon into the Momentum weapon it fits best, with these options and modes: "
+            + string.Join(", ", game.FullLoadout().Select(x => $"{x.Weapon.Name} as {x.Slot.Name}"))
+        : null;
+
     private bool _gameNotesExpanded;
 
     /// <summary>Whether the game's notes show in full, or clipped to a couple of lines so the weapon list has room.</summary>
@@ -229,6 +238,8 @@ public sealed class WeaponsPageViewModel : PageViewModel
 
     public ReactiveCommand<Unit, Unit> BuildCommand { get; }
 
+    public ReactiveCommand<Unit, Unit> BuildAllCommand { get; }
+
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
 
     public ReactiveCommand<Unit, Unit> OpenPackFolderCommand { get; }
@@ -238,23 +249,64 @@ public sealed class WeaponsPageViewModel : PageViewModel
         if (SelectedWeapon is null)
             return;
 
-        string modes = AllModes ? "" : $" in {GameModes.Describe(GameModes.Parse(SelectedModes))}";
-        var build = new WeaponPackBuildViewModel($"{SelectedGame?.Name}: {SelectedWeapon.Name} as {SelectedSlot ?? "best fit"}{modes}");
+        var build = new WeaponPackBuildViewModel(
+            $"{SelectedGame?.Name}: {SelectedWeapon.Name} as {SelectedSlot ?? "best fit"}{ModesSuffix()}",
+            SnapshotOptions(SelectedWeapon.Id, SelectedSlot));
         Builds.Insert(0, build);
         SelectedBuild = build;
         await Runner.RunAsync(new List<WeaponPackBuildViewModel> { build }, Prepare);
     }
 
     /// <summary>
-    /// Builds the job with a snapshot of the options. Packs default to Momentum's custom folder, which the game loads from.
+    /// Builds every weapon of the selected game into the Momentum weapon it fits best (<see cref="CatalogGame.FullLoadout"/>),
+    /// one after another into the same pack folder.
     /// </summary>
-    public PreparedJob Prepare(WeaponPackBuildViewModel build)
+    public async Task BuildAllAsync()
+    {
+        if (SelectedGame is not { } game)
+            return;
+
+        string modes = ModesSuffix();
+        var batch = game.FullLoadout()
+            .Select(x => new WeaponPackBuildViewModel($"{game.Name}: {x.Weapon.Name} as {x.Slot.Name}{modes}", SnapshotOptions(x.Weapon.Id, x.Slot.Id)))
+            .ToList();
+        if (batch.Count == 0)
+            return;
+
+        // The list is newest first; insert the batch so it reads top to bottom in the order it builds
+        for (int i = batch.Count - 1; i >= 0; i--)
+            Builds.Insert(0, batch[i]);
+
+        SelectedBuild = batch[0];
+        await Runner.RunAsync(batch, Prepare);
+
+        // Cancel leaves the rest queued, and nothing would run them
+        foreach (WeaponPackBuildViewModel build in batch.Where(x => x.Status == QueueStatus.Queued))
+            build.Finish(QueueStatus.Skipped, "Cancelled");
+    }
+
+    private string ModesSuffix() => AllModes ? "" : $" in {GameModes.Describe(GameModes.Parse(SelectedModes))}";
+
+    /// <summary>The page's options for one weapon, copied so later changes on the page don't touch a queued build.</summary>
+    private WeaponPackOptions SnapshotOptions(string weapon, string? slot)
     {
         WeaponPackOptions options = OptionsPreset.Clone(_options);
         options.Game = SelectedGame?.Id ?? options.Game;
-        options.Weapon = SelectedWeapon?.Id ?? options.Weapon;
-        options.Slot = SelectedSlot ?? options.Slot;
+        options.Weapon = weapon;
+        options.Slot = slot;
         options.GameModes = SelectedModes;
+        return options;
+    }
+
+    /// <summary>
+    /// Builds the job with the build's options (the page's current ones if it has none). Packs default to Momentum's
+    /// custom folder, which the game loads from.
+    /// </summary>
+    public PreparedJob Prepare(WeaponPackBuildViewModel build)
+    {
+        WeaponPackOptions options = build.Options is { } queued
+            ? OptionsPreset.Clone(queued)
+            : SnapshotOptions(SelectedWeapon?.Id ?? _options.Weapon, SelectedSlot ?? _options.Slot);
         PorterSettings settings = _settings.Settings.Clone();
 
         if (string.IsNullOrWhiteSpace(options.MomentumDirectory) && !string.IsNullOrWhiteSpace(settings.MomentumDirectory))
@@ -305,9 +357,12 @@ public sealed class WeaponsPageViewModel : PageViewModel
     }
 }
 
-public sealed class WeaponPackBuildViewModel(string title) : QueueItemViewModel
+/// <param name="options">What it builds, copied from the page when it was queued; null builds the page's current choice</param>
+public sealed class WeaponPackBuildViewModel(string title, WeaponPackOptions? options = null) : QueueItemViewModel
 {
     public override string Title { get; } = title;
+
+    public WeaponPackOptions? Options { get; } = options;
 }
 
 /// <summary>A game mode in the Weapons page's mode list.</summary>

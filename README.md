@@ -268,6 +268,7 @@ MomentumPorter weapon --game css --weapon ak47 [--slot machinegun] [--modes kzt,
                       [--no-sounds] [--arms auto|momentum|none] [--no-projectile] [--no-particles]
                       [--no-world-fit] [--gun-fov <degrees>] [--no-defrag-configs]
                       [--momentum-dir <install>] [--game-dir <content folder>] [--studiomdl <exe>]
+MomentumPorter weapon --game q3 --all [--modes ...] --output <folder> [options as above]
 MomentumPorter weapon --list [--game css]
 ```
 
@@ -286,6 +287,12 @@ The weapons come from `src/MomentumPorter.Core/Assets/Weapons/weapons.json` (emb
 weapon's models, the Momentum weapons it fits (best first) and its sounds keyed by the role Momentum gives them in
 `scripts/server_weapon/weapon_momentum_<slot>.txt` (`single_shot`, `explosion`, `deploy`, `swish`, `stab`, `hit`,
 `hit_wall`, `zoom`, `bounce`, ...). Add weapons there; the tests check every path against the installed games.
+
+`--all` (**Build all weapons** in the app) ports every weapon of a game, one after another into the same pack, each
+into the Momentum weapon it fits best: all of Quake 3's go into the `df_*` weapons, so one run gives the Defrag modes
+Quake 3's whole arsenal. Where several weapons fit a Momentum weapon best (CS:S has six pistols), the game's `loadout`
+in `weapons.json` picks one (USP, AK-47, AWP for the CS games), else the first listed wins; the loadout can also fill a
+weapon none fits best (the flashbang as the concussion grenade). `--list` shows what `--all` builds for each game.
 
 | `--game` | Game | How |
 |---|---|---|

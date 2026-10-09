@@ -105,4 +105,21 @@ public class WeaponsPageTests
         Assert.True(Directory.Exists(prepared.WorkDirectory));
         Directory.Delete(prepared.WorkDirectory, recursive: true);
     }
+
+    [Fact]
+    public void QueuedBuildsKeepTheWeaponTheyWereQueuedWith()
+    {
+        WeaponsPageViewModel page = CreatePage();
+        page.SelectedGame = page.Games.First(x => x.Id == "q3");
+        Assert.Contains("Gauntlet as Defrag gauntlet", page.BuildAllTip);
+
+        var options = new WeaponPackOptions { Game = "q3", Weapon = "railgun", Slot = "df_railgun" };
+        page.SelectedGame = page.Games.First(x => x.Id == "css");
+        PreparedJob prepared = page.Prepare(new WeaponPackBuildViewModel("test", options));
+        Directory.Delete(prepared.WorkDirectory, recursive: true);
+
+        Assert.Equal("q3_railgun", prepared.Job.Name);
+        Assert.Equal("railgun", options.Weapon);
+        Assert.Equal("", options.OutputDirectory); // Prepare fills in a copy
+    }
 }

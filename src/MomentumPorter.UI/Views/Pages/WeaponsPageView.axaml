@@ -26,6 +26,12 @@
             <TextBlock Text="Build pack" />
           </StackPanel>
         </Button>
+        <Button Command="{Binding BuildAllCommand}" ToolTip.Tip="{Binding BuildAllTip}">
+          <StackPanel>
+            <materialIcons:MaterialIcon Kind="PlaylistPlay" />
+            <TextBlock Text="Build all weapons" />
+          </StackPanel>
+        </Button>
         <Button Command="{Binding CancelCommand}" ToolTip.Tip="Stop the running build">
           <StackPanel>
             <materialIcons:MaterialIcon Kind="Stop" />
@@ -125,7 +131,7 @@
         <Panel>
           <StackPanel IsVisible="{Binding !Builds.Count}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="360">
             <materialIcons:MaterialIcon Kind="Pistol" Width="40" Height="40" Opacity="0.5" />
-            <TextBlock Text="Pick a game, a weapon and the Momentum weapon it replaces, then Build pack. A new pack needs a Momentum restart; rebuilding one only needs exec porter_reload in game (sv_cheats 1)."
+            <TextBlock Text="Pick a game, a weapon and the Momentum weapon it replaces, then Build pack, or Build all weapons for every weapon of the game. A new pack needs a Momentum restart; rebuilding one only needs exec porter_reload in game (sv_cheats 1)."
                        Classes="muted" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
           </StackPanel>
           <ListBox ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}" Background="Transparent"

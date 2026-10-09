@@ -4,6 +4,7 @@ using CommandLine;
 using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
+using MomentumPorter.Settings;
 
 [Verb("weapon", HelpText = "Port a weapon from another game into a Momentum weapon slot as a custom pack")]
 internal sealed class WeaponCliOptions
@@ -13,6 +14,9 @@ internal sealed class WeaponCliOptions
 
     [Option('w', "weapon", HelpText = "Weapon id from the catalog (see --list)")]
     public string? Weapon { get; set; }
+
+    [Option("all", HelpText = "Port every weapon of --game, each into the Momentum weapon it fits best (see --list), instead of --weapon")]
+    public bool All { get; set; }
 
     [Option('s', "slot", HelpText = "Momentum weapon it replaces (pistol, machinegun, shotgun, sniper, knife, grenade, rocketlauncher, stickylauncher, concgrenade, df_*). Defaults to the weapon's best fit.")]
     public string? Slot { get; set; }
@@ -84,9 +88,15 @@ internal static class WeaponCommand
         if (cli.List)
             return List(catalog, cli.Game);
 
-        if (cli.Game is null || cli.Weapon is null || cli.Output is null)
+        if (cli.Game is null || (cli.Weapon is null && !cli.All) || cli.Output is null)
         {
-            Console.Error.WriteLine("weapon needs --game, --weapon and --output (or --list)");
+            Console.Error.WriteLine("weapon needs --game, --weapon (or --all) and --output (or --list)");
+            return 1;
+        }
+
+        if (cli.All && (cli.Weapon is not null || cli.Slot is not null))
+        {
+            Console.Error.WriteLine("--all picks the weapons and their Momentum weapons itself; leave out --weapon and --slot");
             return 1;
         }
 
@@ -99,7 +109,7 @@ internal static class WeaponCommand
         var options = new WeaponPackOptions
         {
             Game = cli.Game,
-            Weapon = cli.Weapon,
+            Weapon = cli.Weapon ?? "",
             Slot = cli.Slot,
             GameModes = cli.Modes,
             OutputDirectory = cli.Output,
@@ -116,9 +126,40 @@ internal static class WeaponCommand
             StudioMdlPath = cli.StudioMdl,
         };
 
-        PortJobResult result = await WeaponPackBuilder.RunAsync(options, ConsoleLog.Instance);
-        result.Report.Print(Console.Out);
-        return result.Succeeded ? 0 : 1;
+        if (!cli.All)
+        {
+            PortJobResult result = await WeaponPackBuilder.RunAsync(options, ConsoleLog.Instance);
+            result.Report.Print(Console.Out);
+            return result.Succeeded ? 0 : 1;
+        }
+
+        if (catalog.FindGame(cli.Game) is not { } game)
+        {
+            Console.Error.WriteLine($"Unknown game \"{cli.Game}\". Known games: {string.Join(", ", catalog.Games.Select(x => x.Id))}");
+            return 1;
+        }
+
+        // One after another: they share the pack folder, whose soundscript and particle manifest each build merges into
+        var failed = new List<string>();
+        foreach (LoadoutEntry entry in game.FullLoadout())
+        {
+            Console.WriteLine($"== {entry.Weapon.Name} as {entry.Slot.Name} ==");
+            WeaponPackOptions weaponOptions = OptionsPreset.Clone(options);
+            weaponOptions.Weapon = entry.Weapon.Id;
+            weaponOptions.Slot = entry.Slot.Id;
+            PortJobResult result = await WeaponPackBuilder.RunAsync(weaponOptions, ConsoleLog.Instance);
+            result.Report.Print(Console.Out);
+            if (!result.Succeeded)
+                failed.Add($"{entry.Weapon.Name} ({result.FailedStep}: {result.Error})");
+        }
+
+        if (failed.Count > 0)
+        {
+            Console.Error.WriteLine($"Failed: {string.Join("; ", failed)}");
+            return 1;
+        }
+
+        return 0;
     }
 
     private static int List(WeaponCatalog catalog, string? gameId)
@@ -143,6 +184,8 @@ internal static class WeaponCommand
             Console.WriteLine($"{game.Id}: {game.Name} ({how})");
             foreach (CatalogWeapon weapon in game.Weapons)
                 Console.WriteLine($"  {weapon.Id,-20} {weapon.Name,-24} {string.Join(", ", weapon.Slots)}");
+
+            Console.WriteLine($"  --all builds: {string.Join(", ", game.FullLoadout().Select(x => $"{x.Weapon.Id} as {x.Slot.Id}"))}");
         }
 
         return 0;

@@ -32,6 +32,50 @@ public class WeaponCatalogTests
     }
 
     [Fact]
+    public void FullLoadoutPutsEachWeaponInTheMomentumWeaponItFitsBest()
+    {
+        WeaponCatalog catalog = WeaponCatalog.Default;
+
+        // Every Quake 3 weapon goes into its Defrag weapon
+        CatalogGame q3 = catalog.FindGame("q3")!;
+        IReadOnlyList<LoadoutEntry> q3Loadout = q3.FullLoadout();
+        Assert.Equal(q3.Weapons.Select(x => x.Id).Order(), q3Loadout.Select(x => x.Weapon.Id).Order());
+        Assert.All(q3Loadout, x => Assert.Equal(x.Weapon.Slots[0], x.Slot.Id));
+        Assert.All(q3Loadout, x => Assert.StartsWith("df_", x.Slot.Id));
+
+        // One weapon per Momentum weapon: the loadout's pick, else the first that fits it best; never a second-best fit
+        // unless the loadout says so
+        var css = catalog.FindGame("css")!.FullLoadout().ToDictionary(x => x.Slot.Id, x => x.Weapon.Id);
+        Assert.Equal(["pistol", "machinegun", "shotgun", "sniper", "knife", "grenade", "concgrenade"], css.Keys);
+        Assert.Equal("usp", css["pistol"]);
+        Assert.Equal("ak47", css["machinegun"]);
+        Assert.Equal("m3", css["shotgun"]);
+        Assert.Equal("hegrenade", css["grenade"]);
+        Assert.Equal("flashbang", css["concgrenade"]);
+
+        foreach (CatalogGame game in catalog.Games)
+            Assert.All(game.FullLoadout(), x => Assert.Contains(x.Slot.Id, x.Weapon.Slots));
+    }
+
+    [Fact]
+    public void ValidateReportsBadLoadouts()
+    {
+        WeaponCatalog catalog = WeaponCatalog.Load("""
+            { "games": [
+              { "id": "css", "loadout": { "laser": "a", "pistol": "b", "knife": "a" }, "weapons": [
+                { "id": "a", "name": "A", "slots": [ "pistol" ], "view": "models/a.mdl" } ] } ] }
+            """);
+
+        IReadOnlyList<string> problems = catalog.Validate();
+        Assert.Contains(problems, x => x.Contains("unknown slot laser"));
+        Assert.Contains(problems, x => x.Contains("unknown weapon b"));
+        Assert.Contains(problems, x => x.Contains("puts a in knife, which it doesn't fit"));
+
+        // FullLoadout ignores what doesn't fit
+        Assert.Equal("pistol", Assert.Single(catalog.Games[0].FullLoadout()).Slot.Id);
+    }
+
+    [Fact]
     public void ValidateReportsBadEntries()
     {
         WeaponCatalog catalog = WeaponCatalog.Load("""

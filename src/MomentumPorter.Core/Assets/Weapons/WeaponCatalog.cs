@@ -71,6 +71,16 @@ public sealed class WeaponCatalog
             foreach (IGrouping<string, CatalogWeapon> duplicate in game.Weapons.GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase).Where(x => x.Count() > 1))
                 problems.Add($"{game.Id}: weapon {duplicate.Key} is listed {duplicate.Count()} times");
 
+            foreach ((string slot, string weaponId) in game.Loadout)
+            {
+                if (WeaponSlots.Find(slot) is null)
+                    problems.Add($"{game.Id}: loadout has unknown slot {slot}");
+                else if (game.FindWeapon(weaponId) is not { } weapon)
+                    problems.Add($"{game.Id}: loadout puts unknown weapon {weaponId} in {slot}");
+                else if (!weapon.Slots.Contains(slot, StringComparer.OrdinalIgnoreCase))
+                    problems.Add($"{game.Id}: loadout puts {weaponId} in {slot}, which it doesn't fit");
+            }
+
             foreach (CatalogWeapon weapon in game.Weapons)
             {
                 string name = $"{game.Id}/{weapon.Id}";
@@ -151,10 +161,42 @@ public sealed class CatalogGame
     /// <summary>What doesn't carry over for every weapon of this game; added to the report.</summary>
     public List<string> Limitations { get; set; } = [];
 
+    /// <summary>
+    /// Momentum weapon -> the weapon <see cref="FullLoadout"/> puts in it, where several weapons fit it best and the
+    /// first listed isn't the one to use, or to fill a Momentum weapon no weapon fits best (e.g. a flashbang as the
+    /// concussion grenade).
+    /// </summary>
+    public Dictionary<string, string> Loadout { get; set; } = [];
+
     public List<CatalogWeapon> Weapons { get; set; } = [];
 
     public CatalogWeapon? FindWeapon(string id) => Weapons.FirstOrDefault(x => x.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// What building all of the game's weapons builds, in Momentum's weapon order: each Momentum weapon that one of
+    /// the game's weapons fits best gets the first such weapon, then <see cref="Loadout"/> overrides or adds its picks.
+    /// </summary>
+    public IReadOnlyList<LoadoutEntry> FullLoadout()
+    {
+        var picks = new Dictionary<string, CatalogWeapon>(StringComparer.OrdinalIgnoreCase);
+        foreach (CatalogWeapon weapon in Weapons.Where(x => x.Slots.Count > 0))
+            picks.TryAdd(weapon.Slots[0], weapon);
+
+        foreach ((string slot, string weaponId) in Loadout)
+        {
+            if (FindWeapon(weaponId) is { } weapon && weapon.Slots.Contains(slot, StringComparer.OrdinalIgnoreCase))
+                picks[slot] = weapon;
+        }
+
+        return WeaponSlots.All
+            .Where(x => picks.ContainsKey(x.Id))
+            .Select(x => new LoadoutEntry(picks[x.Id], x))
+            .ToList();
+    }
 }
+
+/// <summary>A weapon of a game and the Momentum weapon it goes into when all of the game's weapons are built.</summary>
+public sealed record LoadoutEntry(CatalogWeapon Weapon, WeaponSlot Slot);
 
 public sealed class CatalogWeapon
 {
