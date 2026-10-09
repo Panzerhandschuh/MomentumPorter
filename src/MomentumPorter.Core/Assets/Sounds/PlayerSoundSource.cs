@@ -16,7 +16,8 @@ public sealed record GameSoundFile(string Source, string Wave);
 /// <param name="Label">What it is, for the report and log (e.g. <c>clank</c>, <c>CT_Concrete.StepLeft</c>)</param>
 /// <param name="Pitch">The game's pitch for it, or null for the default</param>
 /// <param name="SoundLevel">The game's sound level for it, or null to keep the entry's</param>
-public sealed record GameSound(string Label, IReadOnlyList<GameSoundFile> Files, string? Pitch = null, string? SoundLevel = null);
+/// <param name="Volume">The game's volume for it, or null when the pack decides</param>
+public sealed record GameSound(string Label, IReadOnlyList<GameSoundFile> Files, string? Pitch = null, string? SoundLevel = null, string? Volume = null);
 
 /// <summary>
 /// Another game's player movement sounds: what it plays for Momentum's jump, landings and footsteps, and the files.
@@ -45,6 +46,9 @@ public abstract class PlayerSoundSource : IDisposable
 
     /// <summary>The landing sounds, or null if the game has none.</summary>
     public abstract (GameSound? Soft, GameSound? Hard) GetLand(string? character);
+
+    /// <summary>The sound when the player starts sprinting (Half-Life 2's suit sprint), or null if the game has none.</summary>
+    public virtual GameSound? GetSprint() => null;
 
     /// <summary>
     /// The sounds to try for one of Momentum's footstep entries (e.g. <c>SolidMetal.StepLeft</c>), best first. The

@@ -39,6 +39,21 @@ public enum FootstepMode
     Silent,
 }
 
+public enum SprintSoundMode
+{
+    /// <summary>The game's sprint sound: Half-Life 2's suit sprint for HL2. The other games have none and keep Momentum's.</summary>
+    Game,
+
+    /// <summary>Leave Momentum's sprint sound.</summary>
+    MomentumDefault,
+
+    /// <summary>Half-Life 2's suit sprint sound whatever the game, from Momentum's own copy of HL2.</summary>
+    HalfLife2,
+
+    /// <summary>No sprint sound.</summary>
+    None,
+}
+
 /// <summary>
 /// Which of Quake 3's footstep sets to use. In Quake 3 it's a property of the character (models/players/x/animation.cfg).
 /// </summary>
@@ -81,7 +96,10 @@ public sealed class PlayerSoundPackOptions
     [PortOption("Footsteps", "Game replaces every surface's footsteps with the game's (Quake 3: metal surfaces clank, water splashes). Silent mutes them and writes a cfg setting snd_volume_footsteps 0. Momentum plays them when walking, jumping and landing.", Group = "Sounds", Order = 30)]
     public FootstepMode Footsteps { get; set; } = FootstepMode.Game;
 
-    [PortOption("Pure", "Also mute the sounds the game doesn't have: air jump, sprint, power slide and wall run, and the jump sound for games without one.", Group = "Sounds", Order = 40)]
+    [PortOption("Sprint sound", "The sound when sprint starts in Accelerated Hop (MomPlayer.SprintStart; mom_ahop_sprint_sound turns it off). Game uses Half-Life 2's suit sprint for HL2 and keeps Momentum's for the other games (Pure mutes it). HalfLife2 uses Half-Life 2's with any game's sounds; it comes from Momentum's own copy of HL2, so HL2 needn't be installed.", Group = "Sounds", Order = 35)]
+    public SprintSoundMode SprintSound { get; set; } = SprintSoundMode.Game;
+
+    [PortOption("Pure", "Also mute the sounds the game doesn't have: air jump, power slide and wall run, and the jump and sprint sounds for games without them (unless set to another sound).", Group = "Sounds", Order = 40)]
     public bool Pure { get; set; }
 
     [PortOption("Footstep type", "Quake 3 only: which footstep set to use. Character uses the character's own (boot, energy, flesh, mech or normal).", Group = "Sounds", Order = 50, Advanced = true)]

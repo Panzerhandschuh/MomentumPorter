@@ -29,6 +29,7 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
     public const string Jump = "MomPlayer.Jump";
     public const string LandSoft = "MomPlayer.LandSoft";
     public const string LandHard = "MomPlayer.LandHard";
+    public const string Sprint = "MomPlayer.SprintStart";
 
     /// <summary>Momentum-only movement sounds the other games have nothing like, muted by Pure.</summary>
     public static readonly IReadOnlyList<string> MomentumOnlySounds = ["MomPlayer.AirJump", "MomPlayer.SprintStart", "MomPlayer.PowerSlide", "MomPlayer.WallRun"];
@@ -41,7 +42,8 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
     /// </summary>
     /// <param name="soundscript">Momentum's game_sounds_momentum_player.txt; changed in place</param>
     /// <param name="surfaceFootsteps">The stepleft/stepright sounds surfaceproperties*.txt names, so footsteps it uses but the soundscript doesn't define get one too</param>
-    public PlayerSoundPackResult Build(PlayerSoundPackOptions options, SoundscriptFile soundscript, CustomPackWriter pack, IEnumerable<string>? surfaceFootsteps = null)
+    /// <param name="halfLife2">Half-Life 2's sounds, for its sprint sound when the game isn't HL2 (<see cref="SourceGameSoundSource.OpenMomentumHalfLife2"/>)</param>
+    public PlayerSoundPackResult Build(PlayerSoundPackOptions options, SoundscriptFile soundscript, CustomPackWriter pack, IEnumerable<string>? surfaceFootsteps = null, PlayerSoundSource? halfLife2 = null)
     {
         string? character = ResolveCharacter(options);
         string volume = options.Volume.ToString("0.###", CultureInfo.InvariantCulture);
@@ -88,6 +90,8 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
                 break;
         }
 
+        bool sprintSet = SetSprint(options, soundscript, pack, halfLife2);
+
         string? execCommand = null;
         switch (options.Footsteps)
         {
@@ -117,7 +121,8 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
 
         if (options.Pure)
         {
-            foreach (string name in MomentumOnlySounds)
+            // The sprint sound only when the game has none and it wasn't chosen
+            foreach (string name in MomentumOnlySounds.Where(x => x != Sprint || (!sprintSet && options.SprintSound == SprintSoundMode.Game)))
                 Mute(soundscript, name, pack);
         }
 
@@ -153,6 +158,48 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
     public static bool IsFootstep(string name)
     {
         return name.EndsWith("StepLeft", StringComparison.OrdinalIgnoreCase) || name.EndsWith("StepRight", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Sets Accelerated Hop's sprint sound. Returns whether it was set to something other than Momentum's.</summary>
+    private bool SetSprint(PlayerSoundPackOptions options, SoundscriptFile soundscript, CustomPackWriter pack, PlayerSoundSource? halfLife2)
+    {
+        PlayerSoundSource? from;
+        switch (options.SprintSound)
+        {
+            case SprintSoundMode.None:
+                Mute(soundscript, Sprint, pack);
+                return true;
+            case SprintSoundMode.Game:
+                from = source;
+                break;
+            case SprintSoundMode.HalfLife2:
+                from = source.Game.Id == SourceGames.HalfLife2.Id ? source : halfLife2;
+                if (from is null)
+                {
+                    report.Warn($"Half-Life 2's sprint sound wasn't found (Momentum's mount/hl2_dir.vpk), so {Sprint} is Momentum's");
+                    return false;
+                }
+
+                break;
+            default:
+                return false;
+        }
+
+        if (from.GetSprint() is not { } sprint)
+        {
+            if (options.SprintSound == SprintSoundMode.HalfLife2)
+                report.Warn($"{from.Path} has no HL2Player.SprintStart, so {Sprint} is Momentum's");
+            return false;
+        }
+
+        if (AddSound(sprint, pack, from) is not { } waves)
+            return false;
+
+        // At the game's volume: the option's volume is for jumps and landings
+        SetMovementSound(soundscript, Sprint, waves, sprint, "CHAN_VOICE", sprint.Volume ?? "0.9");
+        if (sprint.SoundLevel is not null)
+            soundscript.Find(Sprint)!.SoundLevel = sprint.SoundLevel;
+        return true;
     }
 
     private string? ResolveCharacter(PlayerSoundPackOptions options)
@@ -252,12 +299,12 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
     /// Copies a sound's files into the pack. Returns the waves for soundscripts, or null if none of its files could be
     /// read (each one that couldn't is warned about).
     /// </summary>
-    private IReadOnlyList<string>? AddSound(GameSound sound, CustomPackWriter pack)
+    private IReadOnlyList<string>? AddSound(GameSound sound, CustomPackWriter pack, PlayerSoundSource? from = null)
     {
         var waves = new List<string>();
         foreach (GameSoundFile file in sound.Files)
         {
-            if (AddFile(file, pack))
+            if (AddFile(file, pack, from ?? source))
                 waves.Add(file.Wave);
         }
 
@@ -268,23 +315,23 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
     /// Copies a game's sound into the pack as sound/&lt;wave&gt;, re-encoding it if Source can't play it. Returns false
     /// (with a warning) if it's missing or unreadable.
     /// </summary>
-    private bool AddFile(GameSoundFile file, CustomPackWriter pack)
+    private bool AddFile(GameSoundFile file, CustomPackWriter pack, PlayerSoundSource from)
     {
         string packPath = "sound/" + file.Wave;
         if (pack.Contains(packPath))
             return true;
 
-        byte[]? bytes = source.ReadSound(file.Source, out string? problem);
+        byte[]? bytes = from.ReadSound(file.Source, out string? problem);
         if (bytes is null)
         {
-            report.Warn(problem ?? $"{file.Source} isn't in {System.IO.Path.GetFileName(source.Path.TrimEnd('/', '\\'))}");
+            report.Warn(problem ?? $"{file.Source} isn't in {System.IO.Path.GetFileName(from.Path.TrimEnd('/', '\\'))}");
             return false;
         }
 
         if (!WavFile.TryParse(bytes, out WavFile? wav, out string? error))
         {
             // A Source game's own sounds play in Momentum whatever they are (ADPCM WAVs, MP3s)
-            if (source.Game.Engine != ContentEngine.Source)
+            if (from.Game.Engine != ContentEngine.Source)
             {
                 report.Warn($"{file.Source} can't be read ({error})");
                 return false;

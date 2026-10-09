@@ -25,13 +25,16 @@ internal sealed class SoundsCliOptions
     [Option("footsteps", HelpText = "game (the game's on every surface), default or silent (also writes a cfg setting snd_volume_footsteps 0)", Default = "game")]
     public string Footsteps { get; set; } = "game";
 
+    [Option("sprint", HelpText = "Accelerated Hop's sprint sound: game (HL2: its suit sprint; the others keep Momentum's), default (Momentum's), hl2 (HL2's with any game, from Momentum's copy of HL2) or none", Default = "game")]
+    public string Sprint { get; set; } = "game";
+
     [Option("footstep-type", HelpText = "Quake 3: character (the character's own), normal, boot, energy, flesh or mech", Default = "character")]
     public string FootstepType { get; set; } = "character";
 
     [Option("no-surface-footsteps", HelpText = "Play the game's default (concrete) footsteps on every surface instead of its metal, dirt, water... ones")]
     public bool NoSurfaceFootsteps { get; set; }
 
-    [Option("pure", HelpText = "Also mute the sounds the game doesn't have: air jump, sprint, power slide, wall run, and the jump sound for games without one")]
+    [Option("pure", HelpText = "Also mute the sounds the game doesn't have: air jump, power slide, wall run, and the jump and sprint sounds for games without them")]
     public bool Pure { get; set; }
 
     [Option("volume", HelpText = "Volume of the game's jump and land sounds, 0 to 1", Default = 0.35f)]
@@ -105,6 +108,7 @@ internal static class SoundsCommand
                 Character = cli.Character,
                 JumpSound = ParseMode(cli.Jump, "jump", ("game", JumpSoundMode.Game), ("default", JumpSoundMode.MomentumDefault), ("none", JumpSoundMode.None)),
                 LandSound = ParseMode(cli.Land, "land", ("game", LandSoundMode.Game), ("default", LandSoundMode.MomentumDefault), ("none", LandSoundMode.None)),
+                SprintSound = ParseMode(cli.Sprint, "sprint", ("game", SprintSoundMode.Game), ("default", SprintSoundMode.MomentumDefault), ("hl2", SprintSoundMode.HalfLife2), ("none", SprintSoundMode.None)),
                 Footsteps = ParseMode(cli.Footsteps, "footsteps", ("game", FootstepMode.Game), ("default", FootstepMode.MomentumDefault), ("silent", FootstepMode.Silent)),
                 FootstepType = Enum.TryParse(cli.FootstepType, ignoreCase: true, out Quake3FootstepType type)
                     ? type

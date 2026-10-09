@@ -202,14 +202,32 @@ public sealed class BuildPlayerSoundPackStep : IPortStep
         }
 
         using (PlayerSoundSource source = OpenSource(state))
+        using (PlayerSoundSource? halfLife2 = OpenHalfLife2(state, source))
         {
             var builder = new PlayerSoundPackBuilder(source, context.Log, context.Report);
-            state.Result = builder.Build(options, state.Soundscript!, pack, state.SurfaceFootsteps);
+            state.Result = builder.Build(options, state.Soundscript!, pack, state.SurfaceFootsteps, halfLife2);
         }
 
         context.Set(pack);
         context.Set(new CustomPackTarget(state.OutputDirectory!, options.OutputAsVpk, state.VpkTool, options.Overwrite));
         return Task.CompletedTask;
+    }
+
+    // Momentum's own copy of HL2, for HL2's sprint sound with another game's sounds
+    private static PlayerSoundSource? OpenHalfLife2(PlayerSoundPackState state, PlayerSoundSource source)
+    {
+        if (state.Options.SprintSound != SprintSoundMode.HalfLife2 || source.Game.Id == SourceGames.HalfLife2.Id)
+            return null;
+
+        string install = Path.GetDirectoryName(Path.GetFullPath(state.MomentumContentDirectory!))!;
+        try
+        {
+            return SourceGameSoundSource.OpenMomentumHalfLife2(install);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            throw new PortStepException($"Couldn't open Momentum's Half-Life 2 files in {install}: {ex.Message}", ex);
+        }
     }
 
     private static PlayerSoundSource OpenSource(PlayerSoundPackState state)

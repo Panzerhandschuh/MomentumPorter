@@ -89,7 +89,35 @@ public sealed class SourceGameSoundSource : PlayerSoundSource
         }
     }
 
+    /// <summary>
+    /// Half-Life 2's sounds as Momentum has them: the WAVs in its own copy of HL2 (mount/hl2_dir.vpk) and the
+    /// soundscripts in its game folder, which keep HL2's player sounds (game_sounds_player.txt). For HL2's sprint sound
+    /// with another game's footsteps, without HL2 installed. Null if Momentum has no HL2 mount.
+    /// </summary>
+    /// <param name="momentumDirectory">Momentum's install folder (the one holding momentum/ and mount/)</param>
+    public static SourceGameSoundSource? OpenMomentumHalfLife2(string momentumDirectory)
+    {
+        string vpk = System.IO.Path.Combine(momentumDirectory, "mount", "hl2_dir.vpk");
+        string content = System.IO.Path.Combine(momentumDirectory, "momentum");
+        if (!File.Exists(vpk) || !Directory.Exists(content))
+            return null;
+
+        var mount = new VpkReader(vpk);
+        try
+        {
+            return new SourceGameSoundSource(SourceGames.HalfLife2, new GameContent("Momentum's Half-Life 2", [mount, new FolderSource(content)]), vpk);
+        }
+        catch
+        {
+            mount.Dispose();
+            throw;
+        }
+    }
+
     public override GameSound? GetJump(string? character) => null;
+
+    /// <summary>Half-Life 2's suit sprint sound (<c>HL2Player.SprintStart</c>); the other games have none.</summary>
+    public override GameSound? GetSprint() => Game.Id == SourceGames.HalfLife2.Id ? FromEntry("HL2Player.SprintStart") : null;
 
     /// <summary>
     /// CS:GO's <c>Land_Default.StepLeft</c> (its landing on concrete). The other games play the footstep on landing,
@@ -160,7 +188,7 @@ public sealed class SourceGameSoundSource : PlayerSoundSource
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(file => new GameSoundFile(file, $"porter/{Game.Id}/{file["sound/".Length..].ToLowerInvariant()}"))
             .ToList();
-        return new GameSound(entry.Name, files, entry.Node.GetString("pitch"), entry.Node.GetString("soundlevel"));
+        return new GameSound(entry.Name, files, entry.Node.GetString("pitch"), entry.Node.GetString("soundlevel"), entry.Node.GetString("volume"));
     }
 
     /// <summary>Both feet's default footsteps, for landings in games without landing sounds.</summary>

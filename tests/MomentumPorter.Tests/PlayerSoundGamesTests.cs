@@ -69,12 +69,12 @@ public sealed class PlayerSoundGamesTests : IDisposable
         return root;
     }
 
-    private static (SoundscriptFile Script, CustomPackWriter Pack, PortReport Report, PlayerSoundPackResult Result) Build(PlayerSoundSource source, PlayerSoundPackOptions options)
+    private static (SoundscriptFile Script, CustomPackWriter Pack, PortReport Report, PlayerSoundPackResult Result) Build(PlayerSoundSource source, PlayerSoundPackOptions options, PlayerSoundSource? halfLife2 = null)
     {
         var report = new PortReport();
         var pack = new CustomPackWriter(options.ResolvePackName());
         SoundscriptFile script = SoundscriptFile.Parse(MomentumSoundscript);
-        PlayerSoundPackResult result = new PlayerSoundPackBuilder(source, NullLog.Instance, report).Build(options, script, pack);
+        PlayerSoundPackResult result = new PlayerSoundPackBuilder(source, NullLog.Instance, report).Build(options, script, pack, halfLife2: halfLife2);
         return (script, pack, report, result);
     }
 
@@ -160,6 +160,81 @@ public sealed class PlayerSoundGamesTests : IDisposable
         Assert.Equal(["player/q3/silent.wav"], script.Find("MomPlayer.WallRun")!.Waves);
         // Without surface footsteps everything gets the default
         Assert.Equal(["porter/css/player/footsteps/concrete1.wav", "porter/css/player/footsteps/concrete3.wav"], script.Find("SolidMetal.StepLeft")!.Waves);
+    }
+
+    private SourceGameSoundSource HalfLife2()
+    {
+        string root = WriteGame("hl2", new Dictionary<string, string>
+        {
+            ["scripts/game_sounds_player.txt"] = """
+                "HL2Player.SprintStart" { "channel" "CHAN_VOICE" "volume" "0.9" "soundlevel" "SNDLVL_60dB" "wave" "player/suit_sprint.wav" }
+                "Default.StepLeft" { "wave" "player/footsteps/concrete1.wav" }
+                """,
+        },
+        ["sound/player/suit_sprint.wav", "sound/player/footsteps/concrete1.wav"]);
+        return new SourceGameSoundSource(SourceGames.HalfLife2, new GameContent("hl2", [new FolderSource(root)]), root, Momentum());
+    }
+
+    [Fact]
+    public void HalfLife2SprintsWithItsSuitSound()
+    {
+        using SourceGameSoundSource hl2 = HalfLife2();
+        (SoundscriptFile script, CustomPackWriter pack, _, _) = Build(hl2, new PlayerSoundPackOptions { Game = "hl2", Pure = true });
+
+        // Pure leaves the sprint sound, which HL2 has
+        SoundscriptEntry sprint = script.Find("MomPlayer.SprintStart")!;
+        Assert.Equal(["porter/hl2/player/suit_sprint.wav"], sprint.Waves);
+        Assert.Equal("0.9", sprint.Volume);
+        Assert.Equal("CHAN_VOICE", sprint.Channel);
+        Assert.True(pack.Contains("sound/porter/hl2/player/suit_sprint.wav"));
+        Assert.Equal(["player/q3/silent.wav"], script.Find("MomPlayer.WallRun")!.Waves);
+
+        (script, _, _, _) = Build(hl2, new PlayerSoundPackOptions { Game = "hl2", SprintSound = SprintSoundMode.MomentumDefault, Pure = true });
+        Assert.Equal(["player/mom_player-sprint.wav"], script.Find("MomPlayer.SprintStart")!.Waves);
+    }
+
+    [Fact]
+    public void HalfLife2SprintWithAnotherGamesSounds()
+    {
+        using SourceGameSoundSource css = CounterStrikeSource();
+        using SourceGameSoundSource hl2 = HalfLife2();
+
+        // CS:S has no sprint sound: Game keeps Momentum's, Pure mutes it
+        (SoundscriptFile script, _, _, _) = Build(css, new PlayerSoundPackOptions { Game = "css" }, hl2);
+        Assert.Equal(["player/mom_player-sprint.wav"], script.Find("MomPlayer.SprintStart")!.Waves);
+        (script, _, _, _) = Build(css, new PlayerSoundPackOptions { Game = "css", Pure = true }, hl2);
+        Assert.Equal(["player/q3/silent.wav"], script.Find("MomPlayer.SprintStart")!.Waves);
+
+        (script, CustomPackWriter pack, _, _) = Build(css, new PlayerSoundPackOptions { Game = "css", SprintSound = SprintSoundMode.HalfLife2, Pure = true }, hl2);
+        Assert.Equal(["porter/hl2/player/suit_sprint.wav"], script.Find("MomPlayer.SprintStart")!.Waves);
+        Assert.True(pack.Contains("sound/porter/hl2/player/suit_sprint.wav"));
+        // The footsteps are still CS:S's
+        Assert.StartsWith("porter/css/", script.Find("Default.StepLeft")!.Waves[0]);
+
+        // Without Momentum's HL2 it says so and keeps Momentum's
+        (script, _, PortReport report, _) = Build(css, new PlayerSoundPackOptions { Game = "css", SprintSound = SprintSoundMode.HalfLife2, Pure = true });
+        Assert.Equal(["player/mom_player-sprint.wav"], script.Find("MomPlayer.SprintStart")!.Waves);
+        Assert.Contains("Half-Life 2's sprint sound wasn't found", Print(report));
+
+        (script, _, _, _) = Build(css, new PlayerSoundPackOptions { Game = "css", SprintSound = SprintSoundMode.None });
+        Assert.Equal(["player/q3/silent.wav"], script.Find("MomPlayer.SprintStart")!.Waves);
+    }
+
+    /// <summary>HL2's sprint sound from the installed Momentum's own copy of HL2.</summary>
+    [Fact]
+    public void ReadsTheSprintSoundFromMomentumsHalfLife2()
+    {
+        GameLocation? momentum = new SteamLocator().FindMomentum();
+        if (momentum is null)
+            return;
+
+        using SourceGameSoundSource? hl2 = SourceGameSoundSource.OpenMomentumHalfLife2(momentum.InstallDirectory);
+        if (hl2 is null)
+            return;
+
+        GameSound sprint = hl2.GetSprint()!;
+        Assert.Equal("sound/player/suit_sprint.wav", sprint.Files.Single().Source);
+        Assert.True(WavFile.Parse(hl2.ReadSound(sprint.Files[0].Source, out _)!).IsSourceCompatible);
     }
 
     [Fact]
