@@ -193,7 +193,7 @@
       "limitations": [
         "CS 1.6 view models are modelled left handed and are mirrored by cl_righthand like in CS 1.6",
         "GoldSrc models are converted with studiomdl; view model sequences get Source activities from their names (idle, shoot, reload, draw...)",
-        "Animation sound events play the converted waves and muzzle flash events draw Momentum's sprite flash (with the view model muzzle flash engine patch); shell events are dropped",
+        "Animation sound events play the converted waves and muzzle flash events draw the script's muzzle flash particle (with the view model muzzle flash engine patch); shell events are dropped",
         "GoldSrc view models are drawn at the world's FOV; in Momentum they use viewmodel_fov, so they may sit differently",
         "The p_ (held in third person) models aren't used: Momentum's player rig differs, so the world model is the w_ (dropped) one",
         "Textures are converted at their GoldSrc size and keep GoldSrc's texture gamma"
@@ -242,7 +242,7 @@
       "builtRightHanded": true,
       "limitations": [
         "GoldSrc models are converted with studiomdl; view model sequences get Source activities from their names (idle, shoot, reload, draw...)",
-        "Animation sound events play the converted waves and muzzle flash events draw Momentum's sprite flash (with the view model muzzle flash engine patch); shell events are dropped",
+        "Animation sound events play the converted waves and muzzle flash events draw the script's muzzle flash particle (with the view model muzzle flash engine patch); shell events are dropped",
         "GoldSrc view models are drawn at the world's FOV; in Momentum they use viewmodel_fov, so they may sit differently",
         "Textures are converted at their GoldSrc size and keep GoldSrc's texture gamma"
       ],
