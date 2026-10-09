@@ -129,3 +129,23 @@ animation on every other swing.
 other Defrag projectiles. Momentum's own script has no `GrenadeTrail`, so its grenade is unchanged.
 
 Without it: the Quake 3 grenade launcher's grenades have no smoke trail.
+
+## explosion-sound-position.patch
+
+Explosion sounds of every explosive (rocket launcher, stickies, conc and all Defrag weapons) played at the shooter
+instead of at the explosion. `TE_TFExplosion` emitted the sound on the server with the firing weapon as its source
+entity and the explosion as its origin, but the client re-reads a sound's position from its source entity every frame
+(`SND_Spatialize`, `bUpdatePositions`), and server sounds can't turn that off, so the sound was moved onto the weapon in
+the player's hands as soon as it started. The tempent now carries the sound (as its soundscript hash, since only the
+server's `scripts/server_weapon/` scripts name it) and the weapon, and the client plays it, still from the weapon so its
+sound overrides, the `mom_*_sound_explosion` convars and the local/ghost mix groups apply, but with a new
+`EmitSound_t::m_bUpdatePositions = false` so it stays at the explosion. It also stops a crash when an explosive went off
+after its owner lost the weapon that fired it (`GetWeapon( iWeaponID )` was dereferenced unchecked); that explosion
+now plays from the world.
+
+Verified in game on 2026-10-08 (`snd_show` puts the channel at the impact, 3,500 units from the player). Note that
+Source explosion soundlevels barely fall off with distance (Momentum's own are 95-140 dB), so a far explosion is still
+loud even when positioned right; the porter gives wave-built explosions `SNDLVL_80dB` for that reason.
+
+Without it: every explosion sounds like it went off at the player, which is most noticeable on long rocket and plasma
+shots. Not specific to ported weapons; Momentum's own explosives have it too.

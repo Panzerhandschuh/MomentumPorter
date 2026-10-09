@@ -109,7 +109,6 @@ public sealed class WeaponSoundResolver
     public string AddWaves(string name, string role, IReadOnlyList<string> waves)
     {
         var entry = new KeyValuesNode(name);
-        bool loud = role is "single_shot" or "charged_shot" or "explosion";
         entry.Set("channel", role switch
         {
             "single_shot" or "charged_shot" => "CHAN_WEAPON",
@@ -118,7 +117,17 @@ public sealed class WeaponSoundResolver
             _ => "CHAN_ITEM",
         });
         entry.Set("volume", "1.0");
-        entry.Set("soundlevel", loud ? "SNDLVL_GUNFIRE" : "SNDLVL_NORM");
+        // Explosions happen away from the player, so they need distance falloff. Momentum's own use SNDLVL_GUNFIRE
+        // (140 dB), which Source plays at full volume for tens of thousands of units, so every explosion sounds like
+        // it went off at the player. Quake-engine games fade their sounds out linearly, to silence at ~1300 units
+        // (two thirds at 500, a quarter at 1000); 80 dB is the Source level closest to that (full volume to ~360
+        // units, 72% at 500, 36% at 1000, 27% at 1300).
+        entry.Set("soundlevel", role switch
+        {
+            "single_shot" or "charged_shot" => "SNDLVL_GUNFIRE",
+            "explosion" => "SNDLVL_80dB",
+            _ => "SNDLVL_NORM",
+        });
         entry.Set("pitch", "PITCH_NORM");
         var relative = waves.Select(x => ")" + ContentPath.Normalize(x)["sound/".Length..]).ToList();
         if (relative.Count == 1)
