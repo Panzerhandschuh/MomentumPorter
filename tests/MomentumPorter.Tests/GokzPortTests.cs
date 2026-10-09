@@ -344,6 +344,56 @@ public class GokzPortTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void AddsCascadeLight()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Assert.Empty(map.Bsp.Entities.Where(x => x.ClassName == "env_cascade_light"));
+        if (!map.Bsp.Entities.Any(x => x.ClassName == "light_environment"))
+            map.Add("light_environment", "", null, ("angles", "0 300 0"), ("pitch", "-60"));
+
+        map.Port();
+
+        Entity light = Assert.Single(map.Bsp.Entities.Where(x => x.ClassName == "env_cascade_light"));
+        Assert.Equal("1", light["uselightenvangles"]);
+        Assert.Equal("0", light["startdisabled"]);
+        Assert.Equal("400", light["maxshadowdistance"]);
+        Assert.Equal("255 255 255 1", light["color"]);
+        Assert.Equal("2", light["_ported_by_tools"]);
+        Assert.Contains("env_cascade_light added", map.PrintReport());
+    }
+
+    [Fact]
+    public void KeepsTheMapsCascadeLight()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity light = map.Add("env_cascade_light", "cascadelight", null, ("maxshadowdistance", "1000"));
+
+        map.Port();
+
+        Assert.Same(light, Assert.Single(map.Bsp.Entities.Where(x => x.ClassName == "env_cascade_light")));
+        Assert.Equal("1000", light["maxshadowdistance"]);
+        Assert.DoesNotContain("env_cascade_light", map.PrintReport());
+    }
+
+    [Fact]
+    public void SkipsCascadeLightWithoutLightEnvironment()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        map.Bsp.Entities.RemoveAll(x => x.ClassName == "light_environment");
+
+        map.Port();
+
+        Assert.Empty(map.Bsp.Entities.Where(x => x.ClassName == "env_cascade_light"));
+        Assert.Contains("warning: no env_cascade_light added", map.PrintReport());
+    }
+
+    [Fact]
     public void WritesNoZonesWithoutMainCourse()
     {
         if (CreateMap() is not { } map)

@@ -181,6 +181,8 @@ in-game entity tools ("Climb Trigger Converter"), so maps ported either way end 
   `climb_anti_bhop_time` (default 0.2) as `BhopCooldown`.
 - `climb_anti_pause`, `climb_anti_jumpstat` and `climb_bhop_reset` are removed, since Momentum has nothing like them.
 - The worldspawn's `climb_mapping_api_version` is removed.
+- An `env_cascade_light` is added when the map has none, as the in-game entity tools' "CSM Fix" does, so cascaded
+  shadow maps work. It follows the map's `light_environment`; a map without one is left alone, with a warning.
 
 Momentum's timer comes from a zone file rather than entities, so the timer entities become
 `zones/local/<map>.json` next to the ported BSP (Momentum reads local zones from `maps/zones/local/`):
