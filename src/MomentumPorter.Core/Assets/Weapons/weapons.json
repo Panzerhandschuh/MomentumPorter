@@ -117,6 +117,7 @@
       "builtRightHanded": true,
       "soundscripts": [ "scripts/game_sounds_weapons.txt" ],
       "momentumSoundscripts": [ "scripts/game_sounds_weapons_tf.txt" ],
+      "particleFiles": [ "particles/explosion.pcf" ],
       "limitations": [
         "Uses TF2's older v_models, which have their own arms; c_models (arms with the weapon merged on, attach_to_hands 2) don't work in Momentum",
         "Taunts, inspect animations and class-specific arms aren't available",

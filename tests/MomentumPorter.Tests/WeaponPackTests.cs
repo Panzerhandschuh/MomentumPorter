@@ -401,6 +401,9 @@ public class WeaponPackTests
             Assert.Equal("BaseExplosionEffect.SoundTF2", script.SoundOverrides["Weapon_RL.Explosion"]);
             Assert.Equal("", script.SoundOverrides["Rocket.Trail"]);
             Assert.Equal("rockettrail", script.GetParticle("RocketTrail"));
+            // Momentum's HL2 content ships a particles/explosion.pcf that hides TF2's, so the pack carries TF2's under its own name
+            Assert.True(File.Exists(Path.Combine(pack, "particles", "porter_tf2_explosion.pcf")));
+            Assert.Contains("\"particles/porter_tf2_explosion.pcf\"", File.ReadAllText(Path.Combine(pack, "particles", "particles_manifest.txt")));
             Assert.False(File.Exists(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt")));
         }
         finally

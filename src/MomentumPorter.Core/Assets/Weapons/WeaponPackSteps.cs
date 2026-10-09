@@ -157,6 +157,19 @@ public sealed class CheckMountedAssetsStep : IPortStep
             state.WorldModel = copier.Resolve(context, state, state.WorldModel);
         }
 
+        // The game's own particle files (CS:GO's muzzle flashes, TF2's explosions): the same goes for them, since
+        // Momentum's manifest names them by path too (its HL2 content ships a particles/explosion.pcf that hides TF2's)
+        if (state.Options.Particles)
+        {
+            foreach (string file in state.Game!.ParticleFiles)
+            {
+                if (!content.Exists(file))
+                    context.Report.Warn($"{file} isn't in {content.Name}'s files, so the effects in it aren't drawn");
+                else if (copier.ResolveParticleFile(context, state, file) is { } manifestPath)
+                    state.ParticleFiles.Add(manifestPath);
+            }
+        }
+
         return Task.CompletedTask;
 
         string? Check(string? model, string what)
@@ -256,6 +269,31 @@ file sealed class MountedModelCopier : IDisposable
             context.Report.Warn($"{other.Name} also ships {model}'s materials ({string.Join(", ", sharedTextures.Take(3))}{(sharedTextures.Count > 3 ? ", ..." : "")}), so the model may show {other.Name}'s textures");
 
         return target + ".mdl";
+    }
+
+    /// <summary>
+    /// The path the manifest should list for a game's particle file: the file itself, or the pack's copy under its
+    /// own name when another mounted game ships that path (the manifest loads the first copy found, and Momentum's
+    /// own manifest may list the path already, for the other game's file).
+    /// </summary>
+    public string? ResolveParticleFile(PortJobContext context, WeaponPackState state, string file)
+    {
+        GameContent content = state.Content!;
+        GameContent? other = _others.FirstOrDefault(x => x.Exists(file));
+        if (other is null)
+            return file;
+
+        if (content.Read(file) is not { } data)
+        {
+            context.Report.Warn($"{other.Name} ships {file} too, and {content.Name}'s copy couldn't be read, so the effects in it may be missing");
+            return file;
+        }
+
+        string target = $"particles/porter_{state.Game!.Id}_{Path.GetFileName(ContentPath.Normalize(file)).ToLowerInvariant()}";
+        state.Sink!.AddFile(target, data);
+        context.Report.Change($"{Path.GetFileName(file)} copied into the pack as {target}: {other.Name} ships it too");
+        context.Log.Info($"{other.Name} ships {file} too, which the manifest would load instead of {content.Name}'s, so {content.Name}'s copy is in the pack as {target}");
+        return target;
     }
 
     public void Dispose()
@@ -659,14 +697,7 @@ public sealed class WriteWeaponPackStep : IPortStep
                 context.Log.Info($"Muzzle flash: {effect}{(file is null ? " (Momentum's own)" : $" from {file}")}");
             }
 
-            // The game's own particle files (CS:GO's muzzle flashes), from the content Momentum mounts
-            foreach (string file in game.ParticleFiles)
-            {
-                if (state.Content!.Exists(file))
-                    state.ParticleFiles.Add(file);
-                else
-                    context.Report.Warn($"{file} isn't in {state.Content.Name}'s files, so the effects in it aren't drawn");
-            }
+            // The game's own particle files were added by CheckMountedAssetsStep
         }
 
         if (state.ParticleFiles.Count > 0)
