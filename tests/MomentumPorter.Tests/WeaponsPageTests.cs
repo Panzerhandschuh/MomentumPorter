@@ -1,6 +1,7 @@
 namespace MomentumPorter.Tests;
 
 using MomentumPorter.Assets.Weapons;
+using MomentumPorter.Pipeline;
 using MomentumPorter.UI.Services;
 using MomentumPorter.UI.ViewModels.Pages;
 using Xunit;
@@ -16,90 +17,102 @@ public class WeaponsPageTests
     }
 
     [Fact]
-    public void ListsTheCatalogAndFollowsTheSelection()
+    public void OffersEveryModeButClimbMomentumWithDefragAsOne()
     {
         WeaponsPageViewModel page = CreatePage();
 
-        Assert.NotEmpty(page.Games);
-        Assert.NotNull(page.SelectedGame);
-        Assert.NotEmpty(page.Weapons);
-        Assert.NotNull(page.SelectedWeapon);
-        Assert.NotEmpty(page.Slots);
-        Assert.Equal(page.SelectedWeapon!.Slots[0], page.SelectedSlot);
-
-        CatalogGame tf2 = page.Games.First(x => x.Id == "tf2");
-        page.SelectedGame = tf2;
-        Assert.All(page.Weapons, x => Assert.Contains(x, tf2.Weapons));
-
-        var options = (WeaponPackOptions)page.OptionsForm.Options;
-        Assert.Equal("tf2", options.Game);
-        Assert.Equal(page.SelectedWeapon!.Id, options.Weapon);
-        Assert.Equal(page.SelectedSlot, options.Slot);
-
-        // Every mode by default; ticked modes become the option's list
-        Assert.True(page.AllModes);
-        Assert.Null(page.SelectedModes);
-        Assert.Equal("Every mode", page.ModesSummary);
-        Assert.Equal(GameModes.All.Count, page.ModeChoices.Count);
-        page.AllModes = false;
-        page.ModeChoices.First(x => x.Mode.Id == "kz16").IsSelected = true;
-        page.ModeChoices.First(x => x.Mode.Id == "kzt").IsSelected = true;
-        Assert.Equal("kzt,kz16", page.SelectedModes);
-        Assert.Equal("Climb (KZT), Climb (1.6)", page.ModesSummary);
+        Assert.Equal(["Surf", "Bhop", "Bhop (HL1)", "Climb (KZT)", "Climb (1.6)", "Rocket Jump", "Sticky Jump", "Ahop", "Conc", "Defrag"], page.Modes.Select(x => x.Name));
+        GameModeGroup defrag = page.Modes.Single(x => x.Name == "Defrag");
+        Assert.Equal(["df_cpm", "df_vq3", "df_vtg"], defrag.Modes.Select(x => x.Id));
+        Assert.Equal("df_cpm,df_vq3,df_vtg", defrag.ModeList);
+        Assert.All(defrag.Slots, x => Assert.StartsWith("df_", x.Id));
+        Assert.Equal(["surf"], page.Modes[0].Modes.Select(x => x.Id));
     }
 
     [Fact]
-    public void SwitchingGamesKeepsTheGameTheJobBuilds()
+    public void ListsTheModesWeaponsThenTheGamesWeaponsThatFit()
     {
         WeaponsPageViewModel page = CreatePage();
 
-        // The form must not offer map profiles for the weapon's game, which turned "q3" back into "css"
-        Assert.Null(page.OptionsForm.Find(nameof(WeaponPackOptions.Game)));
-        Assert.Null(page.OptionsForm.Find(nameof(WeaponPackOptions.Weapon)));
-        Assert.Null(page.OptionsForm.Find(nameof(WeaponPackOptions.Slot)));
+        // Surf first: the classic weapons, and the catalog's loadout pick for the pistol
+        Assert.Equal("Surf", page.SelectedMode.Name);
+        Assert.Equal(["pistol", "machinegun", "shotgun", "sniper", "knife", "grenade"], page.Slots.Select(x => x.Slot.Id));
+        Assert.Equal("pistol", page.SelectedSlot!.Slot.Id);
+        Assert.Equal("css", page.SelectedGame!.Id);
+        Assert.All(page.Weapons, x => Assert.Contains("pistol", x.Slots));
+        Assert.Equal("usp", page.SelectedWeapon!.Id);
 
-        // The Quake 3 group only shows for Quake 3, and the folder settings are an expander of their own
-        Assert.DoesNotContain(page.OptionsForm.Groups, x => x.Name == WeaponPackOptions.Quake3Group);
-        page.SelectedGame = page.Games.First(x => x.Id == "q3");
-        Assert.Contains(page.OptionsForm.Groups, x => x.Name == WeaponPackOptions.Quake3Group);
-        var advanced = Assert.Single(page.OptionsForm.Groups, x => x.Name == WeaponPackOptions.AdvancedGroup);
-        Assert.Same(advanced, page.OptionsForm.Groups[^1]);
-        Assert.False(advanced.ShowHeader);
-        Assert.Equal(WeaponPackOptions.AdvancedGroup, advanced.AdvancedHeader);
-        Assert.Contains(advanced.AdvancedFields, x => x.Name == nameof(WeaponPackOptions.OutputDirectory));
+        // Another Momentum weapon: only the weapons that fit it, best fit first
+        page.SelectedSlot = page.Slots.Single(x => x.Slot.Id == "sniper");
+        Assert.Equal(["awp", "g3sg1", "scout", "sg550"], page.Weapons.Select(x => x.Id));
+        Assert.Equal("awp", page.SelectedWeapon!.Id);
 
-        // GoldSrc world models aren't fitted, so the option isn't offered
-        Assert.Contains(page.OptionsForm.Groups.SelectMany(x => x.Fields), x => x.Name == nameof(WeaponPackOptions.FitWorldModel));
-        page.SelectedGame = page.Games.First(x => x.Id == "cs16");
-        Assert.DoesNotContain(page.OptionsForm.Groups.SelectMany(x => x.Fields), x => x.Name == nameof(WeaponPackOptions.FitWorldModel));
+        // Another mode keeps the Momentum weapon where it has it, and switches to the game it comes from
+        page.SelectedMode = page.Modes.Single(x => x.Name == "Rocket Jump");
+        Assert.Equal("tf2", page.SelectedGame!.Id);
+        Assert.Equal(["shotgun", "knife", "rocketlauncher"], page.Slots.Select(x => x.Slot.Id));
+        Assert.Equal("shotgun", page.SelectedSlot!.Slot.Id);
+        Assert.Equal("shotgun", page.SelectedWeapon!.Id);
+        page.SelectedSlot = page.Slots.Single(x => x.Slot.Id == "rocketlauncher");
+        Assert.Equal(["rocketlauncher"], page.Weapons.Select(x => x.Id));
+        page.SelectedGame = page.Games.Single(x => x.Id == "css");
+        Assert.Empty(page.Weapons);
+        Assert.Equal("No Counter-Strike: Source weapon fits the rocket launcher", page.NoWeaponsMessage);
 
-        foreach (string game in new[] { "q3", "tf2", "cs16", "css" })
+        page.SelectedMode = page.Modes.Single(x => x.Name == "Defrag");
+        Assert.Equal("q3", page.SelectedGame!.Id);
+        Assert.DoesNotContain(page.Slots, x => x.Name.StartsWith("Defrag"));
+        page.SelectedSlot = page.Slots.Single(x => x.Slot.Id == "df_railgun");
+        Assert.Equal("Railgun", page.SelectedSlot.Name);
+        Assert.Equal(["railgun"], page.Weapons.Select(x => x.Id));
+        Assert.Contains("Railgun as Railgun", page.BuildAllTip);
+        Assert.Contains("Gauntlet as Gauntlet", page.BuildAllTip);
+    }
+
+    [Theory]
+    [InlineData("Rocket Jump", "tf2", "rocketlauncher:rocketlauncher,shotgun:shotgun,knife:shovel")]
+    [InlineData("Sticky Jump", "tf2", "stickylauncher:stickybomblauncher,pistol:pistol,knife:bottle")]
+    [InlineData("Ahop", "hl2", "pistol:pistol,machinegun:smg1,shotgun:shotgun,sniper:crossbow,knife:crowbar,grenade:grenade")]
+    [InlineData("Conc", "hl1", "concgrenade:grenade")]
+    [InlineData("Defrag", "q3", "df_bfg:bfg,df_railgun:railgun,df_knife:gauntlet")]
+    [InlineData("Surf", "css", "pistol:usp,sniper:awp")]
+    [InlineData("Bhop", "css", "pistol:usp,machinegun:ak47")]
+    [InlineData("Bhop (HL1)", "hl1", "pistol:glock,knife:crowbar")]
+    [InlineData("Climb (KZT)", "csgo", "pistol:usp_silencer,knife:knife")]
+    [InlineData("Climb (1.6)", "cs16", "pistol:usp,knife:knife")]
+    public void EachModeStartsOnTheGameItComesFrom(string mode, string game, string picks)
+    {
+        WeaponsPageViewModel page = CreatePage();
+        page.SelectedGame = page.Games.Single(x => x.Id == "tf2");
+        page.SelectedMode = page.Modes.Single(x => x.Name == "Defrag");
+
+        page.SelectedMode = page.Modes.Single(x => x.Name == mode);
+
+        Assert.Equal(game, page.SelectedGame!.Id);
+        foreach (string[] pick in picks.Split(',').Select(x => x.Split(':')))
         {
-            page.SelectedGame = page.Games.First(x => x.Id == game);
-            page.OptionsForm.Reload();
-
-            var options = (WeaponPackOptions)page.OptionsForm.Options;
-            Assert.Equal(game, options.Game);
-            Assert.Equal(page.SelectedWeapon!.Id, options.Weapon);
+            page.SelectedSlot = page.Slots.Single(x => x.Slot.Id == pick[0]);
+            Assert.Equal(pick[1], page.SelectedWeapon!.Id);
         }
     }
 
     [Fact]
-    public void MapOptionsStillOfferGameProfiles()
-    {
-        var form = new MomentumPorter.UI.ViewModels.Shared.OptionsFormViewModel(new MomentumPorter.Options.MapPortOptions());
-        Assert.IsType<MomentumPorter.UI.ViewModels.Shared.ChoiceOptionViewModel>(form.Find(nameof(MomentumPorter.Options.MapPortOptions.Game)));
-    }
-
-    [Fact]
-    public void PreparesAWeaponPackJob()
+    public void PreparesAWeaponPackJobForTheSelectedMode()
     {
         WeaponsPageViewModel page = CreatePage();
-        page.SelectedGame = page.Games.First(x => x.Id == "css");
+        page.SelectedMode = page.Modes.Single(x => x.Name == "Climb (1.6)");
+        page.SelectedGame = page.Games.First(x => x.Id == "cs16");
+        page.SelectedSlot = page.Slots.Single(x => x.Slot.Id == "machinegun");
         page.SelectedWeapon = page.Weapons.First(x => x.Id == "ak47");
 
         PreparedJob prepared = page.Prepare(new WeaponPackBuildViewModel("test"));
+        WeaponPackOptions options = Assert.IsType<WeaponPackState>(PreparedState(prepared)).Options;
 
+        Assert.Equal("cs16", options.Game);
+        Assert.Equal("ak47", options.Weapon);
+        Assert.Equal("machinegun", options.Slot);
+        Assert.Equal("kz16", options.GameModes);
+        Assert.EndsWith("custom", options.OutputDirectory);
         Assert.Contains(prepared.Job.Steps, x => x is LoadWeaponStep);
         Assert.Contains(prepared.Job.Steps, x => x is WriteWeaponPackStep);
         Assert.True(Directory.Exists(prepared.WorkDirectory));
@@ -110,10 +123,8 @@ public class WeaponsPageTests
     public void QueuedBuildsKeepTheWeaponTheyWereQueuedWith()
     {
         WeaponsPageViewModel page = CreatePage();
-        page.SelectedGame = page.Games.First(x => x.Id == "q3");
-        Assert.Contains("Gauntlet as Defrag gauntlet", page.BuildAllTip);
 
-        var options = new WeaponPackOptions { Game = "q3", Weapon = "railgun", Slot = "df_railgun" };
+        var options = new WeaponPackOptions { Game = "q3", Weapon = "railgun", Slot = "df_railgun", GameModes = "df_cpm,df_vq3,df_vtg" };
         page.SelectedGame = page.Games.First(x => x.Id == "css");
         PreparedJob prepared = page.Prepare(new WeaponPackBuildViewModel("test", options));
         Directory.Delete(prepared.WorkDirectory, recursive: true);
@@ -121,5 +132,64 @@ public class WeaponsPageTests
         Assert.Equal("q3_railgun", prepared.Job.Name);
         Assert.Equal("railgun", options.Weapon);
         Assert.Equal("", options.OutputDirectory); // Prepare fills in a copy
+    }
+
+    [Fact]
+    public void TheSettingsStudiomdlOverridesMomentums()
+    {
+        WeaponsPageViewModel page = CreatePage();
+        PreparedJob prepared = page.Prepare(new WeaponPackBuildViewModel("test"));
+        Directory.Delete(prepared.WorkDirectory, recursive: true);
+        Assert.Null(Assert.IsType<WeaponPackState>(PreparedState(prepared)).Options.StudioMdlPath);
+
+        string root = Path.Combine(Path.GetTempPath(), "MomentumPorterTests", Guid.NewGuid().ToString("N"));
+        SettingsService settings = SettingsService.Load(Path.Combine(root, "settings.json"));
+        settings.Settings.StudiomdlPath = @"C:\tools\studiomdl.exe";
+        page = new WeaponsPageViewModel(settings, new JobRunnerService(a => a()), a => a());
+        prepared = page.Prepare(new WeaponPackBuildViewModel("test"));
+        Directory.Delete(prepared.WorkDirectory, recursive: true);
+        Assert.Equal(@"C:\tools\studiomdl.exe", Assert.IsType<WeaponPackState>(PreparedState(prepared)).Options.StudioMdlPath);
+    }
+
+    [Fact]
+    public void DescribesWhatThePackHoldsPerMode()
+    {
+        WeaponSlot pistol = WeaponSlots.Find("pistol")!;
+        GameMode kzt = GameModes.Find("kzt")!;
+        GameMode kz16 = GameModes.Find("kz16")!;
+        GameMode surf = GameModes.Find("surf")!;
+        var inventory = new List<WeaponPackEntry>
+        {
+            new(pistol, null, "Glock-18 from Counter-Strike: Source"),
+            new(pistol, kz16, "USP .45 from Counter-Strike 1.6"),
+        };
+
+        Assert.Null(WeaponsPageViewModel.DescribeInPack(WeaponSlots.Find("knife")!, [surf], inventory));
+        Assert.Equal("Glock-18 from Counter-Strike: Source", WeaponsPageViewModel.DescribeInPack(pistol, [surf], inventory));
+        Assert.Equal("USP .45 from Counter-Strike 1.6", WeaponsPageViewModel.DescribeInPack(pistol, [kz16], inventory));
+        Assert.Equal("Climb (KZT): Glock-18 from Counter-Strike: Source; Climb (1.6): USP .45 from Counter-Strike 1.6", WeaponsPageViewModel.DescribeInPack(pistol, [kzt, kz16], inventory));
+        Assert.Equal("Surf: Momentum's; Climb (1.6): USP .45 from Counter-Strike 1.6", WeaponsPageViewModel.DescribeInPack(pistol, [surf, kz16], [inventory[1]]));
+    }
+
+    [Fact]
+    public void BuildTitlesNameTheModeGameWeaponAndSlot()
+    {
+        WeaponsPageViewModel page = CreatePage();
+        page.SelectedMode = page.Modes.Single(x => x.Name == "Defrag");
+        page.SelectedGame = page.Games.Single(x => x.Id == "q3");
+
+        Assert.Contains("Build every Quake III Arena weapon that fits a Defrag weapon", page.BuildAllTip);
+        page.SelectedGame = page.Games.Single(x => x.Id == "tf2");
+        Assert.Contains("Rocket Launcher as Rocket launcher", page.BuildAllTip);
+        page.SelectedMode = page.Modes.Single(x => x.Name == "Conc");
+        page.SelectedGame = page.Games.Single(x => x.Id == "tf2");
+        Assert.Equal("No Team Fortress 2 weapon fits Conc's weapons", page.BuildAllTip);
+    }
+
+    private static object PreparedState(PreparedJob prepared)
+    {
+        var context = new PortJobContext { Log = NullLog.Instance, WorkDirectory = prepared.WorkDirectory };
+        prepared.Configure(context);
+        return context.Get<WeaponPackState>();
     }
 }

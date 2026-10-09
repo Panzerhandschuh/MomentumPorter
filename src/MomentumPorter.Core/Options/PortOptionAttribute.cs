@@ -27,17 +27,6 @@ public sealed class PortOptionAttribute(string label, string help) : Attribute
 
     /// <summary>For strings: the kind of path, so the UI can show a browse button.</summary>
     public PathKind Path { get; init; } = PathKind.None;
-
-    /// <summary>For strings: a fixed list the UI offers instead of free text.</summary>
-    public OptionChoices Choices { get; init; } = OptionChoices.None;
-}
-
-public enum OptionChoices
-{
-    None,
-
-    /// <summary>A map game profile name (<c>GameProfiles.All</c>), or null to detect it.</summary>
-    GameProfile,
 }
 
 public enum PathKind

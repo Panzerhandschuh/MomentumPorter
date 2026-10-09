@@ -56,7 +56,7 @@
     },
     {
       "id": "csgo",
-      "name": "Counter-Strike: Global Offensive (legacy)",
+      "name": "Counter-Strike: Global Offensive",
       "attachToHands": 1,
       "builtRightHanded": true,
       "armsModel": "models/weapons/ct_arms.mdl",

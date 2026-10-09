@@ -40,43 +40,21 @@
         <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Value}" HorizontalAlignment="Stretch" />
       </StackPanel>
     </DataTemplate>
-
-    <DataTemplate DataType="vm:ChoiceOptionViewModel">
-      <StackPanel Spacing="4" ToolTip.Tip="{Binding Help}" Background="Transparent">
-        <TextBlock Text="{Binding Label}" />
-        <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch">
-          <ComboBox.ItemTemplate>
-            <DataTemplate DataType="vm:OptionChoice">
-              <TextBlock Text="{Binding Display}" />
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-      </StackPanel>
-    </DataTemplate>
   </UserControl.DataTemplates>
 
+  <!-- Flat: a heading per group and its fields under it, no expanders, so it fits a narrow panel -->
   <ItemsControl Name="Root" x:DataType="vm:OptionsFormViewModel" ItemsSource="{Binding Groups}">
     <ItemsControl.ItemTemplate>
       <DataTemplate DataType="vm:OptionGroupViewModel">
         <StackPanel Spacing="10" Margin="0 0 0 16">
           <TextBlock Text="{Binding Name}" Classes="h3" IsVisible="{Binding ShowHeader}" />
-          <ItemsControl ItemsSource="{Binding Fields}" IsVisible="{Binding ShowHeader}">
+          <ItemsControl ItemsSource="{Binding Fields}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
                 <StackPanel Spacing="10" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
           </ItemsControl>
-          <Expander Header="{Binding AdvancedHeader}" IsVisible="{Binding HasAdvanced}" HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Stretch">
-            <ItemsControl ItemsSource="{Binding AdvancedFields}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Spacing="10" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-            </ItemsControl>
-          </Expander>
         </StackPanel>
       </DataTemplate>
     </ItemsControl.ItemTemplate>

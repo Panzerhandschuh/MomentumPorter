@@ -31,6 +31,12 @@ public sealed class PorterSettings
     public string? BspPackPath { get; set; }
 
     /// <summary>
+    /// studiomdl.exe, which compiles the models GoldSrc maps and converted weapons use. Null for Momentum's own
+    /// (bin/win64/studiomdl.exe in its install), see <see cref="ResolveStudiomdlPath"/>.
+    /// </summary>
+    public string? StudiomdlPath { get; set; }
+
+    /// <summary>
     /// Command run (through the shell) before each bspPack run, e.g. a script that updates ResourceConfig.ini.
     /// See <see cref="BspPackTool.ExpandPrePackCommand"/> for the placeholders it may use.
     /// </summary>
@@ -42,15 +48,28 @@ public sealed class PorterSettings
     /// <summary>Where finished maps go when they aren't installed into Momentum. Null for <see cref="DefaultOutputDirectory"/>.</summary>
     public string? OutputDirectory { get; set; }
 
-    /// <summary>Default for the map options' "Install into Momentum".</summary>
-    public bool InstallByDefault { get; set; } = true;
-
     public static string DefaultOutputDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MomentumPorter", "maps");
 
     public string ResolveOutputDirectory() => string.IsNullOrWhiteSpace(OutputDirectory) ? DefaultOutputDirectory : OutputDirectory;
 
     public string? ResolveBspPackPath() => string.IsNullOrWhiteSpace(BspPackPath) ? BspPackTool.FindDefault() : BspPackPath;
+
+    /// <summary>
+    /// The studiomdl to compile models with: the override, else Momentum's <c>bin/win64/studiomdl.exe</c>, or null
+    /// when neither Momentum nor the file is found.
+    /// </summary>
+    public string? ResolveStudiomdlPath(SteamLocator? steam = null)
+    {
+        if (!string.IsNullOrWhiteSpace(StudiomdlPath))
+            return StudiomdlPath.Trim();
+
+        if (ResolveMomentumContentDirectory(steam) is not { } content || Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(content)) is not { } install)
+            return null;
+
+        string path = Path.Combine(install, "bin", "win64", "studiomdl.exe");
+        return File.Exists(path) ? path : null;
+    }
 
     /// <summary>
     /// Momentum's maps folder (<c>&lt;install&gt;/momentum/maps</c>), or null if Momentum can't be found.

@@ -51,7 +51,8 @@ public class PlayerSoundsPageTests
     {
         PlayerSoundsPageViewModel page = CreatePage();
         PlayerSoundPackOptions options = (PlayerSoundPackOptions)page.OptionsForm.Options;
-        IEnumerable<string> Shown() => page.OptionsForm.Groups.SelectMany(x => x.Fields.Concat(x.AdvancedFields)).Select(x => x.Name);
+        page.OptionsForm.ShowAdvanced = true;
+        IEnumerable<string> Shown() => page.OptionsForm.VisibleFields.Select(x => x.Name);
 
         // Quake 3 first, with its own options
         Assert.Equal("q3", page.SelectedGame.Id);

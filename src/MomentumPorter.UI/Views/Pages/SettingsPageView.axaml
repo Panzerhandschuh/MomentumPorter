@@ -44,19 +44,16 @@
                        Watermark="{Binding DetectedMomentum, TargetNullValue='Not found in your Steam libraries', StringFormat='Detected: {0}'}" />
             </DockPanel>
             <TextBlock Classes="hint" Text="{Binding MomentumStatus}" />
-            <TextBlock Classes="hint" Text="Leave empty to use the install found in your Steam libraries." />
+            <TextBlock Classes="hint" Text="Leave empty to use the install found in your Steam libraries. Ported maps go into its maps folder and packs into its custom folder." />
           </StackPanel>
-          <CheckBox IsChecked="{Binding InstallByDefault}"
-                    Content="Install ported maps into Momentum by default"
-                    ToolTip.Tip="The starting value of the Maps page's &quot;Install into Momentum&quot; option" />
         </StackPanel>
       </Border>
 
       <Border Classes="panel" Padding="16">
         <StackPanel Spacing="16">
-          <TextBlock Text="bspPack" Classes="h2" />
+          <TextBlock Text="Tools" Classes="h2" />
           <StackPanel Classes="setting">
-            <TextBlock Classes="label" Text="Executable" />
+            <TextBlock Classes="label" Text="bspPack" />
             <DockPanel>
               <Button DockPanel.Dock="Right" Margin="6 0 0 0" Command="{Binding BrowseBspPackCommand}" ToolTip.Tip="Browse">
                 <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
@@ -75,6 +72,19 @@
             <TextBlock Classes="hint"
                        Text="Run through the shell before every bspPack run, e.g. to update ResourceConfig.ini. Placeholders: {resourceconfig}, {bsppack}, {bsppackdir}, {bsp}. Quote paths with spaces." />
           </StackPanel>
+          <StackPanel Classes="setting">
+            <TextBlock Classes="label" Text="studiomdl" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Margin="6 0 0 0" Command="{Binding BrowseStudiomdlCommand}" ToolTip.Tip="Browse">
+                <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
+              </Button>
+              <TextBox Text="{Binding StudiomdlPath, UpdateSourceTrigger=LostFocus}"
+                       Watermark="{Binding DefaultStudiomdlPath, TargetNullValue='Path to studiomdl.exe', StringFormat='Default: {0}'}" />
+            </DockPanel>
+            <TextBlock Classes="hint" Text="{Binding StudiomdlStatus}" />
+            <TextBlock Classes="hint"
+                       Text="Compiles the models GoldSrc maps and converted weapons use. Leave empty for Momentum's own studiomdl." />
+          </StackPanel>
         </StackPanel>
       </Border>
 
@@ -89,7 +99,7 @@
               </Button>
               <TextBox Text="{Binding OutputDirectory, UpdateSourceTrigger=LostFocus}" Watermark="{Binding DefaultOutputDirectory, StringFormat='Default: {0}'}" />
             </DockPanel>
-            <TextBlock Classes="hint" Text="Where finished maps are saved when they aren't installed into Momentum." />
+            <TextBlock Classes="hint" Text="Used when Momentum Mod isn't found: weapon packs are written into its custom folder." />
           </StackPanel>
           <StackPanel Classes="setting">
             <TextBlock Classes="label" Text="Work folder" />

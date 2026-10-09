@@ -30,11 +30,11 @@ public static class SourceGames
     /// <summary>
     /// The legacy (Source 1) CS:GO app, which is what Momentum mounts (app 4465480, folder "csgo legacy").
     /// </summary>
-    public static readonly KnownGame CounterStrikeGlobalOffensiveLegacy = new("csgo_legacy", "Counter-Strike: Global Offensive (legacy)", 4465480, "csgo legacy", "csgo");
+    public static readonly KnownGame CounterStrikeGlobalOffensiveLegacy = new("csgo_legacy", "Counter-Strike: Global Offensive", 4465480, "csgo legacy", "csgo");
 
     public static readonly SourceGameInfo CounterStrikeSource = new("css", "Counter-Strike: Source", ContentEngine.Source, true);
     public static readonly SourceGameInfo TeamFortress2 = new("tf2", "Team Fortress 2", ContentEngine.Source, true);
-    public static readonly SourceGameInfo CounterStrikeGlobalOffensive = new("csgo", "Counter-Strike: Global Offensive (legacy)", ContentEngine.Source, true);
+    public static readonly SourceGameInfo CounterStrikeGlobalOffensive = new("csgo", "Counter-Strike: Global Offensive", ContentEngine.Source, true);
     public static readonly SourceGameInfo HalfLife2 = new("hl2", "Half-Life 2", ContentEngine.Source, true);
     public static readonly SourceGameInfo CounterStrike16 = new("cs16", "Counter-Strike 1.6", ContentEngine.GoldSrc, false);
     public static readonly SourceGameInfo HalfLife = new("hl1", "Half-Life", ContentEngine.GoldSrc, false);

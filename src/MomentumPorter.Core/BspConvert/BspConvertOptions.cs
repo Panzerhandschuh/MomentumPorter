@@ -7,29 +7,26 @@ using MomentumPorter.Options;
 
 public enum OffModeEntities
 {
-    Cpm,
-    Vq3,
+    CPM,
+    VQ3,
 }
 
 /// <summary>
 /// Options for converting Quake 3 and GoldSrc maps with BSPConvert. Mirrors BSPConvert's command line one to one
-/// (same defaults, help text from its README), grouped like the README: General, Quake 3, GoldSrc, Animated textures.
-/// The comment on each option is its BSPConvert command line name.
+/// (same defaults, help text from its README), grouped like the README: BSPConvert (general), Quake 3, Experimental,
+/// Animated textures, GoldSrc. The comment on each option is its BSPConvert command line name.
 /// </summary>
 public sealed class BspConvertOptions
 {
-    public const string GeneralGroup = "General";
+    public const string GeneralGroup = "BSPConvert";
     public const string Quake3Group = "Quake 3";
+    public const string ExperimentalGroup = "Experimental";
     public const string GoldSrcGroup = "GoldSrc";
     public const string AnimatedTexturesGroup = "Animated textures";
 
     // --output
     [PortOption("Output game folder", BspConvertHelp.Output, Group = GeneralGroup, Order = 0, Path = PathKind.Folder)]
     public string? OutputDirectory { get; set; }
-
-    // --maps
-    [PortOption("Maps", BspConvertHelp.Maps, Group = GeneralGroup, Order = 10)]
-    public string? Maps { get; set; }
 
     // --prefix
     [PortOption("File name prefix", BspConvertHelp.Prefix, Group = GeneralGroup, Order = 20)]
@@ -43,8 +40,12 @@ public sealed class BspConvertOptions
     [PortOption("Don't pack assets", BspConvertHelp.NoPak, Group = GeneralGroup, Order = 40)]
     public bool NoPak { get; set; }
 
+    // --maps
+    [PortOption("Maps", BspConvertHelp.Maps, Group = GeneralGroup, Order = 50, Advanced = true)]
+    public string? Maps { get; set; }
+
     // Not a BSPConvert option: BSPConvert always overwrites, and so does the porter unless this is turned off
-    [PortOption("Overwrite existing files", BspConvertHelp.Overwrite, Group = GeneralGroup, Order = 50, Advanced = true)]
+    [PortOption("Overwrite existing files", BspConvertHelp.Overwrite, Group = GeneralGroup, Order = 60, Advanced = true)]
     public bool Overwrite { get; set; } = true;
 
     // --subdiv
@@ -52,7 +53,7 @@ public sealed class BspConvertOptions
     public int Subdiv { get; set; } = 3;
 
     // --lavatriggers
-    [PortOption("Lava kills", BspConvertHelp.LavaTriggers, Group = Quake3Group, Order = 10)]
+    [PortOption("Lava kills/respawns", BspConvertHelp.LavaTriggers, Group = Quake3Group, Order = 10)]
     public bool LavaTriggers { get; set; }
 
     // --nozones
@@ -61,15 +62,11 @@ public sealed class BspConvertOptions
 
     // --offmodeents
     [PortOption("Entities outside Defrag modes", BspConvertHelp.OffModeEnts, Group = Quake3Group, Order = 30)]
-    public OffModeEntities OffModeEntities { get; set; } = OffModeEntities.Cpm;
+    public OffModeEntities OffModeEntities { get; set; } = OffModeEntities.CPM;
 
     // --scale
     [PortOption("Scale", BspConvertHelp.Scale, Group = Quake3Group, Order = 40, Min = 0.01, Max = 100)]
     public float Scale { get; set; } = 1f;
-
-    // --noenvmap
-    [PortOption("No envmaps", BspConvertHelp.NoEnvMap, Group = Quake3Group, Order = 50)]
-    public bool NoEnvMap { get; set; }
 
     // Not a BSPConvert option, see Quake3Content
     [PortOption("Set up Quake 3 content", BspConvertHelp.Q3Content, Group = Quake3Group, Order = 60)]
@@ -83,25 +80,25 @@ public sealed class BspConvertOptions
     [PortOption("No tool texture displacements", BspConvertHelp.NoToolDisps, Group = Quake3Group, Order = 110, Advanced = true)]
     public bool NoToolDisplacements { get; set; }
 
-    // --patchdisps
-    [PortOption("Patches as displacements", BspConvertHelp.PatchDisps, Group = Quake3Group, Order = 120, Advanced = true)]
-    public bool PatchDisplacements { get; set; }
-
     // --clampoverbright
     [PortOption("Clamp overbright", BspConvertHelp.ClampOverbright, Group = Quake3Group, Order = 130, Advanced = true)]
     public bool ClampOverbright { get; set; }
 
-    // --fogobb
-    [PortOption("Volumetric (obb) fog", BspConvertHelp.FogObb, Group = Quake3Group, Order = 140, Advanced = true)]
-    public bool FogObb { get; set; }
-
-    // --fogminheight
-    [PortOption("Fog minimum height", BspConvertHelp.FogMinHeight, Group = Quake3Group, Order = 150, Advanced = true, Min = 0)]
-    public float FogMinHeight { get; set; } = 256f;
-
     // --nofogoverlay
     [PortOption("No fog overlay", BspConvertHelp.NoFogOverlay, Group = Quake3Group, Order = 160, Advanced = true)]
     public bool NoFogOverlay { get; set; }
+
+    // --patchdisps
+    [PortOption("Patches as displacements", BspConvertHelp.PatchDisps, Group = ExperimentalGroup, Order = 0, Advanced = true)]
+    public bool PatchDisplacements { get; set; }
+
+    // --fogobb
+    [PortOption("Volumetric (obb) fog", BspConvertHelp.FogObb, Group = ExperimentalGroup, Order = 10, Advanced = true)]
+    public bool FogObb { get; set; }
+
+    // --fogminheight
+    [PortOption("Fog minimum height", BspConvertHelp.FogMinHeight, Group = ExperimentalGroup, Order = 20, Advanced = true, Min = 0)]
+    public float FogMinHeight { get; set; } = 256f;
 
     // --noanim
     [PortOption("Don't bake animated textures", BspConvertHelp.NoAnim, Group = AnimatedTexturesGroup, Order = 0)]
@@ -131,7 +128,7 @@ public sealed class BspConvertOptions
     [PortOption("WAD folders", BspConvertHelp.Wads, Group = GoldSrcGroup, Order = 0)]
     public string? Wads { get; set; }
 
-    // --studiomdl
+    // --studiomdl; the app fills it from the Settings page or Momentum's install instead of showing it
     [PortOption("studiomdl.exe", BspConvertHelp.Studiomdl, Group = GoldSrcGroup, Order = 10, Path = PathKind.File)]
     public string? Studiomdl { get; set; }
 
@@ -202,7 +199,6 @@ public sealed class BspConvertOptions
                 useObbFog = FogObb,
                 fogMinHeight = FogMinHeight,
                 noFogOverlay = NoFogOverlay,
-                noEnvMap = NoEnvMap,
                 offModeEntityFallback = OffModeEntities.ToString().ToLowerInvariant(),
                 clampOverbright = ClampOverbright,
                 flipbook = new FlipbookOptions
@@ -267,7 +263,6 @@ public sealed class BspConvertOptions
         Flag(FogObb, "--fogobb");
         Value(FogMinHeight, defaults.FogMinHeight, "--fogminheight");
         Flag(NoFogOverlay, "--nofogoverlay");
-        Flag(NoEnvMap, "--noenvmap");
         Flag(ClampOverbright, "--clampoverbright");
         Flag(NoAnim, "--noanim");
         Value(AnimBudget, defaults.AnimBudget, "--animbudget");

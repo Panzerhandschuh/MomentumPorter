@@ -17,23 +17,24 @@ using MomentumPorter.UI.ViewModels.Shared;
 using ReactiveUI;
 
 /// <summary>
-/// Ports a queue of maps with one set of options: the desktop version of pack_for_momentum.bat.
+/// Ports a queue of maps with one set of options: the desktop version of pack_for_momentum.bat. Every map is
+/// installed into Momentum, replacing a map of the same name; the game is detected from the map.
 /// </summary>
 public sealed class MapsPageViewModel : PageViewModel
 {
     public static readonly FileFilter MapFilter = new("Maps", "*.bsp", "*.pk3", "*.zip");
     public static readonly FileFilter PresetFilter = new("Momentum Porter preset", "*" + OptionsPreset.Extension);
 
-    /// <summary>Map options only Source maps use; the rest (compress, install, overwrite) apply to every map.</summary>
-    private static readonly HashSet<string> SourceOnlyOptions = [nameof(MapPortOptions.Game), nameof(MapPortOptions.GameDirectory), nameof(MapPortOptions.Pack)];
+    /// <summary>Map options only Source maps use; the rest (compress) apply to every map.</summary>
+    private static readonly HashSet<string> SourceOnlyOptions = [nameof(MapPortOptions.Pack)];
 
-    /// <summary>BSPConvert options the page sets from the map options, so they aren't in its form.</summary>
-    private static readonly string[] SharedBspConvertOptions = [nameof(BspConvertOptions.OutputDirectory), nameof(BspConvertOptions.Compress), nameof(BspConvertOptions.Overwrite)];
+    /// <summary>BSPConvert options the page fills in itself (from the map options, the settings or Momentum's install), so they aren't in its form.</summary>
+    private static readonly string[] SharedBspConvertOptions = [nameof(BspConvertOptions.OutputDirectory), nameof(BspConvertOptions.Compress), nameof(BspConvertOptions.Overwrite), nameof(BspConvertOptions.Studiomdl)];
 
     private readonly SettingsService _settings;
     private readonly IDialogService _dialogs;
     private readonly Action<Action> _post;
-    private MapPortOptions _options;
+    private MapPortOptions _options = new();
     private OptionsFormViewModel _optionsForm;
     private BspConvertOptions _bspConvertOptions = new();
     private OptionsFormViewModel _bspConvertOptionsForm;
@@ -41,6 +42,7 @@ public sealed class MapsPageViewModel : PageViewModel
     private string? _message;
     private bool _hasQueued;
     private bool _showBspConvertOptions = true;
+    private bool _showAdvanced;
 
     public MapsPageViewModel(SettingsService settings, IDialogService dialogs, JobRunnerService runner, Action<Action> post)
     {
@@ -48,7 +50,6 @@ public sealed class MapsPageViewModel : PageViewModel
         _dialogs = dialogs;
         _post = post;
         Runner = runner;
-        _options = new MapPortOptions { Install = settings.Settings.InstallByDefault };
         _optionsForm = new OptionsFormViewModel(_options);
         _bspConvertOptionsForm = new OptionsFormViewModel(_bspConvertOptions, exclude: SharedBspConvertOptions);
 
@@ -64,7 +65,6 @@ public sealed class MapsPageViewModel : PageViewModel
         ClearFinishedCommand = ReactiveCommand.Create(ClearFinished);
         SavePresetCommand = ReactiveCommand.CreateFromTask(SavePresetAsync);
         LoadPresetCommand = ReactiveCommand.CreateFromTask(LoadPresetAsync, running.Select(x => !x));
-        OpenOutputFolderCommand = ReactiveCommand.Create(OpenOutputFolder);
         OpenMomentumMapsCommand = ReactiveCommand.Create(OpenMomentumMaps);
     }
 
@@ -115,6 +115,18 @@ public sealed class MapsPageViewModel : PageViewModel
         private set => this.RaiseAndSetIfChanged(ref _showBspConvertOptions, value);
     }
 
+    /// <summary>Whether both forms show their advanced options too.</summary>
+    public bool ShowAdvanced
+    {
+        get => _showAdvanced;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _showAdvanced, value);
+            OptionsForm.ShowAdvanced = value;
+            BspConvertOptionsForm.ShowAdvanced = value;
+        }
+    }
+
     /// <summary>Feedback for the last action (files added, preset saved...).</summary>
     public string? Message
     {
@@ -148,8 +160,6 @@ public sealed class MapsPageViewModel : PageViewModel
     public ReactiveCommand<Unit, Unit> SavePresetCommand { get; }
 
     public ReactiveCommand<Unit, Unit> LoadPresetCommand { get; }
-
-    public ReactiveCommand<Unit, Unit> OpenOutputFolderCommand { get; }
 
     public ReactiveCommand<Unit, Unit> OpenMomentumMapsCommand { get; }
 
@@ -198,7 +208,7 @@ public sealed class MapsPageViewModel : PageViewModel
 
     /// <summary>
     /// Builds the job for an item: port into a fresh work folder, then pack and install as the options say.
-    /// Maps that aren't installed are moved to the output folder.
+    /// Maps that aren't installed (the options' Install off, which the page itself never does) are moved to the output folder.
     /// </summary>
     public PreparedJob Prepare(MapQueueItemViewModel item)
     {
@@ -266,7 +276,7 @@ public sealed class MapsPageViewModel : PageViewModel
 
     /// <summary>
     /// Quake 3 and GoldSrc maps: BSPConvert converts into the work folder, then the files are copied into Momentum's
-    /// game folder (Install) or the output folder, which is laid out like a game folder (maps/, maps/zones/local/...).
+    /// game folder (or the output folder, laid out like a game folder, when the options' Install is off).
     /// </summary>
     private PreparedJob PrepareBspConvert(MapQueueItemViewModel item, MapPortOptions mapOptions, PorterSettings settings)
     {
@@ -276,11 +286,15 @@ public sealed class MapsPageViewModel : PageViewModel
 
         string? target = mapOptions.Install ? settings.ResolveMomentumContentDirectory() : settings.ResolveOutputDirectory();
         if (target is null)
-            throw new InvalidOperationException("Momentum Mod wasn't found in your Steam libraries. Set its folder in Settings, or turn off Install into Momentum.");
+            throw new InvalidOperationException("Momentum Mod wasn't found in your Steam libraries. Set its folder in Settings.");
 
         options.OutputDirectory = target;
 
         var steam = new SteamLocator();
+        // The Settings page's studiomdl (or Momentum's own, through its folder override) before BSPConvert's own search
+        if (settings.ResolveStudiomdlPath(steam) is { } studiomdl)
+            options.Studiomdl = studiomdl;
+
         foreach (string filled in BspConvertDefaults.Fill(options, steam, item.InputPath, output: false))
             item.Log.Add(LogLevel.Info, filled);
 
@@ -356,7 +370,7 @@ public sealed class MapsPageViewModel : PageViewModel
         OptionsForm.SetFilter(x => source || !SourceOnlyOptions.Contains(x.Name));
         BspConvertOptionsForm.SetFilter(x => x.Info.Attribute.Group switch
         {
-            BspConvertOptions.Quake3Group or BspConvertOptions.AnimatedTexturesGroup => quake3,
+            BspConvertOptions.Quake3Group or BspConvertOptions.ExperimentalGroup or BspConvertOptions.AnimatedTexturesGroup => quake3,
             BspConvertOptions.GoldSrcGroup => goldSrc,
             _ => true,
         });
@@ -381,11 +395,16 @@ public sealed class MapsPageViewModel : PageViewModel
             Remove(item);
     }
 
-    /// <summary>Replaces the options, e.g. from a preset, and rebuilds the form.</summary>
+    /// <summary>
+    /// Replaces the options, e.g. from a preset, and rebuilds the form. The page always installs into Momentum and
+    /// replaces what's there, whatever a preset says.
+    /// </summary>
     public void SetOptions(MapPortOptions options)
     {
+        options.Install = true;
+        options.Overwrite = true;
         Options = options;
-        OptionsForm = new OptionsFormViewModel(options);
+        OptionsForm = new OptionsFormViewModel(options) { ShowAdvanced = ShowAdvanced };
         UpdateVisibleOptions();
     }
 
@@ -431,14 +450,6 @@ public sealed class MapsPageViewModel : PageViewModel
         {
             await _dialogs.ShowMessageAsync("Couldn't load the preset", ex.Message);
         }
-    }
-
-    private void OpenOutputFolder()
-    {
-        if (SelectedItem?.OutputPath is { } output && File.Exists(output))
-            ShellService.RevealFile(output);
-        else
-            ShellService.OpenFolder(_settings.Settings.ResolveOutputDirectory());
     }
 
     private void OpenMomentumMaps()

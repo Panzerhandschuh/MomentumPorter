@@ -68,22 +68,32 @@ public class MapsPageBspConvertTests
             SettingsService settings = SettingsService.Load(Path.Combine(root, "settings.json"));
             var page = new MapsPageViewModel(settings, new NoDialogs(), new JobRunnerService(a => a()), a => a());
             IEnumerable<string> Groups() => page.BspConvertOptionsForm.Groups.Select(x => x.Name);
-            IEnumerable<string> MapFields() => page.OptionsForm.Groups.SelectMany(x => x.Fields.Concat(x.AdvancedFields)).Select(x => x.Name);
+            IEnumerable<string> MapFields() => page.OptionsForm.VisibleFields.Select(x => x.Name);
+            IEnumerable<string> BspConvertFields() => page.BspConvertOptionsForm.VisibleFields.Select(x => x.Name);
 
-            // Empty queue: everything, minus what the map options already cover
+            // Empty queue: everything, minus what the page fills in itself (output, compress, overwrite, studiomdl)
             Assert.True(page.ShowBspConvertOptions);
             Assert.Contains(BspConvertOptions.GoldSrcGroup, Groups());
             Assert.Contains(BspConvertOptions.Quake3Group, Groups());
-            Assert.Contains(nameof(MapPortOptions.Game), MapFields());
+            Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.Pack)], MapFields());
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.Overwrite)));
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.OutputDirectory)));
+            Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.Studiomdl)));
 
             page.AddFiles([pk3]);
             Assert.True(page.ShowBspConvertOptions);
             Assert.Equal([BspConvertOptions.GeneralGroup, BspConvertOptions.Quake3Group, BspConvertOptions.AnimatedTexturesGroup], Groups());
-            Assert.DoesNotContain(nameof(MapPortOptions.Game), MapFields());
-            Assert.Contains(nameof(MapPortOptions.Install), MapFields());
-            Assert.Contains(nameof(MapPortOptions.Overwrite), MapFields());
+            Assert.Equal([nameof(MapPortOptions.Compress)], MapFields());
+            Assert.DoesNotContain(nameof(BspConvertOptions.Maps), BspConvertFields());
+            Assert.DoesNotContain(nameof(BspConvertOptions.PatchDisplacements), BspConvertFields());
+
+            // The advanced toggle covers both forms, and brings the Experimental group with it
+            page.ShowAdvanced = true;
+            Assert.Equal([BspConvertOptions.GeneralGroup, BspConvertOptions.Quake3Group, BspConvertOptions.ExperimentalGroup, BspConvertOptions.AnimatedTexturesGroup], Groups());
+            Assert.Contains(nameof(BspConvertOptions.Maps), BspConvertFields());
+            Assert.Equal([nameof(BspConvertOptions.PatchDisplacements), nameof(BspConvertOptions.FogObb), nameof(BspConvertOptions.FogMinHeight)], page.BspConvertOptionsForm.Groups.Single(x => x.Name == BspConvertOptions.ExperimentalGroup).Fields.Select(x => x.Name));
+            Assert.True(page.OptionsForm.ShowAdvanced);
+            page.ShowAdvanced = false;
 
             page.AddFiles([goldSrc]);
             Assert.Contains(BspConvertOptions.GoldSrcGroup, Groups());
@@ -101,6 +111,21 @@ public class MapsPageBspConvertTests
     public void ConvertedMapsOverwriteByDefault()
     {
         Assert.True(new MapPortOptions().Overwrite);
+        Assert.True(new MapPortOptions().Install);
         Assert.True(new BspConvertOptions().Overwrite);
+    }
+
+    [Fact]
+    public void TheFormLabelsReadAsAsked()
+    {
+        IReadOnlyList<PortOptionInfo> options = PortOptions.Describe<BspConvertOptions>();
+
+        Assert.Equal("Lava kills/respawns", options.Single(x => x.Name == nameof(BspConvertOptions.LavaTriggers)).Attribute.Label);
+        Assert.Equal(["CPM", "VQ3"], Enum.GetNames<OffModeEntities>());
+        Assert.True(options.Single(x => x.Name == nameof(BspConvertOptions.Maps)).Attribute.Advanced);
+        Assert.DoesNotContain(options, x => x.Name == "NoEnvMap");
+        Assert.All(
+            options.Where(x => x.Attribute.Group == BspConvertOptions.ExperimentalGroup),
+            x => Assert.True(x.Attribute.Advanced, x.Name));
     }
 }

@@ -18,7 +18,7 @@ public class SettingsTests
             MomentumDirectory = @"D:\Momentum",
             BspPackPath = @"C:\bspPack\bspPack.exe",
             PrePackCommand = "python x.py \"{resourceconfig}\"",
-            InstallByDefault = false,
+            StudiomdlPath = @"C:\tools\studiomdl.exe",
         };
 
         settings.Save(path);
@@ -27,8 +27,25 @@ public class SettingsTests
         Assert.Equal(settings.MomentumDirectory, loaded.MomentumDirectory);
         Assert.Equal(settings.BspPackPath, loaded.BspPackPath);
         Assert.Equal(settings.PrePackCommand, loaded.PrePackCommand);
-        Assert.False(loaded.InstallByDefault);
-        Assert.True(PorterSettings.Load(temp.Combine("missing.json")).InstallByDefault);
+        Assert.Equal(settings.StudiomdlPath, loaded.StudiomdlPath);
+        Assert.Null(PorterSettings.Load(temp.Combine("missing.json")).StudiomdlPath);
+    }
+
+    [Fact]
+    public void StudiomdlIsTheOverrideElseMomentums()
+    {
+        using var temp = new TempFolder();
+        string install = temp.CreateMomentumInstall();
+        string studiomdl = Path.Combine(install, "bin", "win64", "studiomdl.exe");
+
+        Assert.Equal(@"C:\tools\studiomdl.exe", new PorterSettings { StudiomdlPath = @"C:\tools\studiomdl.exe", MomentumDirectory = install }.ResolveStudiomdlPath());
+        Assert.Null(new PorterSettings { MomentumDirectory = install }.ResolveStudiomdlPath());
+
+        Directory.CreateDirectory(Path.GetDirectoryName(studiomdl)!);
+        File.WriteAllBytes(studiomdl, []);
+        Assert.Equal(studiomdl, new PorterSettings { MomentumDirectory = install }.ResolveStudiomdlPath());
+        Assert.Equal(studiomdl, new PorterSettings { MomentumDirectory = Path.Combine(install, "momentum") }.ResolveStudiomdlPath());
+        Assert.Null(new PorterSettings { MomentumDirectory = temp.Combine("nope") }.ResolveStudiomdlPath());
     }
 
     [Fact]
@@ -78,12 +95,13 @@ public class SettingsTests
 
         page.BspPackPath = "  ";
         page.PrePackCommand = "echo hi";
-        page.InstallByDefault = false;
+        page.StudiomdlPath = @"C:\tools\studiomdl.exe";
 
         PorterSettings saved = PorterSettings.Load(path);
         Assert.Null(saved.BspPackPath);
         Assert.Equal("echo hi", saved.PrePackCommand);
-        Assert.False(saved.InstallByDefault);
+        Assert.Equal(@"C:\tools\studiomdl.exe", saved.StudiomdlPath);
+        Assert.StartsWith(@"C:\tools\studiomdl.exe doesn't exist", page.StudiomdlStatus);
         Assert.Null(page.SaveError);
     }
 

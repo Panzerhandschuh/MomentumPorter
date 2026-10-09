@@ -12,20 +12,16 @@
   <Grid RowDefinitions="Auto, *, 6, 260" ColumnDefinitions="*, 12, 340" Margin="16 14 16 12">
 
     <!-- Header and actions -->
+    <!-- The buttons dock first so they keep their width; the description takes what's left and trims -->
     <DockPanel Grid.Row="0" Grid.ColumnSpan="3" Margin="0 0 0 12">
-      <StackPanel DockPanel.Dock="Left" Spacing="2" VerticalAlignment="Center">
-        <TextBlock Text="Maps" Classes="h1" />
-        <TextBlock Text="Port KZ Mod, GOKZ, Quake 3 and GoldSrc maps, pack their assets and install them into Momentum Mod"
-                   Classes="muted" />
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="12 0 0 0">
         <Button Command="{Binding AddFilesCommand}" ToolTip.Tip="Add .bsp, .pk3 or .zip maps to the queue (or drop them on the window)">
           <StackPanel>
             <materialIcons:MaterialIcon Kind="Plus" />
             <TextBlock Text="Add maps" />
           </StackPanel>
         </Button>
-        <Button Command="{Binding RunCommand}" Classes="accent" ToolTip.Tip="Port every queued map, one at a time">
+        <Button Command="{Binding RunCommand}" Classes="accent" ToolTip.Tip="Port every queued map, one at a time, into Momentum's maps folder">
           <StackPanel>
             <materialIcons:MaterialIcon Kind="Play" />
             <TextBlock Text="Run" />
@@ -37,6 +33,11 @@
             <TextBlock Text="Cancel" />
           </StackPanel>
         </Button>
+      </StackPanel>
+      <StackPanel Spacing="2" VerticalAlignment="Center">
+        <TextBlock Text="Maps" Classes="h1" />
+        <TextBlock Text="Port KZ Mod, GOKZ, Quake 3 and GoldSrc maps, pack their assets and install them into Momentum Mod"
+                   Classes="muted" TextTrimming="CharacterEllipsis" />
       </StackPanel>
     </DockPanel>
 
@@ -117,11 +118,17 @@
       </DockPanel>
     </Border>
 
-    <!-- Options -->
+    <!-- Options: one flat list, the map options then BSPConvert's, with the advanced ones behind one toggle -->
     <Border Grid.Row="1" Grid.Column="2" Classes="panel">
       <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="12 8 6 4">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2">
+            <ToggleButton IsChecked="{Binding ShowAdvanced}" Padding="8 5" ToolTip.Tip="Show the advanced options too">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <materialIcons:MaterialIcon Kind="Tune" Width="16" Height="16" />
+                <TextBlock Text="Advanced" FontSize="13" />
+              </StackPanel>
+            </ToggleButton>
             <Button Classes="icon" Command="{Binding LoadPresetCommand}" ToolTip.Tip="Load options from a preset file">
               <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
             </Button>
@@ -133,13 +140,10 @@
         </DockPanel>
         <ScrollViewer Padding="12 4 12 4">
           <!-- Only the options for the kinds of map in the queue are shown (all of them while it's empty) -->
-          <StackPanel Spacing="8">
+          <StackPanel>
             <views:OptionsForm Form="{Binding OptionsForm}" />
-            <Expander Header="BSPConvert (Quake 3, GoldSrc)" IsExpanded="True" HorizontalAlignment="Stretch"
-                      IsVisible="{Binding ShowBspConvertOptions}"
-                      ToolTip.Tip="Quake 3 (.bsp/.pk3) and Half-Life/CS 1.6 (.bsp/.zip) maps are converted with BSPConvert; these are its options. Compress, Install and Overwrite above apply to them too.">
-              <views:OptionsForm Form="{Binding BspConvertOptionsForm}" />
-            </Expander>
+            <views:OptionsForm Form="{Binding BspConvertOptionsForm}" IsVisible="{Binding ShowBspConvertOptions}"
+                               ToolTip.Tip="Quake 3 (.bsp/.pk3) and Half-Life/CS 1.6 (.bsp/.zip) maps are converted with BSPConvert; these are its options. Compress output applies to them too." />
           </StackPanel>
         </ScrollViewer>
       </DockPanel>
@@ -151,20 +155,12 @@
     <Border Grid.Row="3" Grid.ColumnSpan="3" Classes="panel">
       <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="6 4 6 0">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <Button Command="{Binding OpenOutputFolderCommand}" ToolTip.Tip="Where maps that aren't installed are saved (set in Settings)">
-              <StackPanel>
-                <materialIcons:MaterialIcon Kind="FolderOutline" />
-                <TextBlock Text="Open output folder" />
-              </StackPanel>
-            </Button>
-            <Button Command="{Binding OpenMomentumMapsCommand}" ToolTip.Tip="Momentum Mod's maps folder">
-              <StackPanel>
-                <materialIcons:MaterialIcon Kind="FolderPlayOutline" />
-                <TextBlock Text="Open in Momentum maps folder" />
-              </StackPanel>
-            </Button>
-          </StackPanel>
+          <Button DockPanel.Dock="Right" Command="{Binding OpenMomentumMapsCommand}" ToolTip.Tip="Show the installed map, or Momentum Mod's maps folder">
+            <StackPanel>
+              <materialIcons:MaterialIcon Kind="FolderPlayOutline" />
+              <TextBlock Text="Open Momentum maps folder" />
+            </StackPanel>
+          </Button>
           <TextBlock Text="{Binding SelectedItem.Title, FallbackValue='', TargetNullValue=''}" Classes="muted"
                      VerticalAlignment="Center" Margin="8 0" TextTrimming="CharacterEllipsis" />
         </DockPanel>

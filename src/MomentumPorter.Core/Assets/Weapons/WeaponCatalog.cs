@@ -193,6 +193,39 @@ public sealed class CatalogGame
             .Select(x => new LoadoutEntry(picks[x.Id], x))
             .ToList();
     }
+
+    /// <summary>
+    /// What building all of the game's weapons for a game mode builds: for each of the mode's weapons, the game's
+    /// weapon that fits it best (the one listing it earliest among its fits, the first listed on a tie), with
+    /// <see cref="Loadout"/> deciding where it names a weapon for that slot. Unlike <see cref="FullLoadout"/>, a
+    /// weapon also fills a slot it fits second best, so a mode without a weapon's best fit still gets it (Quake 3's
+    /// railgun as the sniper outside Defrag). Slots no weapon fits are left out.
+    /// </summary>
+    /// <param name="picks">Momentum weapon -> weapon id, taking precedence over <see cref="Loadout"/> (a mode's own picks, e.g. the Demoman's bottle in Sticky Jump)</param>
+    public IReadOnlyList<LoadoutEntry> LoadoutFor(IEnumerable<WeaponSlot> slots, IReadOnlyDictionary<string, string>? picks = null)
+    {
+        var entries = new List<LoadoutEntry>();
+        foreach (WeaponSlot slot in slots)
+        {
+            string? named = picks?.FirstOrDefault(x => x.Key.Equals(slot.Id, StringComparison.OrdinalIgnoreCase)).Value
+                ?? Loadout.FirstOrDefault(x => x.Key.Equals(slot.Id, StringComparison.OrdinalIgnoreCase)).Value;
+            CatalogWeapon? pick = named is null ? null : FindWeapon(named);
+            if (pick is null || !pick.Slots.Contains(slot.Id, StringComparer.OrdinalIgnoreCase))
+            {
+                pick = Weapons
+                    .Select(x => (Weapon: x, Rank: x.Slots.FindIndex(s => s.Equals(slot.Id, StringComparison.OrdinalIgnoreCase))))
+                    .Where(x => x.Rank >= 0)
+                    .OrderBy(x => x.Rank)
+                    .Select(x => x.Weapon)
+                    .FirstOrDefault();
+            }
+
+            if (pick is not null)
+                entries.Add(new LoadoutEntry(pick, slot));
+        }
+
+        return entries;
+    }
 }
 
 /// <summary>A weapon of a game and the Momentum weapon it goes into when all of the game's weapons are built.</summary>

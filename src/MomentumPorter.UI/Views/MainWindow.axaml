@@ -5,14 +5,16 @@
         xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="760"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="760"
         x:Class="MomentumPorter.UI.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding Title}"
-        Width="1200" Height="760" MinWidth="860" MinHeight="520"
+        Width="1280" Height="760" MinWidth="1080" MinHeight="520"
         WindowStartupLocation="CenterScreen"
         DragDrop.AllowDrop="True">
 
+  <!-- MinWidth 1080, a standard display width: it leaves the Weapons page's Builds panel 276 after the navigation
+       (200), the page margins (32) and the page's two fixed panels (572) -->
   <Grid ColumnDefinitions="200, *" RowDefinitions="*, Auto">
 
     <!-- Navigation -->

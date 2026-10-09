@@ -3,19 +3,19 @@ namespace MomentumPorter.UI.ViewModels.Shared;
 using System.Globalization;
 using System.Reflection;
 using MomentumPorter.Options;
-using MomentumPorter.Porting;
 using ReactiveUI;
 
 /// <summary>
 /// A form generated from the <see cref="PortOptionAttribute"/>s of an options class, editing an instance of it in place.
-/// Works for any options class (map options, BSPConvert options...).
+/// Works for any options class (map options, BSPConvert options...). Options marked advanced only show while
+/// <see cref="ShowAdvanced"/> is on, inline under their group rather than in an expander of their own.
 /// </summary>
 public sealed class OptionsFormViewModel : ViewModel
 {
-    public const string DefaultGroup = "General";
-
     private readonly List<OptionFieldViewModel> _fields;
+    private Func<OptionFieldViewModel, bool> _filter = _ => true;
     private IReadOnlyList<OptionGroupViewModel> _groups;
+    private bool _showAdvanced;
 
     /// <param name="exclude">Options the page edits with its own controls, left out of the form</param>
     public OptionsFormViewModel(object options, Type? optionsType = null, IEnumerable<string>? exclude = null)
@@ -28,28 +28,52 @@ public sealed class OptionsFormViewModel : ViewModel
         var excluded = new HashSet<string>(exclude ?? [], StringComparer.Ordinal);
         IReadOnlyList<PortOptionInfo> infos = PortOptions.Describe(OptionsType).Where(x => !excluded.Contains(x.Name)).ToList();
         _fields = infos.Select(x => OptionFieldViewModel.Create(x, options)).OfType<OptionFieldViewModel>().ToList();
-        _groups = BuildGroups(_ => true);
+        _groups = BuildGroups();
     }
 
     public object Options { get; }
 
     public Type OptionsType { get; }
 
-    /// <summary>The groups on show, see <see cref="SetFilter"/>.</summary>
+    /// <summary>The groups on show, see <see cref="SetFilter"/> and <see cref="ShowAdvanced"/>.</summary>
     public IReadOnlyList<OptionGroupViewModel> Groups
     {
         get => _groups;
         private set => this.RaiseAndSetIfChanged(ref _groups, value);
     }
 
+    /// <summary>Whether the options marked advanced are on show too. Hidden fields keep their values.</summary>
+    public bool ShowAdvanced
+    {
+        get => _showAdvanced;
+        set
+        {
+            if (_showAdvanced == value)
+                return;
+
+            this.RaiseAndSetIfChanged(ref _showAdvanced, value);
+            Groups = BuildGroups();
+        }
+    }
+
+    /// <summary>Whether any option, shown or not, is marked advanced, so a page knows to offer the toggle.</summary>
+    public bool HasAdvanced => _fields.Any(x => x.Info.Attribute.Advanced);
+
     /// <summary>Every field, shown or not.</summary>
     public IEnumerable<OptionFieldViewModel> Fields => _fields;
+
+    /// <summary>The fields on show, in order.</summary>
+    public IEnumerable<OptionFieldViewModel> VisibleFields => Groups.SelectMany(x => x.Fields);
 
     /// <summary>
     /// Shows only the fields <paramref name="show"/> accepts (all of them when null); groups left empty are hidden.
     /// Hidden fields keep their values.
     /// </summary>
-    public void SetFilter(Func<OptionFieldViewModel, bool>? show) => Groups = BuildGroups(show ?? (_ => true));
+    public void SetFilter(Func<OptionFieldViewModel, bool>? show)
+    {
+        _filter = show ?? (_ => true);
+        Groups = BuildGroups();
+    }
 
     public OptionFieldViewModel? Find(string propertyName) => Fields.FirstOrDefault(x => x.Name == propertyName);
 
@@ -60,36 +84,31 @@ public sealed class OptionsFormViewModel : ViewModel
             field.Load();
     }
 
-    // General first, groups of nothing but advanced fields (an expander alone) last, the rest in the order Describe sorts them
-    private List<OptionGroupViewModel> BuildGroups(Func<OptionFieldViewModel, bool> show)
+    // Groups in the order the options class declares them (PortOptions.Describe), each with its visible fields
+    private List<OptionGroupViewModel> BuildGroups()
     {
-        return _fields
-            .Where(show)
+        List<OptionGroupViewModel> groups = _fields
+            .Where(x => _filter(x) && (ShowAdvanced || !x.Info.Attribute.Advanced))
             .GroupBy(x => x.Info.Attribute.Group)
-            .OrderBy(x => x.Key == DefaultGroup ? 0 : x.All(f => f.Info.Attribute.Advanced) ? 2 : 1)
-            .Select(x => new OptionGroupViewModel(
-                x.Key,
-                x.Where(f => !f.Info.Attribute.Advanced).ToList(),
-                x.Where(f => f.Info.Attribute.Advanced).ToList()))
+            .Select(x => new OptionGroupViewModel(x.Key, x.ToList()))
             .ToList();
+
+        // A form of one group needs no heading over it
+        foreach (OptionGroupViewModel group in groups)
+            group.ShowHeader = groups.Count > 1;
+
+        return groups;
     }
 }
 
-public sealed class OptionGroupViewModel(string name, IReadOnlyList<OptionFieldViewModel> fields, IReadOnlyList<OptionFieldViewModel> advancedFields) : ViewModel
+public sealed class OptionGroupViewModel(string name, IReadOnlyList<OptionFieldViewModel> fields) : ViewModel
 {
     public string Name { get; } = name;
 
     public IReadOnlyList<OptionFieldViewModel> Fields { get; } = fields;
 
-    public IReadOnlyList<OptionFieldViewModel> AdvancedFields { get; } = advancedFields;
-
-    public bool HasAdvanced => AdvancedFields.Count > 0;
-
-    /// <summary>A group with nothing but advanced fields is shown as its expander alone, named after the group.</summary>
-    public bool ShowHeader => Fields.Count > 0;
-
-    /// <summary>The expander's title: "Advanced" under a group's fields, the group's name when it's all the group has.</summary>
-    public string AdvancedHeader => Fields.Count > 0 ? "Advanced" : Name;
+    /// <summary>Whether the group's name is shown over its fields (not for a form of one group).</summary>
+    public bool ShowHeader { get; internal set; } = true;
 }
 
 /// <summary>
@@ -136,19 +155,9 @@ public abstract class OptionFieldViewModel(PortOptionInfo info, object target) :
             return new NumberOptionViewModel(info, target);
 
         if (type == typeof(string))
-        {
-            return info.Attribute.Choices == OptionChoices.GameProfile
-                ? new ChoiceOptionViewModel(info, target, GameChoices())
-                : new TextOptionViewModel(info, target);
-        }
+            return new TextOptionViewModel(info, target);
 
         return null;
-    }
-
-    /// <summary>"(detect)" (null) plus each game profile.</summary>
-    public static IReadOnlyList<OptionChoice> GameChoices()
-    {
-        return [new OptionChoice(null, "(detect)"), .. GameProfiles.All.Select(x => new OptionChoice(x.Name, $"{x.Name} ({x.Description})"))];
     }
 }
 
@@ -285,55 +294,5 @@ public sealed class EnumOptionViewModel : OptionFieldViewModel
     {
         _value = Read();
         this.RaisePropertyChanged(nameof(Value));
-    }
-}
-
-/// <param name="Value">What's written to the option, e.g. a game profile name; null for "none"/"detect"</param>
-public sealed record OptionChoice(string? Value, string Display)
-{
-    public override string ToString() => Display;
-}
-
-/// <summary>
-/// A string option picked from a fixed list, such as the source game.
-/// </summary>
-public sealed class ChoiceOptionViewModel : OptionFieldViewModel
-{
-    private OptionChoice? _selected;
-
-    public ChoiceOptionViewModel(PortOptionInfo info, object target, IReadOnlyList<OptionChoice> choices) : base(info, target)
-    {
-        Choices = choices;
-        Load();
-    }
-
-    public IReadOnlyList<OptionChoice> Choices { get; private set; }
-
-    public OptionChoice? Selected
-    {
-        get => _selected;
-        set
-        {
-            if (value is null)
-                return;
-
-            this.RaiseAndSetIfChanged(ref _selected, value);
-            Write(value.Value);
-        }
-    }
-
-    public override void Load()
-    {
-        string? current = Read() as string;
-        _selected = Choices.FirstOrDefault(x => string.Equals(x.Value, current, StringComparison.OrdinalIgnoreCase));
-        if (_selected is null && current is not null)
-        {
-            // Keep a value from a preset even if this build doesn't know that game
-            _selected = new OptionChoice(current, current);
-            Choices = [.. Choices, _selected];
-            this.RaisePropertyChanged(nameof(Choices));
-        }
-
-        this.RaisePropertyChanged(nameof(Selected));
     }
 }

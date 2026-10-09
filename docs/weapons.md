@@ -27,11 +27,20 @@ weapon's models, the Momentum weapons it fits (best first) and its sounds keyed 
 `scripts/server_weapon/weapon_momentum_<slot>.txt` (`single_shot`, `explosion`, `deploy`, `swish`, `stab`, `hit`,
 `hit_wall`, `zoom`, `bounce`, ...). Add weapons there; the tests check every path against the installed games.
 
-`--all` (**Build all weapons** in the app) ports every weapon of a game, one after another into the same pack, each
-into the Momentum weapon it fits best: all of Quake 3's go into the `df_*` weapons, so one run gives the Defrag modes
-Quake 3's whole arsenal. Where several weapons fit a Momentum weapon best (CS:S has six pistols), the game's `loadout`
-in `weapons.json` picks one (USP, AK-47, AWP for the CS games), else the first listed wins; the loadout can also fill a
-weapon none fits best (the flashbang as the concussion grenade). `--list` shows what `--all` builds for each game.
+`--all` ports every weapon of a game, one after another into the same pack, each into the Momentum weapon it fits
+best: all of Quake 3's go into the `df_*` weapons, so one run gives the Defrag modes Quake 3's whole arsenal. Where
+several weapons fit a Momentum weapon best (CS:S has six pistols), the game's `loadout` in `weapons.json` picks one
+(USP, AK-47, AWP for the CS games), else the first listed wins; the loadout can also fill a weapon none fits best (the
+flashbang as the concussion grenade). `--list` shows what `--all` builds for each game.
+
+The app works game mode first: pick a Momentum game mode (the three Defrag modes count as one, since they share their
+weapons) and one of the weapons that mode plays with, then the game and the weapon of it that replaces it (only the
+weapons that fit are listed, best fit first). Each mode starts on the game it comes from: Surf and Bhop on CS:S, Bhop
+(HL1) on Half-Life, Climb (KZT) on CS:GO, Climb (1.6) on CS 1.6, Rocket Jump on TF2's Soldier weapons, Sticky Jump on
+the Demoman's, Ahop on Half-Life 2, Conc on Half-Life and Defrag on Quake 3. The pack is built with the defaults below into Momentum's `custom`
+folder, for that mode only. **Build all weapons** fills every weapon of the mode from the chosen game, taking a weapon
+for a slot it fits second best when the mode has no slot for its best fit (Quake 3's railgun as the sniper outside
+Defrag). The list of Momentum weapons shows what the pack holds for each in that mode.
 
 | `--game` | Game | How |
 |---|---|---|
@@ -50,14 +59,14 @@ Slots: `pistol`, `machinegun`, `shotgun`, `sniper`, `knife`, `grenade`, `rocketl
 The pack's `scripts/weapon_momentum_<slot>.txt` is Momentum's script with its `ModelData` (view, view_side, world,
 spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/Overrides` and `ParticleData` replaced.
 
-- **Game modes**: `--modes` (the Game modes list in the app) limits a weapon to some modes (`surf`, `bhop`, `bhophl`,
+- **Game modes**: `--modes` (the game mode picked in the app) limits a weapon to some modes (`surf`, `bhop`, `bhophl`,
   `kz`, `kzt`, `kz16`, `rj`, `sj`, `ahop`, `conc`, `df_cpm`, `df_vq3`, `df_vtg`: the modes' cfg names). Its script is
   then written as `scripts/<mode>/weapon_momentum_<slot>.txt`, which the engine reads in that mode with
   the `gamemode-weapon-scripts` engine change in [engine-changes.md](engine-changes.md) (falling back to the shared script, or Momentum's), so the Climb
-  (1.6) pistol can be CS 1.6's USP and the Climb (KZT) one CS:GO's Desert Eagle. A weapon for every mode keeps the plain
-  path and leaves the modes' own scripts in place. Bullet weapons' shots play from the player, so a per-mode weapon's
-  shot sound needs that patch too (it applies the weapon's `Overrides` to the player's sounds); a weapon for every mode
-  also redefines the shot entry, which works without it. The app shows what the pack holds for the slot per mode.
+  (1.6) pistol can be CS 1.6's USP and the Climb (KZT) one CS:GO's Desert Eagle. A weapon for every mode (the command
+  line without `--modes`) keeps the plain path and leaves the modes' own scripts in place. Bullet weapons' shots play
+  from the player, so a per-mode weapon's shot sound needs that patch too (it applies the weapon's `Overrides` to the
+  player's sounds); a weapon for every mode also redefines the shot entry, which works without it.
 
 - **Mounted games**: every model is checked in the VPKs Momentum's `gameinfo.txt` mounts (not loose files of the game).
   The game's own view model paths are used. `attach_to_hands` is 0 (the view models have arms), except CS:GO, whose view
@@ -82,7 +91,7 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   Momentum's world models are all laid out level in model space (barrel -y, top +z), which gives the target; the source
   model's barrel, top and tilt come from its muzzle, shell ejection, slide and top line, and the two triggers are lined
   up when both models have one. CS:GO, CS:S, TF2, HL2 and Quake 3 world models are fitted; GoldSrc's are ground pickups
-  with nothing marking where they're held and stay as they are. "Fit world model" turns this off.
+  with nothing marking where they're held and stay as they are. `--no-world-fit` turns this off.
 - **Sounds**: Momentum only loads the soundscripts in its `game_sounds_manifest.txt`, and the first definition of a
   name wins. Bullet weapons (pistol, machine gun, shotgun, sniper) play their shot from the player, where a weapon
   script's `Overrides` only apply with the `gamemode-weapon-scripts` engine change in [engine-changes.md](engine-changes.md), so for those the pack also

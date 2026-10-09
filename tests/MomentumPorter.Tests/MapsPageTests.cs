@@ -162,29 +162,39 @@ public class MapsPageTests
     {
         using var temp = new TempFolder();
         MapsPageViewModel maps = CreateWindow(temp).Maps;
-        maps.Options.Game = "kzmod";
-        maps.Options.Compress = true;
+        maps.Options.Compress = false;
+        maps.Options.Pack = false;
         maps.Options.Install = false;
 
         using var stream = new MemoryStream();
         maps.SavePreset(stream);
         maps.SetOptions(new MapPortOptions());
-        Assert.Null(maps.Options.Game);
+        Assert.True(maps.Options.Compress);
 
         stream.Position = 0;
         maps.LoadPreset(stream);
 
-        Assert.Equal("kzmod", maps.Options.Game);
-        Assert.True(maps.Options.Compress);
-        Assert.False(maps.Options.Install);
-        Assert.Equal("kzmod", ((ChoiceOptionViewModel)maps.OptionsForm.Find("Game")!).Selected?.Value);
+        Assert.False(maps.Options.Compress);
+        Assert.False(maps.Options.Pack);
+        Assert.False(((BoolOptionViewModel)maps.OptionsForm.Find(nameof(MapPortOptions.Pack))!).Value);
+        // The page always installs and replaces, whatever the preset says
+        Assert.True(maps.Options.Install);
+        Assert.True(maps.Options.Overwrite);
     }
 
     [Fact]
-    public void InstallDefaultComesFromTheSettings()
+    public void MapsAlwaysInstallIntoMomentum()
     {
         using var temp = new TempFolder();
-        Assert.False(CreateWindow(temp, s => s.InstallByDefault = false).Maps.Options.Install);
+        MapsPageViewModel maps = CreateWindow(temp).Maps;
+
+        Assert.True(maps.Options.Install);
+        Assert.True(maps.Options.Overwrite);
+        Assert.Null(maps.Options.Game);
+        Assert.Null(maps.OptionsForm.Find(nameof(MapPortOptions.Install)));
+        Assert.Null(maps.OptionsForm.Find(nameof(MapPortOptions.Overwrite)));
+        Assert.Null(maps.OptionsForm.Find(nameof(MapPortOptions.Game)));
+        Assert.Null(maps.OptionsForm.Find(nameof(MapPortOptions.GameDirectory)));
     }
 
     /// <summary>

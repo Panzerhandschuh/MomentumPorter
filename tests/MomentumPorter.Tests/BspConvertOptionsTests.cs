@@ -34,7 +34,6 @@ public class BspConvertOptionsTests
         Assert.False(q3.useObbFog);
         Assert.Equal(256f, q3.fogMinHeight);
         Assert.False(q3.noFogOverlay);
-        Assert.False(q3.noEnvMap);
         Assert.Equal("cpm", q3.offModeEntityFallback);
         Assert.False(q3.clampOverbright);
 
@@ -100,8 +99,7 @@ public class BspConvertOptionsTests
             Scale = 2,
             Subdiv = 4,
             LavaTriggers = true,
-            NoEnvMap = true,
-            OffModeEntities = OffModeEntities.Vq3,
+            OffModeEntities = OffModeEntities.VQ3,
             NoAnim = true,
             AnimBudget = 8,
             Wads = @"C:\wads, D:\more wads",
@@ -118,7 +116,6 @@ public class BspConvertOptionsTests
         Assert.Equal(2f, converter.scale);
         Assert.Equal(4, converter.q3.DisplacementPower);
         Assert.True(converter.q3.lavaTriggers);
-        Assert.True(converter.q3.noEnvMap);
         Assert.Equal("vq3", converter.q3.offModeEntityFallback);
         Assert.False(converter.q3.flipbook.enabled);
         Assert.Equal(8L * 1024 * 1024, converter.q3.flipbook.byteBudget);
@@ -132,7 +129,7 @@ public class BspConvertOptionsTests
         IReadOnlyList<PortOptionInfo> options = PortOptions.Describe<BspConvertOptions>();
 
         Assert.Equal(
-            [BspConvertOptions.AnimatedTexturesGroup, BspConvertOptions.GeneralGroup, BspConvertOptions.GoldSrcGroup, BspConvertOptions.Quake3Group],
+            [BspConvertOptions.AnimatedTexturesGroup, BspConvertOptions.GeneralGroup, BspConvertOptions.ExperimentalGroup, BspConvertOptions.GoldSrcGroup, BspConvertOptions.Quake3Group],
             options.Select(x => x.Attribute.Group).Distinct().Order().ToArray());
 
         // Every settable property is an option, so the form shows all of them
@@ -176,7 +173,7 @@ public class BspConvertOptionsTests
     {
         Assert.Empty(new BspConvertOptions().ToCommandLine());
 
-        var options = new BspConvertOptions { Subdiv = 2, NoPak = true, OffModeEntities = OffModeEntities.Vq3, Scale = 1.5f, Maps = "a,b" };
+        var options = new BspConvertOptions { Subdiv = 2, NoPak = true, OffModeEntities = OffModeEntities.VQ3, Scale = 1.5f, Maps = "a,b" };
         Assert.Equal(["--nopak", "--maps", "a,b", "--subdiv", "2", "--offmodeents", "vq3", "--scale", "1.5"], options.ToCommandLine());
     }
 }

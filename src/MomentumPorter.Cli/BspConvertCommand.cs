@@ -92,7 +92,6 @@ internal static class BspConvertCommand
             NoZones = cli.NoZones,
             FogObb = cli.FogObb,
             NoFogOverlay = cli.NoFogOverlay,
-            NoEnvMap = cli.NoEnvMap,
             ClampOverbright = cli.ClampOverbright,
             SetUpQuake3Content = !cli.NoQ3Content,
             NoAnim = cli.NoAnim,
@@ -116,8 +115,8 @@ internal static class BspConvertCommand
         {
             options.OffModeEntities = cli.OffModeEnts.ToLowerInvariant() switch
             {
-                "cpm" => OffModeEntities.Cpm,
-                "vq3" => OffModeEntities.Vq3,
+                "cpm" => OffModeEntities.CPM,
+                "vq3" => OffModeEntities.VQ3,
                 _ => throw new ArgumentException("Default entity state must be either 'cpm' or 'vq3'."),
             };
         }

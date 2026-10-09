@@ -129,7 +129,7 @@ public class WeaponPackTests
                 Assert.Equal("models/porter/css/weapons/v_rif_ak47.mdl", script.GetModel("view"));
                 Assert.True(File.Exists(Path.Combine(pack, "models", "porter", "css", "weapons", "v_rif_ak47.vvd")));
                 Assert.True(File.Exists(Path.Combine(pack, "models", "porter", "css", "weapons", "v_rif_ak47.dx90.vtx")));
-                Assert.Contains("Counter-Strike: Global Offensive (legacy) ships", Report(result));
+                Assert.Contains("Counter-Strike: Global Offensive ships", Report(result));
             }
             else
             {
@@ -284,8 +284,8 @@ public class WeaponPackTests
 
             IReadOnlyList<WeaponPackEntry> inventory = WeaponPackInventory.Read(pack);
             Assert.Equal(3, inventory.Count);
-            Assert.Equal("Desert Eagle from Counter-Strike: Global Offensive (legacy)", Assert.Single(inventory, x => x.Mode?.Id == "kzt").Description);
-            Assert.Equal("P250 from Counter-Strike: Global Offensive (legacy)", Assert.Single(inventory, x => x.Mode is null).Description);
+            Assert.Equal("Desert Eagle from Counter-Strike: Global Offensive", Assert.Single(inventory, x => x.Mode?.Id == "kzt").Description);
+            Assert.Equal("P250 from Counter-Strike: Global Offensive", Assert.Single(inventory, x => x.Mode is null).Description);
 
             (PortJobResult unknown, _, _) = await BuildAsync("csgo", "deagle", "pistol", output, "kzx");
             Assert.False(unknown.Succeeded);

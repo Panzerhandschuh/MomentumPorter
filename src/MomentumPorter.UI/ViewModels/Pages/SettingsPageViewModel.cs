@@ -16,7 +16,7 @@ public sealed record DetectedGame(string Name, string? Path, bool Found)
 }
 
 /// <summary>
-/// Where Momentum, bspPack and the work folders are. Every change is saved straight away.
+/// Where Momentum, the tools (bspPack, studiomdl) and the folders are. Every change is saved straight away.
 /// </summary>
 public sealed class SettingsPageViewModel : PageViewModel
 {
@@ -46,6 +46,12 @@ public sealed class SettingsPageViewModel : PageViewModel
             if (files.Count > 0)
                 BspPackPath = files[0];
         });
+        BrowseStudiomdlCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            IReadOnlyList<string> files = await _dialogs.PickFilesAsync("studiomdl executable", false, new FileFilter("studiomdl", "studiomdl.exe", "*"));
+            if (files.Count > 0)
+                StudiomdlPath = files[0];
+        });
         BrowseWorkDirectoryCommand = ReactiveCommand.CreateFromTask(async () =>
         {
             if (await _dialogs.PickFolderAsync("Work folder") is { } folder)
@@ -70,7 +76,7 @@ public sealed class SettingsPageViewModel : PageViewModel
     public string? MomentumDirectory
     {
         get => Settings.MomentumDirectory;
-        set => Update(() => Settings.MomentumDirectory = Blank(value), nameof(MomentumDirectory), nameof(MomentumStatus), nameof(MomentumMapsDirectory));
+        set => Update(() => Settings.MomentumDirectory = Blank(value), nameof(MomentumDirectory), nameof(MomentumStatus), nameof(MomentumMapsDirectory), nameof(DefaultStudiomdlPath), nameof(StudiomdlStatus));
     }
 
     /// <summary>Momentum found in the Steam libraries, used when there's no override.</summary>
@@ -82,6 +88,8 @@ public sealed class SettingsPageViewModel : PageViewModel
             this.RaiseAndSetIfChanged(ref _detectedMomentum, value);
             this.RaisePropertyChanged(nameof(MomentumStatus));
             this.RaisePropertyChanged(nameof(MomentumMapsDirectory));
+            this.RaisePropertyChanged(nameof(DefaultStudiomdlPath));
+            this.RaisePropertyChanged(nameof(StudiomdlStatus));
         }
     }
 
@@ -126,6 +134,26 @@ public sealed class SettingsPageViewModel : PageViewModel
         set => Update(() => Settings.PrePackCommand = Blank(value), nameof(PrePackCommand));
     }
 
+    public string? StudiomdlPath
+    {
+        get => Settings.StudiomdlPath;
+        set => Update(() => Settings.StudiomdlPath = Blank(value), nameof(StudiomdlPath), nameof(StudiomdlStatus));
+    }
+
+    /// <summary>Momentum's studiomdl (through the folder override when there is one), used when there's no override of its own.</summary>
+    public string? DefaultStudiomdlPath => new PorterSettings { MomentumDirectory = Settings.MomentumDirectory }.ResolveStudiomdlPath();
+
+    public string StudiomdlStatus
+    {
+        get
+        {
+            if (Settings.ResolveStudiomdlPath() is not { } path)
+                return "studiomdl wasn't found; it comes with Momentum Mod (bin/win64), so set Momentum's folder or its location to convert GoldSrc and Quake 3 models";
+
+            return File.Exists(path) ? $"Using {path}" : $"{path} doesn't exist";
+        }
+    }
+
     public string? WorkDirectory
     {
         get => Settings.WorkDirectory;
@@ -141,12 +169,6 @@ public sealed class SettingsPageViewModel : PageViewModel
     }
 
     public string DefaultOutputDirectory => PorterSettings.DefaultOutputDirectory;
-
-    public bool InstallByDefault
-    {
-        get => Settings.InstallByDefault;
-        set => Update(() => Settings.InstallByDefault = value, nameof(InstallByDefault));
-    }
 
     public ObservableCollection<DetectedGame> Games { get; } = [];
 
@@ -165,6 +187,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     public ReactiveCommand<Unit, Unit> BrowseMomentumCommand { get; }
 
     public ReactiveCommand<Unit, Unit> BrowseBspPackCommand { get; }
+
+    public ReactiveCommand<Unit, Unit> BrowseStudiomdlCommand { get; }
 
     public ReactiveCommand<Unit, Unit> BrowseWorkDirectoryCommand { get; }
 

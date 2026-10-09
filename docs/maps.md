@@ -23,18 +23,21 @@ cubemap materials, aren't renamed, so keep the map's name or rename it with Lump
 (or pass them on the command line), pick options, Run. Each queued Source map is ported, packed with bspPack
 (`-M -C`) and copied into Momentum's `momentum/maps` folder, one map at a time. Everything happens in a temp work folder
 and the map is only moved into `maps/` once every step succeeded, so a failed or cancelled map never leaves a broken
-file there. An installed map of the same name is replaced; turn off "Overwrite existing maps" to be asked first. The
-options panel only shows the options for the kinds of map in the queue. Maps that aren't installed are saved to the output folder instead (Documents/MomentumPorter/maps by default).
-Files the conversion writes next to the map, such as GOKZ's `zones/local/<map>.json`, go along with it.
+file there. An installed map of the same name is replaced. The game a Source map was made for is detected from its
+entities. The options panel only shows the options for the kinds of map in the queue, and the rarely needed ones only
+with its **Advanced** toggle on. Files the conversion writes next to the map, such as GOKZ's `zones/local/<map>.json`,
+go along with it.
 
 - **Maps**: the queue (status per map, detected kind and game), the options form (generated from the
-  `[PortOption]` attributes on `MapPortOptions`), and the log and report of the selected map. Options can be saved and
-  loaded as JSON presets. Quake 3 and GoldSrc maps in the queue go through BSPConvert instead (its options sit under
-  the Source map options) into Momentum's game folder, or the output folder laid out like one.
-- **Settings**: Momentum's folder (found in your Steam libraries unless overridden), bspPack's location, an optional
-  pre-pack command, the output and work folders, whether to install by default, and which known games were found.
-  Saved to `%AppData%/MomentumPorter/settings.json`.
-- **Weapons**: pick a game, a weapon and the Momentum weapon it replaces, then build the pack (see [weapons.md](weapons.md)).
+  `[PortOption]` attributes on `MapPortOptions` and `BspConvertOptions`), and the log and report of the selected map.
+  Options can be saved and loaded as JSON presets. Quake 3 and GoldSrc maps in the queue go through BSPConvert instead
+  (its options follow the Source map options in the same list) into Momentum's game folder.
+- **Settings**: Momentum's folder (found in your Steam libraries unless overridden), the bspPack and studiomdl
+  executables (Momentum's own studiomdl unless overridden), an optional pre-pack command, the work folder, the output
+  folder packs fall back to when Momentum isn't found, and which known games were found. Saved to
+  `%AppData%/MomentumPorter/settings.json`.
+- **Weapons**: pick a game mode and the Momentum weapon to replace, then the game and the weapon that goes in its
+  place, and build the pack (see [weapons.md](weapons.md)).
 - **Player Sounds**: pick a game (and a Quake 3 character or CS:GO team) and the jump/land/footstep options, then build
   the pack (see [player-sounds.md](player-sounds.md)).
 - **Player Models**: placeholder; see [player-models.md](player-models.md) for the feasibility study.
@@ -67,7 +70,8 @@ What BSPConvert would otherwise need to be told is filled in from Steam:
 
 - `--wads`: the Half-Life install's folders, the map's own mod first (when it's in one), then `cstrike` and `valve`,
   each followed by its `_downloads` folder.
-- `--studiomdl`: Momentum Mod's `bin/win64/studiomdl.exe`, which compiles the models GoldSrc entities use.
+- `--studiomdl`: Momentum Mod's `bin/win64/studiomdl.exe`, which compiles the models GoldSrc entities use. The app
+  takes the Settings page's studiomdl instead when one is set there.
 - Quake 3's base content: BSPConvert reads the textures, shaders and sounds maps share with the base game from a
   `Q3Content` folder next to the program. When it's empty, the porter extracts Quake 3's `baseq3/pak*.pk3` into it
   first (about 650 MB, once). `--noq3content` turns that off. Third-party map dependencies go in `CustomContent` as

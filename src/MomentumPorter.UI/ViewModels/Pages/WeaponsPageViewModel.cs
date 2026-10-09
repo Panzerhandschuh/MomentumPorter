@@ -2,9 +2,7 @@ namespace MomentumPorter.UI.ViewModels.Pages;
 
 using System.Collections.ObjectModel;
 using System.Reactive;
-using System.Reactive.Linq;
 using Material.Icons;
-using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Settings;
@@ -13,19 +11,19 @@ using MomentumPorter.UI.ViewModels.Shared;
 using ReactiveUI;
 
 /// <summary>
-/// Builds weapon packs: a weapon from another game in one of Momentum's weapon slots, written to Momentum's custom folder.
+/// Builds weapon packs, game mode first: pick a Momentum game mode and one of its weapons, then the game and the
+/// weapon of it that replaces it. The pack is written to Momentum's custom folder with the porter's defaults.
 /// </summary>
 public sealed class WeaponsPageViewModel : PageViewModel
 {
     private readonly SettingsService _settings;
     private readonly Action<Action> _post;
-    private readonly WeaponPackOptions _options = new();
+    private GameModeGroup _selectedMode;
+    private MomentumWeaponViewModel? _selectedSlot;
     private CatalogGame? _selectedGame;
     private CatalogWeapon? _selectedWeapon;
-    private string? _selectedSlot;
     private WeaponPackBuildViewModel? _selectedBuild;
-    private bool _allModes = true;
-    private string? _slotAssignments;
+    private bool _gameNotesExpanded;
 
     public WeaponsPageViewModel(SettingsService settings, JobRunnerService runner, Action<Action> post, WeaponCatalog? catalog = null)
     {
@@ -33,25 +31,20 @@ public sealed class WeaponsPageViewModel : PageViewModel
         _post = post;
         Runner = runner;
         Catalog = catalog ?? WeaponCatalog.Default;
-        // The page picks the game, weapon, slot and modes with its own lists
-        OptionsForm = new OptionsFormViewModel(_options, exclude: [nameof(WeaponPackOptions.Game), nameof(WeaponPackOptions.Weapon), nameof(WeaponPackOptions.Slot), nameof(WeaponPackOptions.GameModes)]);
         Games = Catalog.Games;
-        foreach (GameMode mode in GameModes.All)
-        {
-            var choice = new GameModeChoice(mode);
-            choice.WhenAnyValue(x => x.IsSelected).Subscribe(_ => this.RaisePropertyChanged(nameof(ModesSummary)));
-            ModeChoices.Add(choice);
-        }
+        Modes = GameModes.Groups;
+        _selectedMode = Modes[0];
+        _selectedGame = DefaultGameFor(_selectedMode);
 
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);
-        IObservable<bool> canBuild = this.WhenAnyValue(x => x.SelectedWeapon, x => x.Runner.IsRunning, (weapon, isRunning) => weapon is not null && !isRunning);
+        IObservable<bool> canBuild = this.WhenAnyValue(x => x.SelectedWeapon, x => x.SelectedSlot, x => x.Runner.IsRunning, (weapon, slot, isRunning) => weapon is not null && slot is not null && !isRunning);
         BuildCommand = ReactiveCommand.CreateFromTask(BuildAsync, canBuild);
-        IObservable<bool> canBuildAll = this.WhenAnyValue(x => x.SelectedGame, x => x.Runner.IsRunning, (game, isRunning) => game is not null && !isRunning);
+        IObservable<bool> canBuildAll = this.WhenAnyValue(x => x.SelectedGame, x => x.SelectedMode, x => x.Runner.IsRunning, (game, mode, isRunning) => game is not null && !isRunning && game.LoadoutFor(mode.Slots, mode.PicksFor(game.Id)).Count > 0);
         BuildAllCommand = ReactiveCommand.CreateFromTask(BuildAllAsync, canBuildAll);
         CancelCommand = ReactiveCommand.Create(runner.Cancel, running);
         OpenPackFolderCommand = ReactiveCommand.Create(OpenPackFolder);
 
-        SelectedGame = Games.FirstOrDefault(x => x.Id.Equals(_options.Game, StringComparison.OrdinalIgnoreCase)) ?? Games.FirstOrDefault();
+        RefreshSlots();
     }
 
     public override string Title => "Weapons";
@@ -62,54 +55,49 @@ public sealed class WeaponsPageViewModel : PageViewModel
 
     public WeaponCatalog Catalog { get; }
 
-    public OptionsFormViewModel OptionsForm { get; }
+    /// <summary>Step 1: the game modes a pack can be built for (the Defrag modes as one).</summary>
+    public IReadOnlyList<GameModeGroup> Modes { get; }
 
-    public IReadOnlyList<CatalogGame> Games { get; }
-
-    public ObservableCollection<CatalogWeapon> Weapons { get; } = [];
-
-    /// <summary>The Momentum weapons the selected weapon fits, best fit first.</summary>
-    public ObservableCollection<string> Slots { get; } = [];
-
-    /// <summary>Builds made this session, newest first.</summary>
-    public ObservableCollection<WeaponPackBuildViewModel> Builds { get; } = [];
-
-    /// <summary>The game modes to tick when the weapon isn't for every mode.</summary>
-    public ObservableCollection<GameModeChoice> ModeChoices { get; } = [];
-
-    /// <summary>Whether the weapon is used in every mode (the plain script), or only in the ticked ones.</summary>
-    public bool AllModes
+    public GameModeGroup SelectedMode
     {
-        get => _allModes;
+        get => _selectedMode;
         set
         {
-            this.RaiseAndSetIfChanged(ref _allModes, value);
-            this.RaisePropertyChanged(nameof(ModesSummary));
+            if (value is null || value == _selectedMode)
+                return;
+
+            this.RaiseAndSetIfChanged(ref _selectedMode, value);
+            // Each mode starts on the game it comes from (TF2 for Rocket and Sticky Jump, Quake 3 for Defrag...)
+            _selectedGame = DefaultGameFor(value);
+            this.RaisePropertyChanged(nameof(SelectedGame));
+            this.RaisePropertyChanged(nameof(GameLimitations));
+            RefreshSlots();
+            this.RaisePropertyChanged(nameof(BuildAllTip));
         }
     }
 
-    /// <summary>The mode picker's face: "Every mode", or the ticked modes' names.</summary>
-    public string ModesSummary
+    private CatalogGame? DefaultGameFor(GameModeGroup mode) =>
+        Games.FirstOrDefault(x => x.Id.Equals(mode.DefaultGame, StringComparison.OrdinalIgnoreCase)) ?? Games.FirstOrDefault();
+
+    /// <summary>The game's weapons for some of the mode's Momentum weapons, with the mode's own picks.</summary>
+    private IReadOnlyList<LoadoutEntry> LoadoutFor(CatalogGame game, IEnumerable<WeaponSlot> slots) =>
+        game.LoadoutFor(slots, SelectedMode.PicksFor(game.Id));
+
+    /// <summary>Step 2: the mode's Momentum weapons, with what the pack holds for each.</summary>
+    public ObservableCollection<MomentumWeaponViewModel> Slots { get; } = [];
+
+    public MomentumWeaponViewModel? SelectedSlot
     {
-        get
+        get => _selectedSlot;
+        set
         {
-            if (AllModes)
-                return "Every mode";
-
-            var picked = ModeChoices.Where(x => x.IsSelected).Select(x => x.Name).ToList();
-            return picked.Count == 0 ? "No mode: tick some" : string.Join(", ", picked);
+            this.RaiseAndSetIfChanged(ref _selectedSlot, value);
+            RefreshWeapons();
         }
     }
 
-    /// <summary>The ticked modes as the option's list, or null for every mode.</summary>
-    public string? SelectedModes => AllModes ? null : GameModes.ToList(ModeChoices.Where(x => x.IsSelected).Select(x => x.Mode));
-
-    /// <summary>What the pack folder in Momentum's custom folder holds for the selected slot, per mode.</summary>
-    public string? SlotAssignments
-    {
-        get => _slotAssignments;
-        private set => this.RaiseAndSetIfChanged(ref _slotAssignments, value);
-    }
+    /// <summary>Step 3: the games the catalog has weapons from.</summary>
+    public IReadOnlyList<CatalogGame> Games { get; }
 
     public CatalogGame? SelectedGame
     {
@@ -119,88 +107,31 @@ public sealed class WeaponsPageViewModel : PageViewModel
             this.RaiseAndSetIfChanged(ref _selectedGame, value);
             this.RaisePropertyChanged(nameof(GameLimitations));
             this.RaisePropertyChanged(nameof(BuildAllTip));
-            Weapons.Clear();
-            if (value is null)
-                return;
-
-            _options.Game = value.Id;
-            // Only Quake 3 has the Quake 3 options; GoldSrc world models aren't fitted (nothing marks how they're held)
-            bool quake3 = value.Id.Equals("q3", StringComparison.OrdinalIgnoreCase);
-            bool goldSrc = SourceGames.Find(value.Id)?.Engine == ContentEngine.GoldSrc;
-            OptionsForm.SetFilter(x => (quake3 || x.Info.Attribute.Group != WeaponPackOptions.Quake3Group)
-                && (!goldSrc || x.Name != nameof(WeaponPackOptions.FitWorldModel)));
-            foreach (CatalogWeapon weapon in value.Weapons.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
-                Weapons.Add(weapon);
-
-            SelectedWeapon = Weapons.FirstOrDefault();
-            OptionsForm.Reload();
+            RefreshWeapons();
         }
     }
+
+    /// <summary>Step 4: the game's weapons that fit the selected Momentum weapon.</summary>
+    public ObservableCollection<CatalogWeapon> Weapons { get; } = [];
 
     public CatalogWeapon? SelectedWeapon
     {
         get => _selectedWeapon;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _selectedWeapon, value);
-            Slots.Clear();
-            _options.Weapon = value?.Id ?? "";
-            if (value is not null)
-            {
-                foreach (string slot in value.Slots)
-                    Slots.Add(slot);
-            }
-
-            SelectedSlot = Slots.FirstOrDefault();
-            OptionsForm.Reload();
-        }
+        set => this.RaiseAndSetIfChanged(ref _selectedWeapon, value);
     }
 
-    public string? SelectedSlot
+    /// <summary>Shown in place of the weapon list when the game has nothing for the selected Momentum weapon.</summary>
+    public string NoWeaponsMessage => SelectedGame is { } game && SelectedSlot is { } slot
+        ? $"No {game.Name} weapon fits the {slot.Name.ToLowerInvariant()}"
+        : "Pick a Momentum weapon and a game";
+
+    /// <summary>Builds made this session, newest first.</summary>
+    public ObservableCollection<WeaponPackBuildViewModel> Builds { get; } = [];
+
+    public WeaponPackBuildViewModel? SelectedBuild
     {
-        get => _selectedSlot;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _selectedSlot, value);
-            _options.Slot = value;
-            OptionsForm.Reload();
-            RefreshSlotAssignments();
-        }
-    }
-
-    /// <summary>Reads the pack folder the builds go to and describes what it has for the selected slot.</summary>
-    public void RefreshSlotAssignments()
-    {
-        SlotAssignments = SelectedSlot is { } slotId && WeaponSlots.Find(slotId) is { } slot
-            ? DescribeAssignments(slot, WeaponPackInventory.Read(Path.Combine(OutputDirectory(_settings.Settings), SanitizedPackName())))
-            : null;
-    }
-
-    private static string? DescribeAssignments(WeaponSlot slot, IReadOnlyList<WeaponPackEntry> inventory)
-    {
-        var lines = inventory
-            .Where(x => x.Slot == slot)
-            .OrderBy(x => x.Mode is null ? -1 : GameModes.All.ToList().IndexOf(x.Mode))
-            .Select(x => $"{(x.Mode is null ? "Every other mode" : x.Mode.Name)}: {x.Description}")
-            .ToList();
-        if (lines.Count == 0)
-            return null;
-
-        if (!lines[0].StartsWith("Every other mode", StringComparison.Ordinal))
-            return "In the pack now: " + string.Join("; ", lines);
-
-        return "In the pack now: " + string.Join("; ", lines.Skip(1).Append(lines.Count == 1 ? lines[0].Replace("Every other mode", "every mode") : lines[0].Replace("Every other mode", "every other mode")));
-    }
-
-    private string SanitizedPackName() => string.IsNullOrWhiteSpace(_options.PackName) ? WeaponPackBuilder.SharedPackName : _options.PackName.Trim();
-
-    /// <summary>Where packs go: Momentum's custom folder, or the output folder's custom/ when Momentum isn't found.</summary>
-    private static string OutputDirectory(PorterSettings settings)
-    {
-        string? content = settings.ResolveMomentumContentDirectory();
-        return content is not null
-            ? Path.Combine(content, "custom")
-            : Path.Combine(settings.ResolveOutputDirectory(), "custom");
+        get => _selectedBuild;
+        set => this.RaiseAndSetIfChanged(ref _selectedBuild, value);
     }
 
     /// <summary>What the selected game can't reproduce, from the catalog.</summary>
@@ -208,13 +139,21 @@ public sealed class WeaponsPageViewModel : PageViewModel
         ? string.Join(" ", game.Limitations.Select(x => x.TrimEnd().EndsWith('.') ? x.Trim() : x.Trim() + "."))
         : null;
 
-    /// <summary>What Build all weapons builds for the selected game.</summary>
-    public string? BuildAllTip => SelectedGame is { } game
-        ? $"Build every {game.Name} weapon into the Momentum weapon it fits best, with these options and modes: "
-            + string.Join(", ", game.FullLoadout().Select(x => $"{x.Weapon.Name} as {x.Slot.Name}"))
-        : null;
+    /// <summary>What Build all weapons builds for the selected mode and game.</summary>
+    public string? BuildAllTip
+    {
+        get
+        {
+            if (SelectedGame is not { } game)
+                return null;
 
-    private bool _gameNotesExpanded;
+            IReadOnlyList<LoadoutEntry> loadout = LoadoutFor(game, SelectedMode.Slots);
+            return loadout.Count == 0
+                ? $"No {game.Name} weapon fits {SelectedMode.Name}'s weapons"
+                : $"Build every {game.Name} weapon that fits a {SelectedMode.Name} weapon, into the one it fits best: "
+                    + string.Join(", ", loadout.Select(x => $"{x.Weapon.Name} as {x.Slot.Name}"));
+        }
+    }
 
     /// <summary>Whether the game's notes show in full, or clipped to a couple of lines so the weapon list has room.</summary>
     public bool GameNotesExpanded
@@ -230,12 +169,6 @@ public sealed class WeaponsPageViewModel : PageViewModel
     /// <summary>The notes' line limit: 0 (none) when expanded.</summary>
     public int GameNotesMaxLines => GameNotesExpanded ? 0 : 2;
 
-    public WeaponPackBuildViewModel? SelectedBuild
-    {
-        get => _selectedBuild;
-        set => this.RaiseAndSetIfChanged(ref _selectedBuild, value);
-    }
-
     public ReactiveCommand<Unit, Unit> BuildCommand { get; }
 
     public ReactiveCommand<Unit, Unit> BuildAllCommand { get; }
@@ -244,31 +177,98 @@ public sealed class WeaponsPageViewModel : PageViewModel
 
     public ReactiveCommand<Unit, Unit> OpenPackFolderCommand { get; }
 
+    /// <summary>
+    /// Lists the selected mode's weapons and reads the pack folder for what each holds in that mode. Called again
+    /// after every build. Keeps the selected weapon where the new mode has it too.
+    /// </summary>
+    public void RefreshSlots()
+    {
+        string? keep = SelectedSlot?.Slot.Id;
+        IReadOnlyList<WeaponPackEntry> inventory = WeaponPackInventory.Read(Path.Combine(OutputDirectory(_settings.Settings), WeaponPackBuilder.SharedPackName));
+        Slots.Clear();
+        foreach (WeaponSlot slot in SelectedMode.Slots)
+            Slots.Add(new MomentumWeaponViewModel(slot, DescribeInPack(slot, SelectedMode.Modes, inventory)));
+
+        SelectedSlot = Slots.FirstOrDefault(x => x.Slot.Id == keep) ?? Slots.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// What the pack holds for a slot in the given modes: a mode's own script, else the one for every mode. One
+    /// description when the modes agree, else one per mode. Null when the pack has nothing for it.
+    /// </summary>
+    public static string? DescribeInPack(WeaponSlot slot, IReadOnlyList<GameMode> modes, IReadOnlyList<WeaponPackEntry> inventory)
+    {
+        WeaponPackEntry? shared = inventory.FirstOrDefault(x => x.Slot == slot && x.Mode is null);
+        var perMode = modes
+            .Select(mode => (Mode: mode, Entry: inventory.FirstOrDefault(x => x.Slot == slot && x.Mode == mode) ?? shared))
+            .ToList();
+        if (perMode.All(x => x.Entry is null))
+            return null;
+
+        var descriptions = perMode.Select(x => x.Entry?.Description ?? "Momentum's").Distinct().ToList();
+        return descriptions.Count == 1
+            ? descriptions[0]
+            : string.Join("; ", perMode.Select(x => $"{x.Mode.Name}: {x.Entry?.Description ?? "Momentum's"}"));
+    }
+
+    /// <summary>
+    /// Lists the game's weapons that fit the selected Momentum weapon, best fit first, and picks the one the game's
+    /// loadout would (the catalog's choice among several that fit equally).
+    /// </summary>
+    private void RefreshWeapons()
+    {
+        Weapons.Clear();
+        if (SelectedGame is { } game && SelectedSlot is { } slot)
+        {
+            foreach (CatalogWeapon weapon in game.Weapons
+                .Where(x => x.Slots.Contains(slot.Slot.Id, StringComparer.OrdinalIgnoreCase))
+                .OrderBy(x => x.Slots.FindIndex(s => s.Equals(slot.Slot.Id, StringComparison.OrdinalIgnoreCase)))
+                .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                Weapons.Add(weapon);
+            }
+
+            SelectedWeapon = LoadoutFor(game, [slot.Slot]).FirstOrDefault()?.Weapon ?? Weapons.FirstOrDefault();
+        }
+        else
+        {
+            SelectedWeapon = null;
+        }
+
+        this.RaisePropertyChanged(nameof(NoWeaponsMessage));
+    }
+
+    /// <summary>Where packs go: Momentum's custom folder, or the output folder's custom/ when Momentum isn't found.</summary>
+    private static string OutputDirectory(PorterSettings settings)
+    {
+        string? content = settings.ResolveMomentumContentDirectory();
+        return content is not null
+            ? Path.Combine(content, "custom")
+            : Path.Combine(settings.ResolveOutputDirectory(), "custom");
+    }
+
     public async Task BuildAsync()
     {
-        if (SelectedWeapon is null)
+        if (SelectedWeapon is null || SelectedSlot is null || SelectedGame is null)
             return;
 
-        var build = new WeaponPackBuildViewModel(
-            $"{SelectedGame?.Name}: {SelectedWeapon.Name} as {SelectedSlot ?? "best fit"}{ModesSuffix()}",
-            SnapshotOptions(SelectedWeapon.Id, SelectedSlot));
+        var build = new WeaponPackBuildViewModel(BuildTitle(SelectedGame, SelectedWeapon, SelectedSlot.Slot), SnapshotOptions(SelectedWeapon.Id, SelectedSlot.Slot.Id));
         Builds.Insert(0, build);
         SelectedBuild = build;
         await Runner.RunAsync(new List<WeaponPackBuildViewModel> { build }, Prepare);
     }
 
     /// <summary>
-    /// Builds every weapon of the selected game into the Momentum weapon it fits best (<see cref="CatalogGame.FullLoadout"/>),
-    /// one after another into the same pack folder.
+    /// Builds, for every weapon of the selected mode, the selected game's weapon that fits it best
+    /// (<see cref="CatalogGame.LoadoutFor"/>), one after another into the same pack folder.
     /// </summary>
     public async Task BuildAllAsync()
     {
         if (SelectedGame is not { } game)
             return;
 
-        string modes = ModesSuffix();
-        var batch = game.FullLoadout()
-            .Select(x => new WeaponPackBuildViewModel($"{game.Name}: {x.Weapon.Name} as {x.Slot.Name}{modes}", SnapshotOptions(x.Weapon.Id, x.Slot.Id)))
+        var batch = LoadoutFor(game, SelectedMode.Slots)
+            .Select(x => new WeaponPackBuildViewModel(BuildTitle(game, x.Weapon, x.Slot), SnapshotOptions(x.Weapon.Id, x.Slot.Id)))
             .ToList();
         if (batch.Count == 0)
             return;
@@ -285,32 +285,36 @@ public sealed class WeaponsPageViewModel : PageViewModel
             build.Finish(QueueStatus.Skipped, "Cancelled");
     }
 
-    private string ModesSuffix() => AllModes ? "" : $" in {GameModes.Describe(GameModes.Parse(SelectedModes))}";
+    private string BuildTitle(CatalogGame game, CatalogWeapon weapon, WeaponSlot slot) => $"{SelectedMode.Name}: {game.Name} {weapon.Name} as {slot.Name}";
 
-    /// <summary>The page's options for one weapon, copied so later changes on the page don't touch a queued build.</summary>
+    /// <summary>The page's choice for one weapon as options, copied so later changes on the page don't touch a queued build.</summary>
     private WeaponPackOptions SnapshotOptions(string weapon, string? slot)
     {
-        WeaponPackOptions options = OptionsPreset.Clone(_options);
-        options.Game = SelectedGame?.Id ?? options.Game;
-        options.Weapon = weapon;
-        options.Slot = slot;
-        options.GameModes = SelectedModes;
-        return options;
+        return new WeaponPackOptions
+        {
+            Game = SelectedGame?.Id ?? "",
+            Weapon = weapon,
+            Slot = slot,
+            GameModes = SelectedMode.ModeList,
+        };
     }
 
     /// <summary>
-    /// Builds the job with the build's options (the page's current ones if it has none). Packs default to Momentum's
-    /// custom folder, which the game loads from.
+    /// Builds the job with the build's options (the page's current choice if it has none). Packs go to Momentum's
+    /// custom folder, which the game loads from, and models compile with the Settings page's studiomdl if one is set.
     /// </summary>
     public PreparedJob Prepare(WeaponPackBuildViewModel build)
     {
         WeaponPackOptions options = build.Options is { } queued
             ? OptionsPreset.Clone(queued)
-            : SnapshotOptions(SelectedWeapon?.Id ?? _options.Weapon, SelectedSlot ?? _options.Slot);
+            : SnapshotOptions(SelectedWeapon?.Id ?? "", SelectedSlot?.Slot.Id);
         PorterSettings settings = _settings.Settings.Clone();
 
         if (string.IsNullOrWhiteSpace(options.MomentumDirectory) && !string.IsNullOrWhiteSpace(settings.MomentumDirectory))
             options.MomentumDirectory = settings.MomentumDirectory;
+
+        if (string.IsNullOrWhiteSpace(options.StudioMdlPath) && !string.IsNullOrWhiteSpace(settings.StudiomdlPath))
+            options.StudioMdlPath = settings.StudiomdlPath;
 
         if (string.IsNullOrWhiteSpace(options.OutputDirectory))
             options.OutputDirectory = OutputDirectory(settings);
@@ -329,7 +333,7 @@ public sealed class WeaponsPageViewModel : PageViewModel
             (context, result) =>
             {
                 state.Dispose();
-                _post(RefreshSlotAssignments);
+                _post(RefreshSlots);
                 if (!result.Succeeded)
                 {
                     return result.Exception is OperationCanceledException
@@ -365,18 +369,9 @@ public sealed class WeaponPackBuildViewModel(string title, WeaponPackOptions? op
     public WeaponPackOptions? Options { get; } = options;
 }
 
-/// <summary>A game mode in the Weapons page's mode list.</summary>
-public sealed class GameModeChoice(GameMode mode) : ReactiveObject
+/// <summary>A Momentum weapon of the selected mode in the Weapons page's list, with what the pack holds for it there.</summary>
+/// <param name="InPack">The weapon the pack puts in it in the selected mode(s), or null for Momentum's own</param>
+public sealed record MomentumWeaponViewModel(WeaponSlot Slot, string? InPack)
 {
-    private bool _isSelected;
-
-    public GameMode Mode { get; } = mode;
-
-    public string Name => Mode.Name;
-
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set => this.RaiseAndSetIfChanged(ref _isSelected, value);
-    }
+    public string Name => Slot.Name;
 }

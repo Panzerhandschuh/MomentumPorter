@@ -36,11 +36,12 @@ and the map installed into Momentum.
 
 ### Weapons
 
-Put a weapon from another game into one of Momentum's weapon slots, with its
-view and world models, sounds, muzzle flash and projectile. A weapon can be
-limited to some game modes, so the Climb (1.6) pistol can be CS 1.6's USP while
-Climb (KZT) uses CS:GO's Desert Eagle, and **Build all weapons** gives Momentum
-a game's whole arsenal in one go (all of Quake 3's into the Defrag weapons).
+Pick a game mode and one of its Momentum weapons, then the game and the weapon
+that replaces it: the pack brings its view and world models, sounds, muzzle
+flash and projectile. Each mode gets its own weapons, so the Climb (1.6) pistol
+can be CS 1.6's USP while Climb (KZT) uses CS:GO's Desert Eagle, and **Build all
+weapons** fills every weapon of a mode from one game in one go (Quake 3's whole
+arsenal into Defrag).
 
 Weapons from games Momentum mounts are used as they are; GoldSrc and Quake 3
 models, textures, sounds and effects are converted. A few features need engine

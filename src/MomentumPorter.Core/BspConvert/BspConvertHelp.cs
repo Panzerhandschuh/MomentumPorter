@@ -26,7 +26,6 @@ public static class BspConvertHelp
     public const string FogObb = "Use legacy obb_volumefog entities instead of the default Fog shader. Handles arbitrary brush shapes but can flicker on thin volumes.";
     public const string FogMinHeight = "Minimum vertical height (units) for converted fog volumes. Only used with --fogobb.";
     public const string NoFogOverlay = "Don't draw fog shader visible stages (e.g. scrolling clouds) as an overlay face; fog brush faces are just dropped.";
-    public const string NoEnvMap = "Disable envmap (specular cubemap) shader conversion. Useful for maps where Source's cubemap poorly emulates Quake 3's spheremap effect.";
     public const string ClampOverbright = "Apply Quake 3's hue-preserving overbright clamp to lightmaps, flattening over-bright highlights toward white.";
     public const string Q3Content = "When the Q3Content folder next to Momentum Porter is empty, extract the Quake 3 install's baseq3 pak files into it first (found through Steam, about 650 MB, once), so the textures, shaders and sounds maps share with the base game convert.";
 
@@ -40,7 +39,7 @@ public static class BspConvertHelp
 
     // GoldSrc
     public const string Wads = "Comma-separated folders to search (recursively) for the WAD files the map takes its textures from, its sky images (gfx/env), and the sounds, sprites and models its entities use, e.g. your Half-Life install or a folder of community WADs. The input's own folder and a default Steam Half-Life install are always searched.";
-    public const string Studiomdl = "Path to the studiomdl.exe that compiles the models entities use (in Momentum Mod's bin/win64 folder). Found next to the output game folder or in a default Steam Momentum Mod install if not given. Models aren't converted if it isn't found.";
+    public const string Studiomdl = "Path to the studiomdl.exe that compiles the models entities use (in Momentum Mod's bin/win64 folder). Momentum's own is used if not given (the app takes the Settings page's override first). Models aren't converted if it isn't found.";
     public const string GoldSrcHulls = "Copy the player clip hulls of this GoldSrc BSP into the input BSP(s) instead of converting them. For a Strata BSP recompiled from a converted map (e.g. given new visuals and recompiled with VBSP), so GoldSrc-hull game modes collide exactly as in the GoldSrc map. Run it on the finished BSP, after VVIS and VRAD.";
     public const string FixBhopBlocks = "Turn the func_doors and func_buttons that drop the player into a teleport when touched (bhop blocks) into func_bhops, which teleport the player after standing on them too long instead. Replaces Momentum's runtime block fix and the entity tools' Stripper export of it.";
 }

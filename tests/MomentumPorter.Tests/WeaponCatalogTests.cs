@@ -58,6 +58,52 @@ public class WeaponCatalogTests
     }
 
     [Fact]
+    public void LoadoutForAModeFillsItsWeaponsWithTheBestFitsIncludingSecondBest()
+    {
+        WeaponCatalog catalog = WeaponCatalog.Default;
+        GameModeGroup surf = GameModes.Groups.Single(x => x.Name == "Surf");
+        GameModeGroup defrag = GameModes.Groups.Single(x => x.Name == "Defrag");
+        GameModeGroup conc = GameModes.Groups.Single(x => x.Name == "Conc");
+
+        // Quake 3 outside Defrag: the weapons that also fit a classic weapon, as those
+        var q3Surf = catalog.FindGame("q3")!.LoadoutFor(surf.Slots).ToDictionary(x => x.Slot.Id, x => x.Weapon.Id);
+        Assert.Equal(["machinegun", "shotgun", "sniper", "knife"], q3Surf.Keys);
+        Assert.Equal("railgun", q3Surf["sniper"]);
+        Assert.Equal("gauntlet", q3Surf["knife"]);
+
+        // CS:S in Surf is the catalog's loadout; in Defrag its guns fill the Defrag weapons they fit second best
+        var cssSurf = catalog.FindGame("css")!.LoadoutFor(surf.Slots).ToDictionary(x => x.Slot.Id, x => x.Weapon.Id);
+        Assert.Equal(["pistol", "machinegun", "shotgun", "sniper", "knife", "grenade"], cssSurf.Keys);
+        Assert.Equal("usp", cssSurf["pistol"]);
+        Assert.Equal("awp", cssSurf["sniper"]);
+        var cssDefrag = catalog.FindGame("css")!.LoadoutFor(defrag.Slots).ToDictionary(x => x.Slot.Id, x => x.Weapon.Id);
+        Assert.Equal(["df_knife", "df_machinegun", "df_railgun", "df_shotgun"], cssDefrag.Keys);
+        Assert.Equal("mac10", cssDefrag["df_machinegun"]);
+
+        // The flashbang is the loadout's concussion grenade; TF2 has nothing for Conc
+        Assert.Equal("flashbang", Assert.Single(catalog.FindGame("css")!.LoadoutFor(conc.Slots)).Weapon.Id);
+        Assert.Empty(catalog.FindGame("tf2")!.LoadoutFor(conc.Slots));
+
+        foreach (CatalogGame game in catalog.Games)
+        {
+            foreach (GameModeGroup mode in GameModes.Groups)
+                Assert.All(game.LoadoutFor(mode.Slots), x => Assert.Contains(x.Slot.Id, x.Weapon.Slots));
+        }
+    }
+
+    [Fact]
+    public void GameModesKnowTheirWeapons()
+    {
+        // From CGameMode_*::WeaponDesirability in the engine
+        Assert.Equal(["pistol", "machinegun", "shotgun", "sniper", "knife", "grenade"], GameModes.Find("surf")!.Slots.Select(x => x.Id));
+        Assert.Equal(["shotgun", "knife", "rocketlauncher"], GameModes.Find("rj")!.Slots.Select(x => x.Id));
+        Assert.Equal(["pistol", "knife", "stickylauncher"], GameModes.Find("sj")!.Slots.Select(x => x.Id));
+        Assert.Equal(["concgrenade"], GameModes.Find("conc")!.Slots.Select(x => x.Id));
+        Assert.All(GameModes.All.Where(x => x.IsDefrag), mode => Assert.Equal(9, mode.Slots.Count(x => x.Id.StartsWith("df_"))));
+        Assert.All(GameModes.All, mode => Assert.All(mode.SlotIds, id => Assert.NotNull(WeaponSlots.Find(id))));
+    }
+
+    [Fact]
     public void ValidateReportsBadLoadouts()
     {
         WeaponCatalog catalog = WeaponCatalog.Load("""

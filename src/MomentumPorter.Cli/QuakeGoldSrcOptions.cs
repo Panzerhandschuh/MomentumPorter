@@ -51,9 +51,6 @@ internal sealed partial class CliOptions
     [Option("nofogoverlay", HelpText = BspConvertHelp.NoFogOverlay)]
     public bool NoFogOverlay { get; set; }
 
-    [Option("noenvmap", HelpText = BspConvertHelp.NoEnvMap)]
-    public bool NoEnvMap { get; set; }
-
     [Option("clampoverbright", HelpText = BspConvertHelp.ClampOverbright)]
     public bool ClampOverbright { get; set; }
 
