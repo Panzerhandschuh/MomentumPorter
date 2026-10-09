@@ -34,7 +34,7 @@ public sealed class WeaponPackOptions
     [PortOption("Momentum weapon", "The Momentum weapon it replaces (pistol, machinegun, shotgun, sniper, knife, grenade, rocketlauncher, stickylauncher, concgrenade or a df_ weapon). Defaults to the weapon's best fit.", Order = 20)]
     public string? Slot { get; set; }
 
-    [PortOption("Game modes", "The game modes the weapon is used in, as a list of their ids (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop, conc, df_cpm, df_vq3, df_vtg). Empty means every mode. A weapon for some modes is written as scripts/<mode>/weapon_momentum_<slot>.txt, which Momentum builds with docs/engine-patches/gamemode-weapon-scripts.patch use in that mode, so e.g. Climb (1.6) can have a CS 1.6 pistol and Climb (KZT) a CS:GO one.", Order = 25)]
+    [PortOption("Game modes", "The game modes the weapon is used in, as a list of their ids (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop, conc, df_cpm, df_vq3, df_vtg). Empty means every mode. A weapon for some modes is written as scripts/<mode>/weapon_momentum_<slot>.txt, which Momentum builds with the gamemode-weapon-scripts engine change (docs/engine-changes.md) use in that mode, so e.g. Climb (1.6) can have a CS 1.6 pistol and Climb (KZT) a CS:GO one.", Order = 25)]
     public string? GameModes { get; set; }
 
     [PortOption("Pack name", "Name of the pack folder, as it would sit in momentum/custom/. Defaults to momentumporter, which every weapon pack shares: packs in one folder merge the soundscript and particle manifest they'd otherwise each replace, while packs in separate folders hide each other's.", Group = AdvancedGroup, Order = 0, Advanced = true)]

@@ -1,12 +1,11 @@
-# Engine patches
+# Engine changes
 
-Changes to Momentum's engine (strata/engine) that ported assets need. They aren't applied anywhere; review them and
-apply with `git apply <patch>` in an engine checkout. They apply cleanly to the engine as of October 2026 and compile,
-but haven't been tested in game. Each is a fix in an existing feature, except `gamemode-weapon-scripts.patch`, which
-is the one small feature the porter can't do content-side; the porter works around everything else, so a Momentum
-build without them only misses what's listed under each patch.
+Changes to Momentum's engine (strata/engine) that ported assets need. The engine is closed source, so the patches
+aren't published here; each section describes one change. None are in Momentum yet. Each is a fix in an existing
+feature, except `gamemode-weapon-scripts`, which is the one small feature the porter can't do content-side; the porter
+works around everything else, so a Momentum build without them only misses what's listed under each change.
 
-## weapon-overrides.patch
+## weapon-overrides
 
 Fixes client-side weapon overrides (weapon scripts in `momentum/custom/*/scripts/weapon_momentum_*.txt`), found by
 porting the CS:GO Desert Eagle over Momentum's pistol, which loaded but had no fire animation and no arms.
@@ -31,9 +30,9 @@ Momentum's order.
 
 Shot sounds of weapons used in every mode need no engine change: bullet weapons play their shot from the player,
 where a weapon's `SoundData Overrides` don't apply, so the porter redefines the shot's soundscript entry in the pack
-instead. Weapons for some modes can't (see `gamemode-weapon-scripts.patch`).
+instead. Weapons for some modes can't (see `gamemode-weapon-scripts`).
 
-## gamemode-weapon-scripts.patch
+## gamemode-weapon-scripts
 
 Lets a game mode have its own weapons, so Climb (1.6) can use a CS 1.6 pistol and Climb (KZT) a CS:GO one.
 
@@ -54,7 +53,7 @@ Lets a game mode have its own weapons, so Climb (1.6) can use a CS 1.6 pistol an
 Without it: `scripts/<mode>/` is ignored, so weapons built for some modes don't appear and those modes use the pack's
 shared script or Momentum's weapon; weapons for every mode are unaffected (their shot is redefined in the soundscript).
 
-## bonemerge-flush-crash.patch
+## bonemerge-flush-crash
 
 `InvalidateMdlCache()` deleted an entity's `CStudioHdr` but left its `CBoneMergeCache`, which holds a copy of that
 pointer and only rebuilds when the model's raw header moves. A flushed model usually reloads at the same address, so
@@ -65,7 +64,7 @@ anything is bone-merged (a held weapon, arms on the view model).
 Without it: the `flush` line in a pack's `cfg/porter_reload.cfg` crashes the game; remove it and reload the map to
 pick up changed models instead.
 
-## particles-reload-precache.patch
+## particles-reload-precache
 
 `cl_particles_reload` / `sv_particles_reload` call `UncacheAllParticleSystems()`, which threw away the precache
 lookups (string table index to system), then re-read the manifest. The string table outlives the reload and effects
@@ -78,7 +77,7 @@ survives the re-read) and `PrecacheLookedUpParticleSystems()` precaches the re-r
 Without it: the `sv_particles_reload` / `cl_particles_reload` lines in `cfg/porter_reload.cfg` break bullet impacts
 for the rest of the map; remove them and restart to pick up particle changes instead.
 
-## weapon-reload-scripts-model.patch
+## weapon-reload-scripts-model
 
 `weapon_reload_scripts` (client side) set every weapon's model to its world model. A held weapon's model is its view
 model, and that differing from the world model is what makes the client create the world model clone that stands in
@@ -89,7 +88,7 @@ of the two models it had.
 Without it: after `weapon_reload_scripts` (so after `cfg/porter_reload.cfg`) the held weapon's world model shows in
 first person until the next map.
 
-## viewmodel-muzzle-flash.patch
+## viewmodel-muzzle-flash
 
 Momentum's own view models have no muzzle flash events, but models from other games carry `CL_EVENT_MUZZLEFLASH0`
 (5001) on their fire sequences: CS:GO's name the attachment in the options (`"1"`), CS:S's and HL2's give the sprite
@@ -101,7 +100,7 @@ one (the porter sets CS:GO's `weapon_muzzle_flash_*` from `items_game.txt`), els
 
 Without it: ported weapons from CS:GO, CS:S and HL2 have no first-person muzzle flash.
 
-## viewmodel-sprite-flash-sequences.patch
+## viewmodel-sprite-flash-sequences
 
 Two fixes for view models from other games, found with the CS 1.6 USP and the CS:S knife.
 
@@ -109,7 +108,7 @@ Two fixes for view models from other games, found with the CS 1.6 USP and the CS
   leaf system so a "before the view model" pass could draw it, but nothing calls
   `CParticleMgr::DrawBeforeViewModelEffects` (the 2013 SDK notes the same), so the effects were never drawn at all.
   The legacy first-person flashes (`CTempEnts::MuzzleFlash_Pistol_Player` and the SMG, shotgun and Combine ones,
-  which `viewmodel-muzzle-flash.patch` dispatches for models whose events give a flash type) all ask for that pass.
+  which `viewmodel-muzzle-flash` dispatches for models whose events give a flash type) all ask for that pass.
   They now stay in the leaf system like every other effect. Momentum's own content never used them, which is why it
   went unnoticed.
 - **Activities an override model lacks.** The client remaps the reference model's sequence onto the override by
@@ -122,7 +121,7 @@ Two fixes for view models from other games, found with the CS 1.6 USP and the CS
 Without it: converted GoldSrc weapons and CS:S/HL2 weapons show no muzzle flash, and the CS:S knife plays the wrong
 animation on every other swing.
 
-## df-grenade-trail.patch
+## df-grenade-trail
 
 `CMomDFGrenade` derives from `CMomExplosive`, not `CMomDFProjectile`, so it never made trail particles and its
 `GrenadeTrail` key went unread. It now makes the script's `GrenadeTrail` at the model's `trail` attachment, like the
@@ -130,7 +129,7 @@ other Defrag projectiles. Momentum's own script has no `GrenadeTrail`, so its gr
 
 Without it: the Quake 3 grenade launcher's grenades have no smoke trail.
 
-## explosion-sound-position.patch
+## explosion-sound-position
 
 Explosion sounds of every explosive (rocket launcher, stickies, conc and all Defrag weapons) played at the shooter
 instead of at the explosion. `TE_TFExplosion` emitted the sound on the server with the firing weapon as its source

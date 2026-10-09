@@ -268,7 +268,7 @@ public class WeaponPackTests
             Assert.NotNull(entries.Find("Porter_csgo.Weapon_DEagle.Single"));
             Assert.NotNull(entries.Find("Porter_csgo.Weapon_Glock.Single"));
             Assert.Equal(["pistol.kz16.txt", "pistol.kzt.txt"], Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Select(Path.GetFileName).Order().ToArray());
-            Assert.Contains("gamemode-weapon-scripts.patch", Report(kz16));
+            Assert.Contains("gamemode-weapon-scripts engine change", Report(kz16));
 
             // A pistol for every mode goes next to them, redefining the shot entry as before, and they keep their modes
             (PortJobResult all, _, _) = await BuildAsync("csgo", "p250", "pistol", output);

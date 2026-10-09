@@ -1,2 +1,0 @@
-# Engine patches must keep the engine source's LF line endings to apply
-*.patch text eol=lf

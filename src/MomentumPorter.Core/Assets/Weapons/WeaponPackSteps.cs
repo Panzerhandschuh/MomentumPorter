@@ -515,7 +515,7 @@ public sealed class ResolveWeaponSoundsStep : IPortStep
 
     /// <summary>
     /// Bullet weapons' shots are played with the player as the source (FX_FireBullets), and the engine only applies a
-    /// weapon's SoundData Overrides to the player's sounds with docs/engine-patches/gamemode-weapon-scripts.patch. The
+    /// weapon's SoundData Overrides to the player's sounds with the gamemode-weapon-scripts engine change (docs/engine-changes.md). The
     /// script gets the override either way; for a weapon used in every mode the pack also redefines Momentum's shot
     /// entry (e.g. Weapon_Pistol.Single) as the replacement sound, which works on any build. A weapon for some modes
     /// can't do that (the entry is shared by every mode), so its shot needs the patch.
@@ -533,7 +533,7 @@ public sealed class ResolveWeaponSoundsStep : IPortStep
 
         if (state.GameModes.Count > 0)
         {
-            context.Log.Info($"{shotEntry} isn't redefined: the {state.Weapon!.Name} is only for {GameModes.Describe(state.GameModes)}, so its shot plays through the script's override of {shotEntry} (Momentum builds with docs/engine-patches/gamemode-weapon-scripts.patch)");
+            context.Log.Info($"{shotEntry} isn't redefined: the {state.Weapon!.Name} is only for {GameModes.Describe(state.GameModes)}, so its shot plays through the script's override of {shotEntry} (Momentum builds with the gamemode-weapon-scripts engine change, see docs/engine-changes.md)");
             return;
         }
 
@@ -624,12 +624,12 @@ public sealed class WriteWeaponPackStep : IPortStep
         + "// Momentum scans momentum/custom/ at startup only: a new pack folder needs a restart, but changes inside a\n"
         + "// mounted folder (not a VPK) are read again on the next open, so a rebuilt pack only needs this.\n"
         + "sv_soundemitter_flush      // soundscripts (game_sounds_*.txt)\n"
-        + "// The particle manifest and the .pcf files it lists. Momentum builds without docs/engine-patches/\n"
-        + "// particles-reload-precache.patch lose their bullet impacts here until the next map: remove the two lines.\n"
+        + "// The particle manifest and the .pcf files it lists. Momentum builds without the particle reload\n"
+        + "// fix (docs/engine-changes.md) lose their bullet impacts here until the next map: remove the two lines.\n"
         + "sv_particles_reload\n"
         + "cl_particles_reload\n"
         + "// Models and waves already in memory are read again from disk. Momentum builds without the bone merge\n"
-        + "// fix in docs/engine-patches/bonemerge-flush-crash.patch crash here: remove the line and reload the map instead.\n"
+        + "// fix (docs/engine-changes.md) crash here: remove the line and reload the map instead.\n"
         + "flush\n"
         + "weapon_reload_scripts      // weapon scripts, then re-precaches and swaps the models on the weapons in the map\n"
         + "mat_reloadmaterial porter  // the pack's materials\n";
@@ -674,7 +674,7 @@ public sealed class WriteWeaponPackStep : IPortStep
         if (script.AttachToHands == 1 && state.ArmsModel is not null)
         {
             script.SetModel("arms", state.ArmsModel);
-            context.Report.Warn($"ModelData arms ({state.ArmsModel}) only takes effect on Momentum builds with the arms change in docs/engine-patches; until then Momentum attaches its own arms, which {game.Name}'s view models have no bones for, so no arms show");
+            context.Report.Warn($"ModelData arms ({state.ArmsModel}) only takes effect on Momentum builds with the arms change in docs/engine-changes.md; until then Momentum attaches its own arms, which {game.Name}'s view models have no bones for, so no arms show");
         }
 
         foreach ((string entry, string replacement) in state.SoundOverrides)
@@ -728,7 +728,7 @@ public sealed class WriteWeaponPackStep : IPortStep
             foreach (GameMode mode in modes)
                 sink.AddFile(slot.ScriptPathFor(mode), scriptText);
 
-            context.Report.Warn($"The {weapon.Name} is only the {slot.Name} in {GameModes.Describe(modes)}, which needs a Momentum build with docs/engine-patches/gamemode-weapon-scripts.patch (other builds ignore scripts/<mode>/). "
+            context.Report.Warn($"The {weapon.Name} is only the {slot.Name} in {GameModes.Describe(modes)}, which needs a Momentum build with the gamemode-weapon-scripts engine change in docs/engine-changes.md (other builds ignore scripts/<mode>/). "
                 + (sink.ReadFile(slot.ScriptPath) is not null ? $"Other modes keep the pack's {slot.ScriptPath}." : $"Other modes keep Momentum's {slot.Name}."));
         }
 

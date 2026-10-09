@@ -99,7 +99,7 @@
                      Classes="muted" FontSize="12" TextWrapping="Wrap" />
           <TextBlock Text="Game modes" Classes="h2" Margin="0 8 0 0" />
           <DropDownButton Content="{Binding ModesSummary}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                          ToolTip.Tip="Ticked modes get their own script (scripts/&lt;mode&gt;/), which needs the engine change in docs/engine-patches; other modes keep what the pack has">
+                          ToolTip.Tip="Ticked modes get their own script (scripts/&lt;mode&gt;/), which needs the engine change in docs/engine-changes.md; other modes keep what the pack has">
             <DropDownButton.Flyout>
               <Flyout Placement="BottomEdgeAlignedLeft">
                 <StackPanel Spacing="2" MinWidth="200">
