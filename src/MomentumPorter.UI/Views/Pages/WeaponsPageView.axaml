@@ -103,18 +103,6 @@
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
-          <!-- A paragraph per game, clipped to two lines so the weapon list keeps its room; the arrow shows the rest -->
-          <Grid ColumnDefinitions="*, Auto" IsVisible="{Binding GameLimitations, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <TextBlock Text="{Binding GameLimitations}" Classes="muted" FontSize="12" TextWrapping="Wrap"
-                       MaxLines="{Binding GameNotesMaxLines}" TextTrimming="CharacterEllipsis" />
-            <ToggleButton Grid.Column="1" IsChecked="{Binding GameNotesExpanded}" VerticalAlignment="Top" Margin="4 0 0 0"
-                          Padding="2" Background="Transparent" BorderThickness="0" ToolTip.Tip="Show the rest">
-              <Panel>
-                <materialIcons:MaterialIcon Kind="ChevronDown" Width="14" Height="14" IsVisible="{Binding !GameNotesExpanded}" />
-                <materialIcons:MaterialIcon Kind="ChevronUp" Width="14" Height="14" IsVisible="{Binding GameNotesExpanded}" />
-              </Panel>
-            </ToggleButton>
-          </Grid>
           <TextBlock Text="Weapon" Classes="h2" Margin="0 8 0 0" />
         </StackPanel>
         <Panel>

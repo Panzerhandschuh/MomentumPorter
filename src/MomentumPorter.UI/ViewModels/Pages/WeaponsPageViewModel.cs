@@ -23,7 +23,6 @@ public sealed class WeaponsPageViewModel : PageViewModel
     private CatalogGame? _selectedGame;
     private CatalogWeapon? _selectedWeapon;
     private WeaponPackBuildViewModel? _selectedBuild;
-    private bool _gameNotesExpanded;
 
     public WeaponsPageViewModel(SettingsService settings, JobRunnerService runner, Action<Action> post, WeaponCatalog? catalog = null)
     {
@@ -70,7 +69,6 @@ public sealed class WeaponsPageViewModel : PageViewModel
             // Each mode starts on the game it comes from (TF2 for Rocket and Sticky Jump, Quake 3 for Defrag...)
             _selectedGame = DefaultGameFor(value);
             this.RaisePropertyChanged(nameof(SelectedGame));
-            this.RaisePropertyChanged(nameof(GameLimitations));
             RefreshSlots();
             this.RaisePropertyChanged(nameof(BuildAllTip));
         }
@@ -105,7 +103,6 @@ public sealed class WeaponsPageViewModel : PageViewModel
         set
         {
             this.RaiseAndSetIfChanged(ref _selectedGame, value);
-            this.RaisePropertyChanged(nameof(GameLimitations));
             this.RaisePropertyChanged(nameof(BuildAllTip));
             RefreshWeapons();
         }
@@ -134,11 +131,6 @@ public sealed class WeaponsPageViewModel : PageViewModel
         set => this.RaiseAndSetIfChanged(ref _selectedBuild, value);
     }
 
-    /// <summary>What the selected game can't reproduce, from the catalog.</summary>
-    public string? GameLimitations => SelectedGame is { Limitations.Count: > 0 } game
-        ? string.Join(" ", game.Limitations.Select(x => x.TrimEnd().EndsWith('.') ? x.Trim() : x.Trim() + "."))
-        : null;
-
     /// <summary>What Build all weapons builds for the selected mode and game.</summary>
     public string? BuildAllTip
     {
@@ -154,20 +146,6 @@ public sealed class WeaponsPageViewModel : PageViewModel
                     + string.Join(", ", loadout.Select(x => $"{x.Weapon.Name} as {x.Slot.Name}"));
         }
     }
-
-    /// <summary>Whether the game's notes show in full, or clipped to a couple of lines so the weapon list has room.</summary>
-    public bool GameNotesExpanded
-    {
-        get => _gameNotesExpanded;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _gameNotesExpanded, value);
-            this.RaisePropertyChanged(nameof(GameNotesMaxLines));
-        }
-    }
-
-    /// <summary>The notes' line limit: 0 (none) when expanded.</summary>
-    public int GameNotesMaxLines => GameNotesExpanded ? 0 : 2;
 
     public ReactiveCommand<Unit, Unit> BuildCommand { get; }
 
