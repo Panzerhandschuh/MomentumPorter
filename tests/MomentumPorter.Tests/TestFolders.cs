@@ -29,11 +29,26 @@ internal sealed class TempFolder : IDisposable
     {
         try
         {
-            Directory.Delete(Path, recursive: true);
+            Delete(Path);
         }
         catch (IOException)
         {
         }
+    }
+
+    // Unlinks junctions on its own, since a recursive delete unmounts them with DeleteVolumeMountPoint, which needs admin
+    private static void Delete(string directory)
+    {
+        foreach (string child in Directory.EnumerateDirectories(directory))
+        {
+            var info = new DirectoryInfo(child);
+            if (info.LinkTarget is not null)
+                info.Delete();
+            else
+                Delete(child);
+        }
+
+        Directory.Delete(directory, recursive: true);
     }
 }
 

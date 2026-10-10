@@ -42,14 +42,34 @@ go along with it.
   the pack (see [player-sounds.md](player-sounds.md)).
 - **Player Models**: placeholder; see [player-models.md](player-models.md) for the feasibility study.
 
+## Packing assets
+
 A Windows build of bspPack with the fixes these ports need comes with the porter (`bspPack/` next to the app, from
-[tools/bspPack](../tools/bspPack)). bspPack reads its `config.ini` (the game folder it packs assets from) and
-`ResourceConfig.ini` from its own folder, so set those up for the source game, e.g. a stub game folder that only
-mounts KZ's content. bspPack runs bspzip from `<game folder>/../bin/win64`. The porter won't run a bspPack without a
-`config.ini`, and when Settings doesn't name one it uses the first copy it finds that has one. The pre-pack command runs
-through the shell before every bspPack run; `{resourceconfig}`, `{bsppack}`, `{bsppackdir}` and `{bsp}` are replaced
-with paths, so the bat's ResourceConfig update becomes
-`python "<path>\kz_shadowed_excludes.py" "{resourceconfig}"`.
+[tools/bspPack](../tools/bspPack)), and the porter sets it up for each map's game. bspPack reads the game folder it
+packs from in its `config.ini` and runs bspzip from `<game folder>/../bin/win64`, so before each pack the porter
+writes, in `%LocalAppData%/MomentumPorter/bspPack`:
+
+- `bin/win64`, a junction to Momentum's `bin/win64` for its bspzip.
+- `<game>/gameinfo.txt`, a stub game folder that searches only the game's own content, so nothing Momentum already has
+  (its own content, HL2's, the games it mounts) gets packed.
+- `<game>/vpk`, the game's VPKs extracted, since bspPack only packs loose files. This happens on the first pack (KZ's
+  are 2.3 GB and take a few minutes) and again when the VPKs change.
+
+It then writes bspPack's `config.ini`, pointing at the stub, and its `ResourceConfig.ini`, excluding the game's loose
+files that a VPK searched before them shadows (the game never loads them, and Momentum has the VPK's copy):
+
+| Game | Searches | Excludes loose files shadowed by |
+|---|---|---|
+| Kreedz Climbing | `kz_textures`, `kz_sounds` and `kz_misc` extracted, then the loose `kz` folder | KZ's HL2 VPKs |
+| CS:GO (GOKZ) | the loose `csgo` folder (Momentum mounts CS:GO's VPKs) | `pak01` |
+
+A bspPack set in Settings is left as it is: set up its `config.ini` and `ResourceConfig.ini` by hand, e.g. with a stub
+game folder like the ones above. The porter won't run one without a `config.ini`, since bspPack would ask which game
+to pack from and wait for an answer.
+
+The pre-pack command runs through the shell before every bspPack run, after the porter writes its files;
+`{resourceconfig}`, `{bsppack}`, `{bsppackdir}` and `{bsp}` are replaced with paths, e.g.
+`python "<path>\my_excludes.py" "{resourceconfig}"`.
 
 ## Quake 3 and GoldSrc maps
 

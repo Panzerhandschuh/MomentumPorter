@@ -1,13 +1,16 @@
 namespace MomentumPorter.Steps;
 
 using MomentumPorter.Pipeline;
+using MomentumPorter.Porting;
 using MomentumPorter.Settings;
+using MomentumPorter.Steam;
 using MomentumPorter.Tools;
 
 /// <summary>
 /// Packs the assets the ported map uses from its source game into it with bspPack (<c>-M -C</c>).
 /// The map is packed in the job's work folder; if the output lies elsewhere, it is copied in and back.
-/// bspPack's location and pre-pack command come from the <see cref="PorterSettings"/> in the context.
+/// bspPack's location and pre-pack command come from the <see cref="PorterSettings"/> in the context. The bundled
+/// bspPack is pointed at the map's game first (see <see cref="BspPackGames"/>); other copies use their own config.ini.
 /// </summary>
 public sealed class BspPackStep : IPortStep
 {
@@ -29,10 +32,10 @@ public sealed class BspPackStep : IPortStep
         if (!tool.Exists)
             throw new PortStepException($"bspPack wasn't found at {executable}. Set its location in Settings.");
 
-        if (!tool.IsConfigured)
+        if (!tool.IsBundled && !tool.IsConfigured)
         {
             throw new PortStepException($"bspPack has no config.ini ({tool.ConfigPath}). Create one naming the game folder to pack "
-                + "assets from (the folder with gameinfo.txt, with bspzip in ../bin/win64), or set bspPack's location in Settings to a copy that has one.");
+                + "assets from (the folder with gameinfo.txt, with bspzip in ../bin/win64), or clear bspPack's location in Settings to use the one that comes with the porter.");
         }
 
         if (!File.Exists(state.OutputPath))
@@ -48,8 +51,15 @@ public sealed class BspPackStep : IPortStep
             File.Copy(output, target, overwrite: true);
         }
 
-        if (tool.ReadConfiguredGameFolder() is { } gameFolder)
+        if (tool.IsBundled)
+        {
+            BspPackGame game = PrepareGame(context, state, settings, tool);
+            context.Log.Info($"bspPack packs assets from {game.Name} ({game.GameFolder})");
+        }
+        else if (tool.ReadConfiguredGameFolder() is { } gameFolder)
+        {
             context.Log.Info($"bspPack packs assets from {gameFolder} (set in {tool.ConfigPath})");
+        }
 
         if (!string.IsNullOrWhiteSpace(settings.PrePackCommand))
             await tool.RunPrePackCommandAsync(settings.PrePackCommand, target, context.WorkDirectory, context.Log, context.Cancellation).ConfigureAwait(false);
@@ -64,6 +74,23 @@ public sealed class BspPackStep : IPortStep
 
         if (!inWorkDirectory)
             File.Copy(target, output, overwrite: true);
+    }
+
+    /// <summary>
+    /// Sets up the game the map's profile packs from and points the bundled bspPack at it.
+    /// </summary>
+    private static BspPackGame PrepareGame(PortJobContext context, MapPortState state, PorterSettings settings, BspPackTool tool)
+    {
+        IGameProfile profile = state.Profile ?? throw new InvalidOperationException("The map's game profile hasn't been applied");
+        SteamLocator steam = context.TryGet<SteamLocator>() ?? new SteamLocator();
+        string momentumInstall = settings.ResolveMomentumContentDirectory(steam) is { } content
+            ? Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(content)))!
+            : throw new PortStepException("Momentum Mod wasn't found; bspPack needs its bspzip. Set Momentum's folder in Settings.");
+
+        BspPackGames games = context.TryGet<BspPackGames>() ?? new BspPackGames(BspPackGames.DefaultRootDirectory);
+        BspPackGame game = games.Prepare(profile.Name, state.GameDirectory, momentumInstall, steam, context.Log, context.Cancellation);
+        tool.WriteConfig(game, steam.SteamRoot);
+        return game;
     }
 
     internal static bool IsInside(string path, string directory)

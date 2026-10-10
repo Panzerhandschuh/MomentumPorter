@@ -15,8 +15,7 @@ Built with:
 dotnet publish bspPack.csproj -c Release -r win-x64
 ```
 
-bspPack still needs a `config.ini` next to it naming the game folder to pack assets from (see
-[docs/maps.md](../../docs/maps.md)). The porter won't run a copy without one, since bspPack would otherwise ask which
-game to use and wait for an answer.
+The porter writes its `config.ini` and `ResourceConfig.ini` before each pack, for the map's game (see
+[docs/maps.md](../../docs/maps.md#packing-assets)).
 
 This goes away once the fixes are upstream and bspPack becomes a submodule like BSPConvert.

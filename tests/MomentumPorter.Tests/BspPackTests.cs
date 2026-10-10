@@ -4,6 +4,7 @@ using LibBSP;
 using MomentumPorter.Options;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Settings;
+using MomentumPorter.Steam;
 using MomentumPorter.Steps;
 using MomentumPorter.Tools;
 using Xunit;
@@ -82,8 +83,9 @@ public class BspPackTests
     }
 
     /// <summary>
-    /// Ports and packs a real KZ map with the local bspPack (configured for the KZ stub game) when both are around,
-    /// in the job's work folder, then optionally installs it into a fake Momentum folder.
+    /// Ports and packs a real KZ map with the bundled bspPack, set up by the porter, when KZ and Momentum are installed.
+    /// Packs in the job's work folder, then optionally installs it into a fake Momentum folder that borrows the real
+    /// one's bspzip. The first run extracts KZ's VPKs into the porter's cache, like the app does.
     /// </summary>
     [Theory]
     [InlineData(false)]
@@ -91,12 +93,15 @@ public class BspPackTests
     public async Task PortsAndPacksKzDance(bool install)
     {
         string? input = KzMaps.Find("kz_dance");
-        string? bspPack = BspPackTool.FindDefault();
-        if (input is null || bspPack is null || !new BspPackTool(bspPack).IsConfigured)
+        string bspPack = BspPackTool.BundledPath;
+        string? realMomentum = new SteamLocator().FindMomentum()?.InstallDirectory;
+        if (input is null || !File.Exists(bspPack) || realMomentum is null)
             return;
 
         using var temp = new TempFolder();
         string momentum = temp.CreateMomentumInstall();
+        Directory.CreateDirectory(Path.Combine(momentum, "bin"));
+        BspPackGames.CreateDirectoryLink(Path.Combine(momentum, "bin", "win64"), Path.Combine(realMomentum, "bin", "win64"));
         string work = temp.Combine("work");
         Directory.CreateDirectory(work);
         string output = Path.Combine(work, "kz_dance.bsp");
@@ -110,6 +115,7 @@ public class BspPackTests
         PortJobResult result = await job.RunAsync(context);
 
         Assert.True(result.Succeeded, $"{result.FailedStep}: {result.Error}\n{string.Join('\n', log)}");
+        Assert.Contains(log, x => x.StartsWith("bspPack packs assets from Kreedz Climbing "));
         Assert.Contains(log, x => x.StartsWith("[bspPack.exe] ") || x.StartsWith("[bspPack] "));
         Assert.Contains(log, x => x.StartsWith("Packed kz_dance.bsp: "));
         Assert.True(File.Exists(output));

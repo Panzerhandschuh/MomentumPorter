@@ -122,6 +122,9 @@ public sealed class SettingsPageViewModel : PageViewModel
             if (!tool.Exists)
                 return $"{path} doesn't exist";
 
+            if (tool.IsBundled)
+                return $"Using the bspPack that comes with the porter ({path}), set up for each map's game";
+
             return tool.ReadConfiguredGameFolder() is { } game
                 ? $"Using {path}, packing assets from {game}"
                 : $"Using {path}; it needs a config.ini naming the game folder to pack assets from";
