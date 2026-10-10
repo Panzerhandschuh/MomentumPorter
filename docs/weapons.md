@@ -8,6 +8,7 @@ MomentumPorter weapon --game css --weapon ak47 [--slot machinegun] [--modes kzt,
                       [--no-world-fit] [--gun-fov <degrees>] [--no-defrag-configs]
                       [--momentum-dir <install>] [--game-dir <content folder>] [--studiomdl <exe>]
 MomentumPorter weapon --game q3 --all [--modes ...] --output <folder> [options as above]
+MomentumPorter weapon --restore --slot knife [--modes surf] --output <folder> [--name <pack>] [--momentum-dir <install>]
 MomentumPorter weapon --list [--game css]
 ```
 
@@ -17,7 +18,7 @@ each replace `game_sounds_momentum_weapons.txt` and the particle manifest and Mo
 a separate folder anyway). Copy the folder into `momentum/custom/` and restart Momentum: it only scans `custom/` at
 startup, and models and sounds it has loaded stay in memory, so restart after rebuilding a pack too. (Packs from older
 versions had a `cfg/porter_reload.cfg` that reloaded them in game; its reload commands crash or break effects without
-engine fixes that were set aside, so rebuilding a pack removes it.) Removing the pack brings Momentum's weapon back.
+engine fixes that were set aside, so rebuilding a pack removes it.) Removing the pack brings Momentum's weapons back; `--restore` (a weapon's reset button in the app) brings back one.
 Nothing is written into the Momentum install (except the Quake 3 config blocks below); models are compiled against a
 stub game folder in a temp work folder.
 
@@ -39,7 +40,11 @@ weapons that fit are listed, best fit first). Each mode starts on the game it co
 the Demoman's, Ahop on Half-Life 2, Conc on Half-Life and Defrag on Quake 3. The pack is built with the defaults below into Momentum's `custom`
 folder, for that mode only. **Build all weapons** fills every weapon of the mode from the chosen game, taking a weapon
 for a slot it fits second best when the mode has no slot for its best fit (Quake 3's railgun as the sniper outside
-Defrag). The list of Momentum weapons shows what the pack holds for each in that mode.
+Defrag). The list of Momentum weapons shows what the pack holds for each in that mode. The reset button on a weapon
+the pack holds (shown on hover) gives it back to Momentum in that mode (`--restore`): it removes the pack's script for it there and the sound
+entries of the weapon that was in it, and merges the pack's soundscripts again. A script for every mode (from the
+command line without `--modes`) still applies in modes without their own, which the report says. Models, materials and
+sounds stay in the pack, since another weapon may use them; restart Momentum afterwards.
 
 | `--game` | Game | How |
 |---|---|---|
@@ -74,8 +79,13 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   [engine-changes.md](engine-changes.md) (without it Momentum's arms are attached, and they share no bones with CS:GO's view models). CS:S
   and CS 1.6 models are left handed (`BuiltRightHanded 0`). Momentum mounts these games together, and a path two of
   them ship (CS:S's and CS:GO's `models/weapons/v_pist_deagle.mdl`) is one game's file for every script that names it,
-  so a model another mounted game ships too is copied into the pack as `models/porter/<game>/...` (reported; its
-  materials keep their paths, with a warning when the other game ships those too).
+  so a model another mounted game ships too is copied into the pack as `models/porter/<game>/...` (reported). The same
+  goes for materials: CS:S's `v_knife_t.mdl` uses `models/weapons/v_models/knife_t/knife_t`, which CS:GO ships too for
+  its own knife, laid out differently. A material another mounted game or Momentum ships with different contents (the
+  .vmt or a texture it names) is copied into the pack under `materials/porter/<game>/`, with its texture paths pointed
+  at the copied textures, and the pack's copy of the model gets those folders in front of its `$cdmaterials` (appended
+  to the .mdl, no recompile), so it finds its own copy first while the other game's models keep the original. Fitted
+  world models get the same. Identical files (CS:S's and CS:GO's `v_hands`) are left where they are.
 - **Muzzle flashes**: a gun whose catalog entry names no `MuzzleFlashEffect` (CS:S, HL2, CS 1.6, HL1) gets CS:GO's
   flash for its slot when CS:GO is mounted (pistol, assault rifle, auto shotgun or AWP, with CS:GO's particle file added
   to the manifest), else the assault rifle flash Momentum ships in `particles/weapons.pcf`. Momentum's view models have

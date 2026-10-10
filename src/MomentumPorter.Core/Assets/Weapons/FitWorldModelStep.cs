@@ -60,7 +60,13 @@ public sealed class FitWorldModelStep : IPortStep
             (CompiledModel model, WorldModelFit fit) = await WorldModelFitter.CompileAsync(
                 mesh, sourceFrame, ReadReplacedModel(state), compiler, modelName, context.Cancellation).ConfigureAwait(false);
             foreach ((string gamePath, string file) in model.Files)
-                state.Sink!.AddFile(gamePath, file);
+            {
+                // It keeps the source model's materials, which another mounted game may ship too
+                if (state.Materials is { } materials && gamePath.EndsWith(".mdl", StringComparison.OrdinalIgnoreCase))
+                    state.Sink!.AddFile(gamePath, materials.Patch(context, source, File.ReadAllBytes(file)));
+                else
+                    state.Sink!.AddFile(gamePath, file);
+            }
 
             state.WorldModel = model.GamePath;
             context.Log.Info($"Fitted {source} to Momentum's player's hand as {model.GamePath}: {fit}");

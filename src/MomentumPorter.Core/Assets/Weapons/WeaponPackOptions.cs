@@ -37,6 +37,13 @@ public sealed class WeaponPackOptions
     public string? GameModes { get; set; }
 
     /// <summary>
+    /// Give the slot back to Momentum in <see cref="GameModes"/> (every mode when empty) instead of porting a weapon
+    /// into it: the pack's scripts and sound entries for it there are removed. <see cref="Game"/> and
+    /// <see cref="Weapon"/> aren't used.
+    /// </summary>
+    public bool Restore { get; set; }
+
+    /// <summary>
     /// Name of the pack folder, as it would sit in momentum/custom/. Null for momentumporter, which every weapon pack
     /// shares: packs in one folder merge the soundscript and particle manifest they'd otherwise each replace, while
     /// packs in separate folders hide each other's.

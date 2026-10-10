@@ -95,6 +95,25 @@ public class WeaponPackTests
         }
     }
 
+    private static async Task<PortJobResult> RestoreAsync(string slot, string output, string? modes = null)
+    {
+        var options = new WeaponPackOptions { Restore = true, Slot = slot, OutputDirectory = output, GameModes = modes };
+        (PortJob job, WeaponPackState state) = WeaponPackBuilder.CreateJob(options);
+        state.Steam = WeaponTestGames.Locator;
+        string work = PortJob.CreateWorkDirectory("weapon_test");
+        var context = new PortJobContext { Log = NullLog.Instance, WorkDirectory = work };
+        context.Set(state);
+        try
+        {
+            return await job.RunAsync(context);
+        }
+        finally
+        {
+            state.Dispose();
+            Directory.Delete(work, recursive: true);
+        }
+    }
+
     private static string Report(PortJobResult result)
     {
         var writer = new StringWriter();
@@ -150,6 +169,40 @@ public class WeaponPackTests
             Assert.Single(entries.FindAll("Weapon_SMG1.Single"));
             Assert.Contains("ak47", entries.Find("Weapon_SMG1.Single")!.Write(), StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Wrote scripts/weapon_momentum_machinegun.txt", Report(result));
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(pack)!, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CssKnifeKeepsItsOwnMaterialsWhereCsgoShipsThemToo()
+    {
+        if (!CanBuild("css") || !CanBuild("csgo"))
+            return;
+
+        (PortJobResult result, string pack, _) = await BuildAsync("css", "knife", "knife", modes: "surf");
+        try
+        {
+            Assert.True(result.Succeeded, result.Error);
+
+            // CS:GO ships models/weapons/v_models/knife_t/knife_t for its own knife, laid out differently: the pack
+            // has CS:S's copy under materials/porter/css/, and its copy of the model looks there first
+            WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "surf", "weapon_momentum_knife.txt")));
+            Assert.Equal("models/porter/css/weapons/v_knife_t.mdl", script.GetModel("view"));
+            StudioModelHeader header = StudioModelHeader.Read(Path.Combine(pack, "models", "porter", "css", "weapons", "v_knife_t.mdl"));
+            Assert.Equal(@"porter\css\models\weapons\v_models\knife_t\", header.TextureDirectories[0]);
+            Assert.Equal(3, header.TextureDirectories.Count);
+            Assert.Equal(["knife_t", "v_hands"], header.Textures);
+
+            string material = Path.Combine(pack, "materials", "porter", "css", "models", "weapons", "v_models", "knife_t");
+            Assert.Contains("\"porter/css/models/weapons/v_models/knife_t/knife_t\"", File.ReadAllText(Path.Combine(material, "knife_t.vmt")));
+            Assert.True(File.Exists(Path.Combine(material, "knife_t.vtf")));
+            Assert.Contains("knife_t (Counter-Strike: Global Offensive)", Report(result));
+
+            // The hands are the same file in both games, so they stay where they are
+            Assert.False(Directory.Exists(Path.Combine(pack, "materials", "porter", "css", "models", "weapons", "v_models", "hands")));
         }
         finally
         {
@@ -296,6 +349,25 @@ public class WeaponPackTests
             Assert.Equal("Desert Eagle from Counter-Strike: Global Offensive", Assert.Single(inventory, x => x.Mode?.Id == "kzt").Description);
             Assert.Equal("P250 from Counter-Strike: Global Offensive", Assert.Single(inventory, x => x.Mode is null).Description);
 
+            // Restoring KZT's pistol removes its script and its shot, and says the P250 for every mode still applies there
+            PortJobResult restored = await RestoreAsync("pistol", output, "kzt");
+            Assert.True(restored.Succeeded, restored.Error);
+            Assert.False(File.Exists(Path.Combine(pack, "scripts", "kzt", "weapon_momentum_pistol.txt")));
+            Assert.False(File.Exists(Path.Combine(pack, "scripts", "kzt", "game_sounds_momentum_weapons.txt")));
+            Assert.False(File.Exists(Path.Combine(pack, "scripts", "porter_weapons", "pistol.kzt.txt")));
+            Assert.True(File.Exists(Path.Combine(pack, "scripts", "kz16", "weapon_momentum_pistol.txt")));
+            Assert.Contains("still use it", Report(restored));
+            entries = KeyValuesNode.ParseDocument(File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt")));
+            Assert.Null(entries.Find("Porter_csgo.Weapon_DEagle.Single"));
+            Assert.NotNull(entries.Find("Porter_csgo.Weapon_Glock.Single"));
+
+            // Restoring it for every mode removes the rest, and the pack's soundscript with them
+            restored = await RestoreAsync("pistol", output);
+            Assert.True(restored.Succeeded, restored.Error);
+            Assert.Empty(WeaponPackInventory.Read(pack));
+            Assert.False(File.Exists(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt")));
+            Assert.False(File.Exists(Path.Combine(pack, "scripts", "kz16", "game_sounds_momentum_weapons.txt")));
+
             (PortJobResult unknown, _, _) = await BuildAsync("csgo", "deagle", "pistol", output, "kzx");
             Assert.False(unknown.Succeeded);
             Assert.Contains("kzx", unknown.Error);
@@ -432,7 +504,9 @@ public class WeaponPackTests
         {
             Assert.True(result.Succeeded, result.Error);
             WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_shotgun.txt")));
-            Assert.Equal("models/weapons/v_shotgun.mdl", script.GetModel("view"));
+            // Momentum ships its own models/weapons/v_hand/v_hand_sheet, so the model is copied to keep HL2's
+            Assert.Equal("models/porter/hl2/weapons/v_shotgun.mdl", script.GetModel("view"));
+            Assert.True(File.Exists(Path.Combine(pack, "materials", "porter", "hl2", "models", "weapons", "v_hand", "v_hand_sheet.vmt")));
             Assert.Equal("Porter_hl2.Weapon_Shotgun.Single", script.SoundOverrides["Weapon_Shotgun.Single"]);
             Assert.NotNull(KeyValuesNode.ParseDocument(File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt"))).Find("Porter_hl2.Weapon_Shotgun.Single"));
         }

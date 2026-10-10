@@ -2,6 +2,7 @@ namespace MomentumPorter.UI.ViewModels.Pages;
 
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Linq;
 using Material.Icons;
 using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
@@ -40,6 +41,7 @@ public sealed class WeaponsPageViewModel : PageViewModel
         BuildCommand = ReactiveCommand.CreateFromTask(BuildAsync, canBuild);
         IObservable<bool> canBuildAll = this.WhenAnyValue(x => x.SelectedGame, x => x.SelectedMode, x => x.Runner.IsRunning, (game, mode, isRunning) => game is not null && !isRunning && game.LoadoutFor(mode.Slots, mode.PicksFor(game.Id)).Count > 0);
         BuildAllCommand = ReactiveCommand.CreateFromTask(BuildAllAsync, canBuildAll);
+        ResetCommand = ReactiveCommand.CreateFromTask<MomentumWeaponViewModel>(ResetAsync, running.Select(x => !x));
         CancelCommand = ReactiveCommand.Create(runner.Cancel, running);
         OpenPackFolderCommand = ReactiveCommand.Create(OpenPackFolder);
 
@@ -150,6 +152,9 @@ public sealed class WeaponsPageViewModel : PageViewModel
     public ReactiveCommand<Unit, Unit> BuildCommand { get; }
 
     public ReactiveCommand<Unit, Unit> BuildAllCommand { get; }
+
+    /// <summary>Gives one of the mode's Momentum weapons back to Momentum (the reset button on each weapon the pack holds).</summary>
+    public ReactiveCommand<MomentumWeaponViewModel, Unit> ResetCommand { get; }
 
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
 
@@ -263,6 +268,17 @@ public sealed class WeaponsPageViewModel : PageViewModel
             build.Finish(QueueStatus.Skipped, "Cancelled");
     }
 
+    /// <summary>Gives a Momentum weapon back to Momentum in the selected mode, removing the pack's weapon there.</summary>
+    public async Task ResetAsync(MomentumWeaponViewModel slot)
+    {
+        WeaponPackOptions options = SnapshotOptions("", slot.Slot.Id);
+        options.Restore = true;
+        var build = new WeaponPackBuildViewModel($"{SelectedMode.Name}: Momentum's {slot.Name} restored", options);
+        Builds.Insert(0, build);
+        SelectedBuild = build;
+        await Runner.RunAsync(new List<WeaponPackBuildViewModel> { build }, Prepare);
+    }
+
     private string BuildTitle(CatalogGame game, CatalogWeapon weapon, WeaponSlot slot) => $"{SelectedMode.Name}: {game.Name} {weapon.Name} as {slot.Name}";
 
     /// <summary>The page's choice for one weapon as options, copied so later changes on the page don't touch a queued build.</summary>
@@ -298,7 +314,7 @@ public sealed class WeaponsPageViewModel : PageViewModel
             options.OutputDirectory = OutputDirectory(settings);
 
         (PortJob job, WeaponPackState state) = WeaponPackBuilder.CreateJob(options);
-        string workDirectory = PortJob.CreateWorkDirectory($"weapon_{options.Game}_{options.Weapon}");
+        string workDirectory = PortJob.CreateWorkDirectory(options.Restore ? $"weapon_restore_{options.Slot}" : $"weapon_{options.Game}_{options.Weapon}");
 
         return new PreparedJob(
             job,
@@ -321,7 +337,8 @@ public sealed class WeaponsPageViewModel : PageViewModel
 
                 string? warnings = context.Report.HasWarnings ? " (see the report)" : null;
                 WeaponPackOutput? output = context.TryGet<WeaponPackOutput>();
-                return new JobOutcome(QueueStatus.Done, $"Pack written{warnings}", OutputPath: output?.PackDirectory);
+                string done = options.Restore ? "Momentum's weapon is back; restart Momentum" : "Pack written";
+                return new JobOutcome(QueueStatus.Done, $"{done}{warnings}", OutputPath: output?.PackDirectory);
             });
     }
 

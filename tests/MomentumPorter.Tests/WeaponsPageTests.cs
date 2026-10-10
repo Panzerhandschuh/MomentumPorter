@@ -152,6 +152,23 @@ public class WeaponsPageTests
     }
 
     [Fact]
+    public async Task ResettingAWeaponGivesItBackToMomentumInTheSelectedMode()
+    {
+        WeaponsPageViewModel page = CreatePage();
+        page.SelectedMode = page.Modes.Single(x => x.Name == "Defrag");
+        MomentumWeaponViewModel railgun = page.Slots.Single(x => x.Slot.Id == "df_railgun");
+
+        // Any weapon of the list, not only the selected one
+        await page.ResetAsync(railgun);
+
+        WeaponPackBuildViewModel build = Assert.Single(page.Builds);
+        Assert.Equal("Defrag: Momentum's Railgun restored", build.Title);
+        Assert.True(build.Options!.Restore);
+        Assert.Equal("df_railgun", build.Options.Slot);
+        Assert.Equal("df_cpm,df_vq3,df_vtg", build.Options.GameModes);
+    }
+
+    [Fact]
     public void DescribesWhatThePackHoldsPerMode()
     {
         WeaponSlot pistol = WeaponSlots.Find("pistol")!;

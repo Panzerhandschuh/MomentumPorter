@@ -73,18 +73,40 @@
           <TextBlock Text="Momentum weapon" Classes="h2" Margin="0 8 0 0" />
         </StackPanel>
         <ListBox Classes="choices" ItemsSource="{Binding Slots}" SelectedItem="{Binding SelectedSlot}" Background="Transparent" Margin="4 0 4 4">
+          <ListBox.Styles>
+            <!-- The reset button only shows on the weapon under the pointer; it keeps its space so the text doesn't reflow -->
+            <Style Selector="ListBoxItem Button.reset">
+              <Setter Property="Opacity" Value="0" />
+              <Setter Property="IsHitTestVisible" Value="False" />
+            </Style>
+            <Style Selector="ListBoxItem:pointerover Button.reset">
+              <Setter Property="Opacity" Value="1" />
+              <Setter Property="IsHitTestVisible" Value="True" />
+            </Style>
+          </ListBox.Styles>
           <ListBox.ItemTemplate>
             <DataTemplate DataType="vm:MomentumWeaponViewModel">
-              <StackPanel Spacing="1">
-                <TextBlock Text="{Binding Name}" />
-                <!-- What the pack installed in it; the package icon marks it as the pack's, not Momentum's own -->
-                <Grid ColumnDefinitions="Auto, *" IsVisible="{Binding InPack, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                      ToolTip.Tip="Installed by the pack in momentum/custom">
-                  <materialIcons:MaterialIcon Kind="PackageVariantClosed" Width="12" Height="12" Margin="0 1 4 0"
-                                              VerticalAlignment="Top" Foreground="{StaticResource SuccessBrush}" />
-                  <TextBlock Grid.Column="1" Text="{Binding InPack}" Classes="muted" FontSize="11" TextWrapping="Wrap" />
-                </Grid>
-              </StackPanel>
+              <Grid ColumnDefinitions="*, Auto">
+                <StackPanel Spacing="1">
+                  <TextBlock Text="{Binding Name}" />
+                  <!-- What the pack installed in it; the package icon marks it as the pack's, not Momentum's own -->
+                  <Grid ColumnDefinitions="Auto, *" IsVisible="{Binding InPack, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        ToolTip.Tip="Installed by the pack in momentum/custom">
+                    <materialIcons:MaterialIcon Kind="PackageVariantClosed" Width="12" Height="12" Margin="0 1 4 0"
+                                                VerticalAlignment="Top" Foreground="{StaticResource SuccessBrush}" />
+                    <TextBlock Grid.Column="1" Text="{Binding InPack}" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                  </Grid>
+                </StackPanel>
+                <!-- Only weapons the pack holds something for can be reset -->
+                <Panel Grid.Column="1" VerticalAlignment="Center" Margin="6 0 -4 0"
+                       IsVisible="{Binding InPack, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                  <Button Classes="icon reset"
+                          Command="{Binding #Page.((vm:WeaponsPageViewModel)DataContext).ResetCommand}" CommandParameter="{Binding}"
+                          ToolTip.Tip="Reset to Momentum's own: remove the pack's weapon from it in this game mode (restart Momentum to see it)">
+                    <materialIcons:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                  </Button>
+                </Panel>
+              </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>

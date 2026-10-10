@@ -60,6 +60,9 @@ internal sealed class WeaponCliOptions
     [Option("studiomdl", HelpText = "studiomdl.exe for converted models. Defaults to Momentum's.")]
     public string? StudioMdl { get; set; }
 
+    [Option("restore", HelpText = "Give --slot back to Momentum in --modes (every mode by default): removes the pack's weapon there instead of porting one")]
+    public bool Restore { get; set; }
+
     [Option("list", HelpText = "List the catalog's weapons (of --game, if given) and exit")]
     public bool List { get; set; }
 }
@@ -87,6 +90,28 @@ internal static class WeaponCommand
         WeaponCatalog catalog = WeaponCatalog.Default;
         if (cli.List)
             return List(catalog, cli.Game);
+
+        if (cli.Restore)
+        {
+            if (cli.Slot is null || cli.Output is null)
+            {
+                Console.Error.WriteLine("weapon --restore needs --slot and --output");
+                return 1;
+            }
+
+            var restore = new WeaponPackOptions
+            {
+                Restore = true,
+                Slot = cli.Slot,
+                GameModes = cli.Modes,
+                OutputDirectory = cli.Output,
+                PackName = cli.Name,
+                MomentumDirectory = cli.MomentumDirectory,
+            };
+            PortJobResult restored = await WeaponPackBuilder.RunAsync(restore, ConsoleLog.Instance);
+            restored.Report.Print(Console.Out);
+            return restored.Succeeded ? 0 : 1;
+        }
 
         if (cli.Game is null || (cli.Weapon is null && !cli.All) || cli.Output is null)
         {

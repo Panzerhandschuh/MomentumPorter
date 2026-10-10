@@ -90,10 +90,24 @@ public sealed class WeaponPackState(WeaponPackOptions options) : IDisposable
     /// <summary>Particle files the pack's effects need that Momentum's manifest doesn't list ("!" precaches).</summary>
     public List<string> ParticleFiles { get; } = [];
 
+    /// <summary>
+    /// The other games Momentum mounts, whose files hide the source game's at the same paths (opened by
+    /// <see cref="CheckMountedAssetsStep"/> for a game Momentum mounts).
+    /// </summary>
+    public List<GameContent> OtherMountedGames { get; } = [];
+
+    /// <summary>Copies the materials another mounted game ships too into the pack; null for games Momentum doesn't mount.</summary>
+    public MountedMaterials? Materials { get; set; }
+
     public void Dispose()
     {
         Content?.Dispose();
         Content = null;
+        foreach (GameContent other in OtherMountedGames)
+            other.Dispose();
+
+        OtherMountedGames.Clear();
+        Materials = null;
     }
 }
 
@@ -110,6 +124,9 @@ public static class WeaponPackBuilder
     public static (PortJob Job, WeaponPackState State) CreateJob(WeaponPackOptions options)
     {
         var state = new WeaponPackState(options);
+        if (options.Restore)
+            return (new PortJob($"restore_{options.Slot}", [new RestoreWeaponStep()]), state);
+
         var steps = new List<IPortStep>
         {
             new LoadWeaponStep(),

@@ -51,17 +51,7 @@ public sealed class LoadWeaponStep : IPortStep
 
         SourceGameInfo info = SourceGames.Find(game.Id) ?? throw new PortStepException($"The porter can't open {game.Name}'s files");
         SteamLocator steam = state.Steam ??= new SteamLocator();
-        MomentumInstall momentum;
-        try
-        {
-            momentum = options.MomentumDirectory is { Length: > 0 } dir
-                ? new MomentumInstall(dir)
-                : MomentumInstall.Find(steam) ?? throw new PortStepException("Momentum Mod isn't installed through Steam; give its install folder");
-        }
-        catch (DirectoryNotFoundException ex)
-        {
-            throw new PortStepException(ex.Message, ex);
-        }
+        MomentumInstall momentum = OpenMomentum(options, steam);
 
         try
         {
@@ -93,7 +83,7 @@ public sealed class LoadWeaponStep : IPortStep
         state.Slot = slot;
         state.GameModes = modes;
         state.Momentum = momentum;
-        state.PackName = SanitizePackName(string.IsNullOrWhiteSpace(options.PackName) ? WeaponPackBuilder.SharedPackName : options.PackName);
+        state.PackName = PackName(options);
         state.PackDirectory = Path.GetFullPath(Path.Combine(options.OutputDirectory, state.PackName));
         state.Sink ??= new FolderPackSink(state.PackDirectory);
 
@@ -103,6 +93,25 @@ public sealed class LoadWeaponStep : IPortStep
 
         return Task.CompletedTask;
     }
+
+    /// <summary>The Momentum install the options name, else the one Steam has.</summary>
+    internal static MomentumInstall OpenMomentum(WeaponPackOptions options, SteamLocator steam)
+    {
+        try
+        {
+            return options.MomentumDirectory is { Length: > 0 } dir
+                ? new MomentumInstall(dir)
+                : MomentumInstall.Find(steam) ?? throw new PortStepException("Momentum Mod isn't installed through Steam; give its install folder");
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            throw new PortStepException(ex.Message, ex);
+        }
+    }
+
+    /// <summary>The pack folder's name: the options' name made safe, or the shared folder.</summary>
+    internal static string PackName(WeaponPackOptions options) =>
+        SanitizePackName(string.IsNullOrWhiteSpace(options.PackName) ? WeaponPackBuilder.SharedPackName : options.PackName);
 
     private static string SanitizePackName(string name)
     {
@@ -144,8 +153,9 @@ public sealed class CheckMountedAssetsStep : IPortStep
 
         // Momentum mounts CS:S, CS:GO, TF2 and HL2 together, and a path two of them ship (CS:S's and CS:GO's
         // models/weapons/v_pist_deagle.mdl) is one game's file for every weapon script that names it. A model another
-        // mounted game ships too is copied into the pack under its own path; the pack's folder is mounted first.
-        using var copier = new MountedModelCopier(state);
+        // mounted game ships too is copied into the pack under its own path; the pack's folder is mounted first. The
+        // same goes for materials (CS:S's and CS:GO's knife_t), which the pack's copy of the model looks up elsewhere.
+        var copier = new MountedModelCopier(state);
         bool sideIsView = state.ViewSideModel == state.ViewModel;
         state.ViewModel = copier.Resolve(context, state, state.ViewModel);
         state.ViewSideModel = sideIsView ? state.ViewModel : copier.Resolve(context, state, state.ViewSideModel);
@@ -187,18 +197,19 @@ public sealed class CheckMountedAssetsStep : IPortStep
 }
 
 /// <summary>
-/// Copies a mounted game's model into the pack when another game Momentum mounts ships the same path. See
-/// <see cref="CheckMountedAssetsStep"/>.
+/// Copies a mounted game's model into the pack when another game Momentum mounts ships the same path, or a material at
+/// the same path as one of the model's (<see cref="MountedMaterials"/>). See <see cref="CheckMountedAssetsStep"/>.
 /// </summary>
-file sealed class MountedModelCopier : IDisposable
+file sealed class MountedModelCopier
 {
     // A compiled model's files, next to its .mdl
     private static readonly string[] Companions = [".mdl", ".vvd", ".dx90.vtx", ".dx80.vtx", ".sw.vtx", ".phy", ".ani"];
 
-    private readonly List<GameContent> _others = [];
+    private readonly List<GameContent> _others;
 
     public MountedModelCopier(WeaponPackState state)
     {
+        _others = state.OtherMountedGames;
         foreach (SourceGameInfo other in SourceGames.All.Where(x => x.MountedByMomentum && !x.Id.Equals(state.GameInfo!.Id, StringComparison.OrdinalIgnoreCase)))
         {
             try
@@ -210,64 +221,45 @@ file sealed class MountedModelCopier : IDisposable
                 // Not installed, or unreadable: it can't be mounted either
             }
         }
+
+        state.Materials = new MountedMaterials(state.Content!, _others, state.Momentum!.GameDirectory, state.Game!.Id, state.Sink!);
     }
 
-    /// <summary>The model's path in the pack when another mounted game ships it too, else the model as it is.</summary>
+    /// <summary>
+    /// The model's path in the pack when another mounted game ships it or one of its materials too, else the model as
+    /// it is.
+    /// </summary>
     public string? Resolve(PortJobContext context, WeaponPackState state, string? model)
     {
         if (model is null)
             return null;
 
-        GameContent? other = _others.FirstOrDefault(x => x.Exists(model));
-        if (other is null)
-            return model;
-
         GameContent content = state.Content!;
         string normalized = ContentPath.Normalize(model).ToLowerInvariant();
         string bare = Path.ChangeExtension(normalized, null);
-        string target = $"models/porter/{state.Game!.Id}/{(bare.StartsWith("models/", StringComparison.Ordinal) ? bare["models/".Length..] : bare)}";
-        byte[]? mdl = null;
-        foreach (string extension in Companions)
+        GameContent? other = _others.FirstOrDefault(x => x.Exists(model));
+        if (content.Read(bare + ".mdl") is not { } mdl)
         {
-            if (content.Read(bare + extension) is not { } data)
-                continue;
+            if (other is not null)
+                context.Report.Warn($"{other.Name} ships {model} too and Momentum mounts both, but {content.Name}'s copy couldn't be read, so the game's own choice between them is used");
 
-            state.Sink!.AddFile(target + extension, data);
-            if (extension == ".mdl")
-                mdl = data;
-        }
-
-        if (mdl is null)
-        {
-            context.Report.Warn($"{other.Name} ships {model} too and Momentum mounts both, but {content.Name}'s copy couldn't be read, so the game's own choice between them is used");
             return model;
         }
 
-        // The materials stay at their own paths; they're a problem only when the other game ships those too
-        var sharedTextures = new List<string>();
-        try
+        byte[] patched = state.Materials!.Patch(context, model, mdl);
+        if (other is null && ReferenceEquals(patched, mdl))
+            return model;
+
+        string target = $"models/porter/{state.Game!.Id}/{(bare.StartsWith("models/", StringComparison.Ordinal) ? bare["models/".Length..] : bare)}";
+        foreach (string extension in Companions)
         {
-            StudioModelHeader header = StudioModelHeader.Read(mdl);
-            foreach (string directory in header.TextureDirectories)
-            {
-                foreach (string texture in header.Textures)
-                {
-                    string material = ContentPath.Normalize("materials/" + directory.Trim('/', '\\') + "/" + texture.Trim('/', '\\') + ".vmt");
-                    if (other.Exists(material))
-                        sharedTextures.Add(material);
-                }
-            }
-        }
-        catch (Exception ex) when (ex is InvalidDataException or ArgumentException or IndexOutOfRangeException)
-        {
-            context.Log.Info($"Couldn't read {model}'s materials to check them against {other.Name}: {ex.Message}");
+            if ((extension == ".mdl" ? patched : content.Read(bare + extension)) is { } data)
+                state.Sink!.AddFile(target + extension, data);
         }
 
-        context.Report.Change($"{Path.GetFileName(model)} copied into the pack: {other.Name} ships it too");
-        context.Log.Info($"{other.Name} ships {model} too, and Momentum mounts both, so {content.Name}'s copy is in the pack as {target}.mdl");
-        if (sharedTextures.Count > 0)
-            context.Report.Warn($"{other.Name} also ships {model}'s materials ({string.Join(", ", sharedTextures.Take(3))}{(sharedTextures.Count > 3 ? ", ..." : "")}), so the model may show {other.Name}'s textures");
-
+        string why = other is not null ? $"{other.Name} ships it too" : "another game ships some of its materials too";
+        context.Report.Change($"{Path.GetFileName(model)} copied into the pack: {why}");
+        context.Log.Info($"{model}: {why}, and Momentum mounts both, so {content.Name}'s copy is in the pack as {target}.mdl");
         return target + ".mdl";
     }
 
@@ -294,12 +286,6 @@ file sealed class MountedModelCopier : IDisposable
         context.Report.Change($"{Path.GetFileName(file)} copied into the pack as {target}: {other.Name} ships it too");
         context.Log.Info($"{other.Name} ships {file} too, which the manifest would load instead of {content.Name}'s, so {content.Name}'s copy is in the pack as {target}");
         return target;
-    }
-
-    public void Dispose()
-    {
-        foreach (GameContent other in _others)
-            other.Dispose();
     }
 }
 
@@ -759,6 +745,82 @@ public sealed class WriteWeaponPackStep : IPortStep
         context.Log.Info(inCustom
             ? $"Wrote {sink.Files.Count} files to {state.PackDirectory}. {RestartHint}"
             : $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/. {RestartHint}");
+        state.Dispose();
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Gives a Momentum weapon back to Momentum in some game modes (or every mode): removes the pack's scripts for it there
+/// and the soundscript entries of the weapon ported over it, then merges the pack's soundscripts again without them.
+/// The models, materials and sounds that weapon used stay in the pack, where another weapon may use them too.
+/// </summary>
+public sealed class RestoreWeaponStep : IPortStep
+{
+    public string Name => "Restore Momentum's weapon";
+
+    public Task RunAsync(PortJobContext context)
+    {
+        WeaponPackState state = context.Get<WeaponPackState>();
+        WeaponPackOptions options = state.Options;
+        WeaponSlot slot = WeaponSlots.Find(options.Slot ?? "")
+            ?? throw new PortStepException($"Unknown Momentum weapon \"{options.Slot}\". Known: {string.Join(", ", WeaponSlots.All.Select(x => x.Id))}");
+        IReadOnlyList<GameMode> modes;
+        try
+        {
+            modes = GameModes.Parse(options.GameModes);
+        }
+        catch (FormatException ex)
+        {
+            throw new PortStepException(ex.Message, ex);
+        }
+
+        if (string.IsNullOrWhiteSpace(options.OutputDirectory))
+            throw new PortStepException("No output folder given");
+
+        state.Slot = slot;
+        state.GameModes = modes;
+        state.Momentum = LoadWeaponStep.OpenMomentum(options, state.Steam ??= new SteamLocator());
+        state.PackName = LoadWeaponStep.PackName(options);
+        state.PackDirectory = Path.GetFullPath(Path.Combine(options.OutputDirectory, state.PackName));
+        if (state.Sink is null && !Directory.Exists(state.PackDirectory))
+        {
+            context.Log.Info($"There's no {state.PackDirectory}, so the {slot.Name} is Momentum's already");
+            return Task.CompletedTask;
+        }
+
+        IPackSink sink = state.Sink ??= new FolderPackSink(state.PackDirectory);
+
+        // For every mode: the script for every mode and each mode's own
+        List<GameMode?> targets = modes.Count == 0 ? [null, .. GameModes.All] : [.. modes];
+        var removed = new List<string>();
+        foreach (GameMode? mode in targets)
+        {
+            foreach (string path in new[] { mode is null ? slot.ScriptPath : slot.ScriptPathFor(mode), WriteWeaponPackStep.SoundEntriesPath(slot, mode) })
+            {
+                if (sink.ReadFile(path) is null)
+                    continue;
+
+                sink.DeleteFile(path);
+                removed.Add(path);
+                context.Report.Change($"Removed {path}");
+            }
+        }
+
+        if (removed.Count == 0)
+            context.Log.Info($"The pack has no {slot.Name} of its own in {GameModes.Describe(modes)}");
+        else
+            MergedSoundscript.Write(context, state);
+
+        if (modes.Count > 0 && sink.ReadFile(slot.ScriptPath) is not null)
+            context.Report.Warn($"The pack's {slot.ScriptPath} is the {slot.Name} in every mode that has none of its own, so {GameModes.Describe(modes)} still use it; restore the {slot.Name} for every mode to get Momentum's back there");
+        else
+            context.Log.Info($"The {slot.Name} is Momentum's in {GameModes.Describe(modes)}. Restart Momentum to use it.");
+
+        if (slot.Id.StartsWith("df_", StringComparison.Ordinal) && sink.ReadFile($"cfg/{Quake3ViewModelStep.PackConfig}.cfg") is not null)
+            context.Report.Warn($"The Defrag modes' configs still run cfg/{Quake3ViewModelStep.PackConfig}.cfg, which draws every weapon at Quake 3's view model FOV; remove the MomentumPorter block from cfg/df_*.cfg and cfg/{GameModeConfigs.GameConfig} if no Quake 3 weapon is left");
+
+        context.Set(new WeaponPackOutput(state.PackDirectory, sink.Files.ToList()));
         state.Dispose();
         return Task.CompletedTask;
     }
