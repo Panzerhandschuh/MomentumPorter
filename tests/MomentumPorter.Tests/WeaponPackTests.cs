@@ -257,8 +257,8 @@ public class WeaponPackTests
             Assert.Contains("deagle", deagle.GetModel("view"), StringComparison.OrdinalIgnoreCase);
             Assert.Contains("glock", glock.GetModel("view"), StringComparison.OrdinalIgnoreCase);
 
-            // The shot plays through the script's override (the engine patch applies it to the player's sounds), so
-            // Momentum's entry isn't redefined: both modes would want it
+            // The shot is played from the player, where the scripts' overrides don't apply, so each mode redefines
+            // Momentum's entry in its own soundscript, which the engine loads over Momentum's in that mode only
             Assert.Equal("Porter_csgo.Weapon_DEagle.Single", deagle.SoundOverrides["Weapon_Pistol.Single"]);
             Assert.Equal("Porter_csgo.Weapon_Glock.Single", glock.SoundOverrides["Weapon_Pistol.Single"]);
             string text = File.ReadAllText(Path.Combine(pack, "scripts", "game_sounds_momentum_weapons.txt"));
@@ -269,6 +269,14 @@ public class WeaponPackTests
             Assert.NotNull(entries.Find("Porter_csgo.Weapon_Glock.Single"));
             Assert.Equal(["pistol.kz16.txt", "pistol.kzt.txt"], Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Select(Path.GetFileName).Order().ToArray());
             Assert.Contains("gamemode-weapon-scripts engine change", Report(kz16));
+            Assert.Contains("Weapon_Pistol.Single redefined for Climb (1.6) only", Report(kz16));
+
+            KeyValuesNode kztSounds = KeyValuesNode.ParseDocument(File.ReadAllText(Path.Combine(pack, "scripts", "kzt", "game_sounds_momentum_weapons.txt")));
+            Assert.Contains("deagle", Assert.Single(kztSounds.Children).Write(), StringComparison.OrdinalIgnoreCase);
+            Assert.Equal("Weapon_Pistol.Single", kztSounds.Children[0].Key);
+            KeyValuesNode kz16Sounds = KeyValuesNode.ParseDocument(File.ReadAllText(Path.Combine(pack, "scripts", "kz16", "game_sounds_momentum_weapons.txt")));
+            Assert.Contains("glock", Assert.Single(kz16Sounds.Children).Write(), StringComparison.OrdinalIgnoreCase);
+            Assert.False(File.Exists(Path.Combine(pack, "cfg", "porter_reload.cfg")));
 
             // A pistol for every mode goes next to them, redefining the shot entry as before, and they keep their modes
             (PortJobResult all, _, _) = await BuildAsync("csgo", "p250", "pistol", output);
@@ -280,6 +288,7 @@ public class WeaponPackTests
             Assert.Contains("p250", shot.Write(), StringComparison.OrdinalIgnoreCase);
             Assert.NotNull(entries.Find("Porter_csgo.Weapon_DEagle.Single"));
             Assert.Equal(3, Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Length);
+            Assert.Contains("deagle", File.ReadAllText(Path.Combine(pack, "scripts", "kzt", "game_sounds_momentum_weapons.txt")), StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Climb (KZT), Climb (1.6)", Report(all));
 
             IReadOnlyList<WeaponPackEntry> inventory = WeaponPackInventory.Read(pack);
@@ -537,6 +546,39 @@ public class WeaponPackTests
             // Written outside momentum/custom, so the player's configs are left alone
             if (gameCfgTime != default)
                 Assert.Equal(gameCfgTime, File.GetLastWriteTimeUtc(Path.Combine(momentumCfg, "game.cfg")));
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(pack)!, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Momentum's Defrag grenade draws no trail from the weapon script, so the grenade model draws Quake 3's smoke
+    /// itself (slow).
+    /// </summary>
+    [Fact]
+    public async Task Quake3GrenadeModelDrawsItsTrail()
+    {
+        if (!CanBuild("q3") || !File.Exists(WeaponTestGames.Momentum!.DmxConvertPath) || !File.Exists(WeaponTestGames.Momentum.StudioMdlPath))
+            return;
+
+        (PortJobResult result, string pack, _) = await BuildAsync("q3", "grenadelauncher");
+        try
+        {
+            Assert.True(result.Succeeded, result.Error + Report(result));
+            WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_df_grenadelauncher.txt")));
+            // Still in the script, which precaches it
+            Assert.Equal("porter_q3_grenade_trail", script.GetParticle("GrenadeTrail"));
+
+            string[] trailModels = Directory.GetFiles(Path.Combine(pack, "models"), "*.mdl", SearchOption.AllDirectories)
+                .Where(x => StudioModelHeader.Read(x).KeyValues.Contains("porter_q3_grenade_trail", StringComparison.Ordinal))
+                .ToArray();
+            string projectile = Assert.Single(trailModels);
+            Assert.StartsWith("w_", Path.GetFileName(projectile));
+            string keyValues = StudioModelHeader.Read(projectile).KeyValues;
+            Assert.Contains("follow_attachment", keyValues);
+            Assert.Matches("attachment_point\"?\\s+\"?trail", keyValues);
         }
         finally
         {

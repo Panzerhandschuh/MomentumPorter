@@ -62,7 +62,8 @@ public sealed class Quake3WeaponConverter
     /// A projectile: gets a <c>trail</c> attachment at its origin, where Momentum starts its trail particles and Quake 3
     /// leaves its smoke
     /// </param>
-    public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation, bool projectile = false)
+    /// <param name="trailParticle">A particle system the projectile model draws at its trail attachment itself</param>
+    public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation, bool projectile = false, string? trailParticle = null)
     {
         Md3Model weapon = ReadModel(modelPath) ?? throw new PortStepException($"{modelPath} isn't in {_content.Name}'s files");
         string directory = Path.GetDirectoryName(ContentPath.Normalize(modelPath))!.Replace('\\', '/');
@@ -140,7 +141,11 @@ public sealed class Quake3WeaponConverter
             qc.BodyGroup(FlashBodyGroup, [null, "flash.smd"]);
 
         if (projectile)
+        {
             qc.Attachment("trail", "root", 0, 0, 0);
+            if (trailParticle is not null)
+                qc.AttachedParticle(trailParticle, "trail");
+        }
 
         if (handFrames is null)
         {

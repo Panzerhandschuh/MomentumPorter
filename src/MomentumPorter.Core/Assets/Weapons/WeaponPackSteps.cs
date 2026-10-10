@@ -335,22 +335,16 @@ public sealed class ConvertModelsStep : IPortStep
         {
             case ContentEngine.GoldSrc:
             {
-                // The sprite flash the view model's muzzle flash events draw (MUZZLEFLASH_* in shareddefs.h; in first
-                // person the engine has the shotgun's, the SMG's and the pistol's)
-                int muzzleFlash = state.Slot.Id switch
-                {
-                    "shotgun" or "df_shotgun" => 1,
-                    "machinegun" or "df_machinegun" => 2,
-                    _ => 4,
-                };
                 var converter = new GoldSrcWeaponConverter(state.Content!, compiler, info.Id, context.WorkDirectory);
-                convert = (path, viewKind, _) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation, viewKind == ViewModelKind.Gun ? muzzleFlash : null);
+                convert = (path, viewKind, _) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation, viewKind == ViewModelKind.Gun);
                 break;
             }
             case ContentEngine.Quake3:
             {
                 var converter = new Quake3WeaponConverter(state.Content!, compiler, info.Id);
-                convert = (path, viewKind, projectile) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation, projectile);
+                // Momentum draws no trail for some projectiles (the Defrag grenade), so their model draws Quake 3's
+                string? modelTrail = state.Options.Particles ? Quake3Effects.ModelTrailFor(weapon.Id) : null;
+                convert = (path, viewKind, projectile) => converter.ConvertAsync(path, viewKind, context.Log, context.Cancellation, projectile, projectile ? modelTrail : null);
                 break;
             }
             default:
@@ -514,11 +508,11 @@ public sealed class ResolveWeaponSoundsStep : IPortStep
     }
 
     /// <summary>
-    /// Bullet weapons' shots are played with the player as the source (FX_FireBullets), and the engine only applies a
-    /// weapon's SoundData Overrides to the player's sounds with the gamemode-weapon-scripts engine change (docs/engine-changes.md). The
-    /// script gets the override either way; for a weapon used in every mode the pack also redefines Momentum's shot
-    /// entry (e.g. Weapon_Pistol.Single) as the replacement sound, which works on any build. A weapon for some modes
-    /// can't do that (the entry is shared by every mode), so its shot needs the patch.
+    /// Bullet weapons' shots are played with the player as the source (FX_FireBullets), where a weapon's SoundData
+    /// Overrides don't apply, so the pack also redefines Momentum's shot entry (e.g. Weapon_Pistol.Single) as the
+    /// replacement sound: in its copy of Momentum's weapon soundscript for a weapon used in every mode, which works on
+    /// any build, or in each mode's scripts/&lt;mode&gt;/game_sounds_momentum_weapons.txt for a weapon for some modes
+    /// (the gamemode-weapon-scripts engine change, docs/engine-changes.md). See <see cref="MergedSoundscript"/>.
     /// </summary>
     private static void RedefinePlayerShot(PortJobContext context, WeaponPackState state, WeaponSoundResolver resolver, SoundscriptLibrary momentumSounds, SoundscriptLibrary sourceGame)
     {
@@ -528,12 +522,6 @@ public sealed class ResolveWeaponSoundsStep : IPortStep
             || !state.SoundOverrides.TryGetValue(shotEntry, out string? replacement)
             || replacement.Length == 0)
         {
-            return;
-        }
-
-        if (state.GameModes.Count > 0)
-        {
-            context.Log.Info($"{shotEntry} isn't redefined: the {state.Weapon!.Name} is only for {GameModes.Describe(state.GameModes)}, so its shot plays through the script's override of {shotEntry} (Momentum builds with the gamemode-weapon-scripts engine change, see docs/engine-changes.md)");
             return;
         }
 
@@ -548,7 +536,9 @@ public sealed class ResolveWeaponSoundsStep : IPortStep
 
         state.RedefinedSoundEntries[shotEntry] = body.Clone(shotEntry);
         context.Log.Info($"{shotEntry} redefined as {replacement}: Momentum plays the {slot.Name}'s shot from the player, where weapon sound overrides don't apply");
-        context.Report.Change($"{shotEntry} redefined in the pack's soundscript");
+        context.Report.Change(state.GameModes.Count == 0
+            ? $"{shotEntry} redefined in the pack's soundscript"
+            : $"{shotEntry} redefined for {GameModes.Describe(state.GameModes)} only");
 
         MomentumInstall momentum = state.Momentum!;
         var sharing = WeaponSlots.All
@@ -557,7 +547,7 @@ public sealed class ResolveWeaponSoundsStep : IPortStep
             .Select(x => x.Name)
             .ToList();
         if (sharing.Count > 0)
-            context.Report.Warn($"{shotEntry} is also the shot of Momentum's {string.Join(", ", sharing)}, which now sound like the {state.Weapon!.Name} too");
+            context.Report.Warn($"{shotEntry} is also the shot of Momentum's {string.Join(", ", sharing)}, which now sound like the {state.Weapon!.Name} too{(state.GameModes.Count == 0 ? "" : $" in {GameModes.Describe(state.GameModes)}")}");
     }
 
     private static bool TryGetSlotEntry(PortJobContext context, WeaponPackState state, string role, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? slotEntry)
@@ -591,6 +581,12 @@ public sealed class WriteWeaponPackStep : IPortStep
     /// </summary>
     public const string SoundEntriesFolder = "scripts/porter_weapons";
 
+    /// <summary>
+    /// A mode's redefinitions of Momentum's weapon sounds (a per-mode weapon's shot), which the engine loads over
+    /// <see cref="SoundscriptPath"/> in that mode (the gamemode-weapon-scripts engine change, docs/engine-changes.md).
+    /// </summary>
+    public static string ModeSoundscriptPath(GameMode mode) => $"scripts/{mode.Id}/game_sounds_momentum_weapons.txt";
+
     /// <summary>The pack's soundscript entry file for a slot, in one mode or (null) every mode.</summary>
     public static string SoundEntriesPath(WeaponSlot slot, GameMode? mode) => $"{SoundEntriesFolder}/{slot.Id}{(mode is null ? "" : "." + mode.Id)}.txt";
 
@@ -607,32 +603,14 @@ public sealed class WriteWeaponPackStep : IPortStep
         return GameModes.Find(parts[1]) is { } mode ? (slot, mode) : null;
     }
 
-    /// <summary>The pack's reload config: everything a pack changes, with the console commands Momentum has.</summary>
-    public const string ReloadConfigPath = "cfg/porter_reload.cfg";
-
     /// <summary>
-    /// Momentum only scans momentum/custom at startup, so a new pack folder needs a restart. Files changed inside a
-    /// mounted folder are read again on the next open, so a rebuilt pack only needs the reload config.
+    /// The reload config earlier packs had, which used reload commands some Momentum builds crash or lose effects with.
+    /// Removed when the pack is rebuilt.
     /// </summary>
-    private const string ReloadHint =
-        "A new pack folder needs a restart (Momentum scans custom/ at startup); after that, rebuilding it only needs "
-        + "\"exec porter_reload\" in game with sv_cheats 1.";
+    private const string OldReloadConfigPath = "cfg/porter_reload.cfg";
 
-    // Momentum's own commands cover everything a pack changes. They're cheats only because they're for development.
-    private const string ReloadConfig =
-        "// Reloads what a MomentumPorter weapon pack changes, without restarting. Needs sv_cheats 1.\n"
-        + "// Momentum scans momentum/custom/ at startup only: a new pack folder needs a restart, but changes inside a\n"
-        + "// mounted folder (not a VPK) are read again on the next open, so a rebuilt pack only needs this.\n"
-        + "sv_soundemitter_flush      // soundscripts (game_sounds_*.txt)\n"
-        + "// The particle manifest and the .pcf files it lists. Momentum builds without the particle reload\n"
-        + "// fix (docs/engine-changes.md) lose their bullet impacts here until the next map: remove the two lines.\n"
-        + "sv_particles_reload\n"
-        + "cl_particles_reload\n"
-        + "// Models and waves already in memory are read again from disk. Momentum builds without the bone merge\n"
-        + "// fix (docs/engine-changes.md) crash here: remove the line and reload the map instead.\n"
-        + "flush\n"
-        + "weapon_reload_scripts      // weapon scripts, then re-precaches and swaps the models on the weapons in the map\n"
-        + "mat_reloadmaterial porter  // the pack's materials\n";
+    /// <summary>Momentum loads packs, and the models and sounds in them, at startup.</summary>
+    private const string RestartHint = "Restart Momentum to use the pack, and after rebuilding it.";
 
     public string Name => "Write pack";
 
@@ -674,7 +652,7 @@ public sealed class WriteWeaponPackStep : IPortStep
         if (script.AttachToHands == 1 && state.ArmsModel is not null)
         {
             script.SetModel("arms", state.ArmsModel);
-            context.Report.Warn($"ModelData arms ({state.ArmsModel}) only takes effect on Momentum builds with the arms change in docs/engine-changes.md; until then Momentum attaches its own arms, which {game.Name}'s view models have no bones for, so no arms show");
+            context.Report.Warn($"ModelData arms ({state.ArmsModel}) only takes effect on Momentum builds with the weapon-arms engine change in docs/engine-changes.md; until then Momentum attaches its own arms, which {game.Name}'s view models have no bones for, so no arms show");
         }
 
         foreach ((string entry, string replacement) in state.SoundOverrides)
@@ -712,7 +690,7 @@ public sealed class WriteWeaponPackStep : IPortStep
 
         IReadOnlyList<GameMode> modes = state.GameModes;
         string header = $"{weapon.Name} from {game.Name} as Momentum's {slot.Name} in {GameModes.Describe(modes)}, made by MomentumPorter.\n"
-            + $"Remove the {state.PackName} pack (or this file) to get Momentum's weapon back. Reload with \"exec porter_reload\" (sv_cheats 1) or a restart.";
+            + $"Remove the {state.PackName} pack (or this file) to get Momentum's weapon back, then restart Momentum.";
         byte[] scriptText = Encoding.UTF8.GetBytes(script.Write(header));
         if (modes.Count == 0)
         {
@@ -732,7 +710,11 @@ public sealed class WriteWeaponPackStep : IPortStep
                 + (sink.ReadFile(slot.ScriptPath) is not null ? $"Other modes keep the pack's {slot.ScriptPath}." : $"Other modes keep Momentum's {slot.Name}."));
         }
 
-        sink.AddFile(ReloadConfigPath, Encoding.ASCII.GetBytes(ReloadConfig));
+        if (sink.ReadFile(OldReloadConfigPath) is not null)
+        {
+            sink.DeleteFile(OldReloadConfigPath);
+            context.Log.Info($"Removed {OldReloadConfigPath} from an older Momentum Porter: restart Momentum to pick up a rebuilt pack");
+        }
 
         IEnumerable<GameMode?> entryModes = modes.Count == 0 ? [null] : modes;
         foreach (GameMode? mode in entryModes)
@@ -775,8 +757,8 @@ public sealed class WriteWeaponPackStep : IPortStep
         // Packs written straight into Momentum's custom folder are already live; anywhere else they have to be copied there
         bool inCustom = state.PackIsInMomentumCustom;
         context.Log.Info(inCustom
-            ? $"Wrote {sink.Files.Count} files to {state.PackDirectory}. {ReloadHint}"
-            : $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/. {ReloadHint}");
+            ? $"Wrote {sink.Files.Count} files to {state.PackDirectory}. {RestartHint}"
+            : $"Wrote {sink.Files.Count} files to {state.PackDirectory}. Copy the folder into momentum/custom/. {RestartHint}");
         state.Dispose();
         return Task.CompletedTask;
     }
@@ -834,30 +816,22 @@ file static class MergedSoundscript
     /// <summary>
     /// Writes Momentum's weapons soundscript with every weapon's entries from the pack's
     /// <see cref="WriteWeaponPackStep.SoundEntriesFolder"/>: an entry Momentum defines too replaces it (Source keeps
-    /// the first definition of a name), and the last weapon's wins when two define the same entry.
+    /// the first definition of a name), and the last weapon's wins when two define the same entry. A weapon for some
+    /// modes redefines Momentum's entries (its shot) in each mode's <see cref="WriteWeaponPackStep.ModeSoundscriptPath"/>
+    /// instead, which the engine loads over Momentum's in that mode only; its new entries go in the shared file.
     /// </summary>
     public static void Write(PortJobContext context, WeaponPackState state)
     {
         IPackSink sink = state.Sink!;
-        if (sink.ListFiles(WriteWeaponPackStep.SoundEntriesFolder).Count == 0)
-        {
-            // Nothing in the folder adds sounds any more, so Momentum's own file can serve
-            if (sink.ReadFile(WriteWeaponPackStep.SoundscriptPath) is not null)
-            {
-                sink.DeleteFile(WriteWeaponPackStep.SoundscriptPath);
-                context.Log.Info($"Removed the pack's {WriteWeaponPackStep.SoundscriptPath}: no weapon in the folder adds soundscript entries");
-            }
-
-            return;
-        }
-
         var file = MomentumPorter.Assets.Sounds.SoundscriptFile.Parse(state.Momentum!.ReadRequiredText(WriteWeaponPackStep.SoundscriptPath), WriteWeaponPackStep.SoundscriptPath);
+        var momentumEntries = file.Entries.Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var merged = new List<KeyValuesNode>();
+        var perMode = new Dictionary<GameMode, List<KeyValuesNode>>();
         var weapons = new List<string>();
         foreach (string path in sink.ListFiles(WriteWeaponPackStep.SoundEntriesFolder))
         {
             // Files from before the entries were kept per slot (<game>_<weapon>_<slot>.txt) would pile up
-            if (WriteWeaponPackStep.ParseSoundEntriesPath(path) is null)
+            if (WriteWeaponPackStep.ParseSoundEntriesPath(path) is not { } owner)
             {
                 sink.DeleteFile(path);
                 context.Report.Warn($"Removed {path}, from an older Momentum Porter: build that weapon again to get its sounds back");
@@ -880,12 +854,36 @@ file static class MergedSoundscript
 
             foreach (KeyValuesNode entry in document.Children)
             {
-                file.Remove(entry.Key);
-                merged.RemoveAll(x => x.Key.Equals(entry.Key, StringComparison.OrdinalIgnoreCase));
-                merged.Add(entry);
+                List<KeyValuesNode> entries;
+                if (owner.Mode is { } mode && momentumEntries.Contains(entry.Key))
+                {
+                    entries = perMode.TryGetValue(mode, out List<KeyValuesNode>? modeEntries) ? modeEntries : perMode[mode] = [];
+                }
+                else
+                {
+                    file.Remove(entry.Key);
+                    entries = merged;
+                }
+
+                entries.RemoveAll(x => x.Key.Equals(entry.Key, StringComparison.OrdinalIgnoreCase));
+                entries.Add(entry);
             }
 
             weapons.Add(Path.GetFileNameWithoutExtension(path));
+        }
+
+        WriteModeOverrides(context, sink, perMode);
+
+        if (merged.Count == 0)
+        {
+            // Nothing in the folder adds sounds for every mode any more, so Momentum's own file can serve
+            if (sink.ReadFile(WriteWeaponPackStep.SoundscriptPath) is not null)
+            {
+                sink.DeleteFile(WriteWeaponPackStep.SoundscriptPath);
+                context.Log.Info($"Removed the pack's {WriteWeaponPackStep.SoundscriptPath}: no weapon in the folder adds soundscript entries");
+            }
+
+            return;
         }
 
         var text = new StringBuilder(file.ToText().TrimEnd());
@@ -897,6 +895,34 @@ file static class MergedSoundscript
 
         sink.AddFile(WriteWeaponPackStep.SoundscriptPath, Encoding.UTF8.GetBytes(text.ToString()));
         context.Report.Warn($"The pack replaces {WriteWeaponPackStep.SoundscriptPath} (Momentum's copy plus the entries of the folder's {weapons.Count} weapon pack(s)), since the base game_sounds_manifest.txt isn't overridden: a pack in another folder that replaces it hides this one's, so keep weapon packs in one folder, and Momentum's updates to that file are hidden until a pack here is rebuilt");
+    }
+
+    // Each mode's redefinitions of Momentum's entries; a mode no weapon redefines anything in any more loses its file
+    private static void WriteModeOverrides(PortJobContext context, IPackSink sink, Dictionary<GameMode, List<KeyValuesNode>> perMode)
+    {
+        foreach (GameMode mode in GameModes.All)
+        {
+            string path = WriteWeaponPackStep.ModeSoundscriptPath(mode);
+            if (!perMode.TryGetValue(mode, out List<KeyValuesNode>? entries))
+            {
+                if (sink.ReadFile(path) is not null)
+                {
+                    sink.DeleteFile(path);
+                    context.Log.Info($"Removed the pack's {path}: no weapon in the folder redefines a sound for {mode.Name}");
+                }
+
+                continue;
+            }
+
+            var text = new StringBuilder();
+            text.Append($"// Momentum's weapon sounds redefined for {mode.Name} only, merged by MomentumPorter from {WriteWeaponPackStep.SoundEntriesFolder}/.\n");
+            text.Append($"// Loaded over {WriteWeaponPackStep.SoundscriptPath} in this mode by Momentum builds with the gamemode-weapon-scripts\n");
+            text.Append("// engine change (other builds ignore it). Each entry replaces Momentum's whole entry.\n\n");
+            foreach (KeyValuesNode entry in entries)
+                text.Append(entry.Write()).Append('\n');
+
+            sink.AddFile(path, Encoding.UTF8.GetBytes(text.ToString()));
+        }
     }
 }
 

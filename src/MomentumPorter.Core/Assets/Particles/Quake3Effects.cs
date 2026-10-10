@@ -76,6 +76,13 @@ public static class Quake3Effects
         };
     }
 
+    /// <summary>
+    /// The trail a weapon's projectile model draws itself (its <c>particles</c> keyvalues), for projectiles Momentum
+    /// draws no trail for: its Defrag grenade never reads the script's GrenadeTrail, which stays there to be precached.
+    /// </summary>
+    public static string? ModelTrailFor(string weaponId) =>
+        weaponId.Equals("grenadelauncher", StringComparison.OrdinalIgnoreCase) ? "porter_q3_grenade_trail" : null;
+
     /// <summary>Whether the weapon's projectile is only a sprite, drawn by its trail on an invisible model.</summary>
     public static bool HasSpriteProjectile(string weaponId) => weaponId.Equals("plasmagun", StringComparison.OrdinalIgnoreCase);
 

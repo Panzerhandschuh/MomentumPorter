@@ -14,13 +14,12 @@ MomentumPorter weapon --list [--game css]
 Ports a weapon from another game into one of Momentum's weapons as a pack folder (`<output>/momentumporter` by
 default: every weapon goes into the same folder, where their shared files merge, because packs in separate folders
 each replace `game_sounds_momentum_weapons.txt` and the particle manifest and Momentum only takes one; `--name` makes
-a separate folder anyway). Copy the folder into `momentum/custom/` and restart Momentum: it only scans `custom/` at startup. After
-that, rebuilding the pack into the same folder doesn't need a restart: run `exec porter_reload` in game (with
-`sv_cheats 1`). The pack's `cfg/porter_reload.cfg` reloads soundscripts, particles, weapon scripts, models and the
-pack's materials with Momentum's own commands; the model step (`flush`) crashes engine builds without
-the `bonemerge-flush-crash` engine change in [engine-changes.md](engine-changes.md), so on those remove that line and reload the map instead. A pack in
-a VPK needs a restart for every change. Removing the pack brings Momentum's weapon back. Nothing is written into the
-Momentum install (except the Quake 3 config blocks below); models are compiled against a stub game folder in a temp work folder.
+a separate folder anyway). Copy the folder into `momentum/custom/` and restart Momentum: it only scans `custom/` at
+startup, and models and sounds it has loaded stay in memory, so restart after rebuilding a pack too. (Packs from older
+versions had a `cfg/porter_reload.cfg` that reloaded them in game; its reload commands crash or break effects without
+engine fixes that were set aside, so rebuilding a pack removes it.) Removing the pack brings Momentum's weapon back.
+Nothing is written into the Momentum install (except the Quake 3 config blocks below); models are compiled against a
+stub game folder in a temp work folder.
 
 The weapons come from `src/MomentumPorter.Core/Assets/Weapons/weapons.json` (embedded in Core): per game, each
 weapon's models, the Momentum weapons it fits (best first) and its sounds keyed by the role Momentum gives them in
@@ -65,8 +64,9 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   the `gamemode-weapon-scripts` engine change in [engine-changes.md](engine-changes.md) (falling back to the shared script, or Momentum's), so the Climb
   (1.6) pistol can be CS 1.6's USP and the Climb (KZT) one CS:GO's Desert Eagle. A weapon for every mode (the command
   line without `--modes`) keeps the plain path and leaves the modes' own scripts in place. Bullet weapons' shots play
-  from the player, so a per-mode weapon's shot sound needs that patch too (it applies the weapon's `Overrides` to the
-  player's sounds); a weapon for every mode also redefines the shot entry, which works without it.
+  from the player, where the script's `Overrides` don't apply, so a per-mode weapon's shot is redefined in
+  `scripts/<mode>/game_sounds_momentum_weapons.txt`, which the same engine change loads over Momentum's soundscript in
+  that mode (see Sounds below).
 
 - **Mounted games**: every model is checked in the VPKs Momentum's `gameinfo.txt` mounts (not loose files of the game).
   The game's own view model paths are used. `attach_to_hands` is 0 (the view models have arms), except CS:GO, whose view
@@ -78,13 +78,14 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   materials keep their paths, with a warning when the other game ships those too).
 - **Muzzle flashes**: a gun whose catalog entry names no `MuzzleFlashEffect` (CS:S, HL2, CS 1.6, HL1) gets CS:GO's
   flash for its slot when CS:GO is mounted (pistol, assault rifle, auto shotgun or AWP, with CS:GO's particle file added
-  to the manifest), else the assault rifle flash Momentum ships in `particles/weapons.pcf`; the engine's sprite flash is
-  only the fallback for scripts without one. Momentum's view models have no muzzle flash events, and the ones on other games' models
-  (`CL_EVENT_MUZZLEFLASH0`, which CS:GO, CS:S and HL2 models all carry) are drawn by the base engine on the player
-  entity rather than the view model, so nothing shows. With the `viewmodel-muzzle-flash` engine change in [engine-changes.md](engine-changes.md) the
-  engine draws the weapon script's `ParticleData MuzzleFlashEffect` at the attachment the event names (CS:GO), or its
-  sprite flash on the view model (CS:S, HL2). The catalog gives each CS:GO weapon its muzzle flash from CS:GO's
-  `items_game.txt`, and the pack ships Momentum's particle manifest with `particles/weapons/cs_weapon_fx.pcf` added.
+  to the manifest), else the assault rifle flash Momentum ships in `particles/weapons.pcf`. Momentum's view models have
+  no muzzle flash events, and the ones on other games' models (`CL_EVENT_MUZZLEFLASH0`, which CS:GO, CS:S and HL2 models
+  all carry) are drawn by the base engine on the player entity rather than the view model, so nothing shows. With the
+  `viewmodel-muzzle-flash` engine change in [engine-changes.md](engine-changes.md) the engine draws the weapon script's
+  `ParticleData MuzzleFlashEffect` on the view model, at the attachment the event names (CS:GO's `"1"`) or implies
+  (CS:S, HL2); a weapon without one (launchers, `--no-particles`) draws no flash. The catalog gives each CS:GO weapon its
+  muzzle flash from CS:GO's `items_game.txt`, and the pack ships Momentum's particle manifest with
+  `particles/weapons/cs_weapon_fx.pcf` added.
 - **World models** (third person, replays, spawners): held weapons are bone-merged onto the player by bone name, and
   other games' world models are rigged to their own player skeletons, so they'd sit at the player's feet. The porter
   recompiles them onto Momentum's `weapon_bone.R` (`models/porter/<game>/`), placed like the Momentum model they replace.
@@ -94,8 +95,11 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   with nothing marking where they're held and stay as they are. `--no-world-fit` turns this off.
 - **Sounds**: Momentum only loads the soundscripts in its `game_sounds_manifest.txt`, and the first definition of a
   name wins. Bullet weapons (pistol, machine gun, shotgun, sniper) play their shot from the player, where a weapon
-  script's `Overrides` only apply with the `gamemode-weapon-scripts` engine change in [engine-changes.md](engine-changes.md), so for those the pack also
-  redefines the shot's entry (e.g. `Weapon_Pistol.Single`) in place when the weapon is for every mode. Overrides point at the game's entries where Momentum loads them (CS:S, TF2, HL2). Entries Momentum doesn't
+  script's `Overrides` don't apply, so for those the pack also redefines the shot's entry (e.g. `Weapon_Pistol.Single`):
+  in its copy of Momentum's soundscript for a weapon used in every mode, or in each mode's
+  `scripts/<mode>/game_sounds_momentum_weapons.txt` (only the redefined entries) for a weapon for some modes, which the
+  `gamemode-weapon-scripts` engine change in [engine-changes.md](engine-changes.md) loads over Momentum's in that mode.
+  Overrides point at the game's entries where Momentum loads them (CS:S, TF2, HL2). Entries Momentum doesn't
   load (CS:GO), or that a Momentum entry of the same name hides (Momentum's `Weapon_Pistol.Single`, `Weapon_Scout.Single`,
   `Weapon_Shotgun.Single`, `Weapon_Knife.*`), are copied (wave, channel, volume, pitch, level; no operator stacks), hidden
   ones as `Porter_<game>.<name>`. The manifest isn't overridden, so the pack ships a full copy of
@@ -107,9 +111,9 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   events, which play the waves copied to `sound/porter/<game>/`. Unsilenced sequences are used for the M4A1 and USP.
   Chrome textures get GoldSrc's sphere-map coordinates from the vertex normals (fixed against the model, so no
   shimmer). The model's attachments come along and its muzzle flash events (5001 + 10 per attachment) stay, drawing
-  Momentum's sprite flash for the slot (pistol, SMG or shotgun) with the `viewmodel-muzzle-flash` engine change in [engine-changes.md](engine-changes.md)
-  and `viewmodel-sprite-flash-sequences` (without the second, the engine never draws those sprite flashes).
-  `p_` models aren't used (Momentum's player rig differs) and the view model FOV differs.
+  the script's `MuzzleFlashEffect` at the attachment GoldSrc drew its flash at, with the `viewmodel-muzzle-flash`
+  engine change in [engine-changes.md](engine-changes.md). `p_` models aren't used (Momentum's player rig differs) and
+  the view model FOV differs.
 - **Quake 3**: the weapon and its barrel become one model. The view model hangs it from the hand model's
   `tag_weapon`, and the hand's frames give it idle, fire (recoil) and draw sequences; the barrel rides its own bone,
   which the fire sequence spins a full turn (Quake 3 spins it while firing), and `<weapon>_flash.md3` is a body group
@@ -121,8 +125,11 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   them (explosion sprites 16 units off the wall growing from 30 to 72 units through the animmap frames, a smoke puff
   every 50 ms, a 16 unit spinning plasma sprite on an invisible projectile). The file is written as keyvalues2 text and
   converted to binary with Momentum's `dmxconvert`. Particle files only load through `particles/particles_manifest.txt`,
-  so the pack ships Momentum's manifest with the file added (every Quake 3 pack writes the same files). The railgun,
-  machine gun and shotgun hit with Momentum's bullet impacts: those aren't in the weapon script.
+  so the pack ships Momentum's manifest with the file added (every Quake 3 pack writes the same files). Momentum's
+  Defrag grenade draws no trail from the weapon script, so the converted grenade model draws its smoke itself, from a
+  `particles` block in its `$keyvalues` at its `trail` attachment (the script still names it as `GrenadeTrail`, which
+  precaches it); `mom_df_projectile_trails` doesn't turn that one off. The railgun, machine gun and shotgun hit with
+  Momentum's bullet impacts: those aren't in the weapon script.
 - **Quake 3 view model FOV**: Quake 3 draws its gun with the world's FOV (`cg_fov`) and lowers it 0.2 units per degree
   above 90; Momentum draws view models at `fov_viewmodel` 54, which crops most of a Quake 3 gun. The pack's
   `cfg/porter_q3_viewmodel.cfg` sets `fov_viewmodel` (your `fov_desired`, or `--gun-fov`) and `viewmodel_offset_z`.

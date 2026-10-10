@@ -72,11 +72,11 @@ public sealed class GoldSrcWeaponConverter
 
     /// <param name="modelPath">Game path of the GoldSrc model, e.g. <c>models/v_ak47.mdl</c></param>
     /// <param name="kind">For view models, what activities its sequences get; null for world models</param>
-    /// <param name="muzzleFlash">
-    /// The Source sprite flash (MUZZLEFLASH_*) the model's muzzle flash events draw, at the attachment GoldSrc drew
-    /// its own at; null drops the events.
+    /// <param name="muzzleFlashes">
+    /// Keep the model's muzzle flash events, which draw the weapon script's MuzzleFlashEffect at the attachment GoldSrc
+    /// drew its own flash at (with the viewmodel-muzzle-flash engine change); false drops them.
     /// </param>
-    public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation, int? muzzleFlash = null)
+    public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation, bool muzzleFlashes = false)
     {
         string file = Extract(modelPath) ?? throw new PortStepException($"{modelPath} isn't in {_content.Name}'s files");
         GoldSrcModel model = GoldSrcModel.Read(file, FindCompanion, out string? error)
@@ -165,9 +165,9 @@ public sealed class GoldSrcWeaponConverter
                 int clampedFrame = Math.Min(frame, Math.Max(sequence.FrameCount - 1, 0));
                 if (IsMuzzleFlashEvent(eventId, out int attachment))
                 {
-                    // Source draws its sprite flash (the options name which) at the same attachment
-                    if (muzzleFlash is { } flash && attachment < attachments.Count)
-                        qcEvents.Add(new QcEvent(eventId, clampedFrame, flash.ToString(CultureInfo.InvariantCulture)));
+                    // No options: the engine finds the attachment from the event, the same one in Source
+                    if (muzzleFlashes && attachment < attachments.Count)
+                        qcEvents.Add(new QcEvent(eventId, clampedFrame, ""));
 
                     continue;
                 }

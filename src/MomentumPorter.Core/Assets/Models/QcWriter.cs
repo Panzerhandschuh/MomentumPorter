@@ -66,6 +66,26 @@ public sealed class QcWriter
         return Line(string.Create(CultureInfo.InvariantCulture, $"$attachment \"{name}\" \"{bone}\" {x:0.###} {y:0.###} {z:0.###} rigid"));
     }
 
+    /// <summary>
+    /// A particle system the model starts on itself when it's drawn, following an attachment (the model's
+    /// <c>particles</c> keyvalues, which C_BaseAnimating reads).
+    /// </summary>
+    public QcWriter AttachedParticle(string effect, string attachment)
+    {
+        Line("$keyvalues");
+        Line("{");
+        Line("\t\"particles\"");
+        Line("\t{");
+        Line("\t\t\"effect\"");
+        Line("\t\t{");
+        Line($"\t\t\t\"name\" \"{effect}\"");
+        Line("\t\t\t\"attachment_type\" \"follow_attachment\"");
+        Line($"\t\t\t\"attachment_point\" \"{attachment}\"");
+        Line("\t\t}");
+        Line("\t}");
+        return Line("}");
+    }
+
     public QcWriter Sequence(QcSequence sequence)
     {
         var line = new StringBuilder(string.Create(CultureInfo.InvariantCulture, $"$sequence \"{sequence.Name}\" \"{sequence.Smd}\" fps {sequence.Fps:0.###}"));
