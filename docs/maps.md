@@ -11,10 +11,11 @@ MomentumPorter <input.bsp> <output.bsp> [--game kzmod] [--compress] [--game-dir 
 ```
 
 `--game-dir` is the source game's folder (the one with `gameinfo.txt`), for game files the map relies on, such as
-shared soundscapes. It defaults to the folder above the input's `maps` folder.
+shared soundscapes. It defaults to the folder above the input's `maps` folder, or for KZ maps from elsewhere, Kreedz
+Climbing's folder in your Steam libraries.
 
 The output is written as a new file, uncompressed unless `--compress` is given, and the tool prints what it converted
-and anything it couldn't. Pack assets afterwards (e.g. with bspPack) as usual. Packed files named after the map, such as
+and anything it couldn't. It doesn't pack assets; the desktop app does. Packed files named after the map, such as
 cubemap materials, aren't renamed, so keep the map's name or rename it with Lumper afterwards.
 
 ## Desktop app
@@ -32,10 +33,9 @@ go along with it.
   `[PortOption]` attributes on `MapPortOptions` and `BspConvertOptions`), and the log and report of the selected map.
   Options can be saved and loaded as JSON presets. Quake 3 and GoldSrc maps in the queue go through BSPConvert instead
   (its options follow the Source map options in the same list) into Momentum's game folder.
-- **Settings**: Momentum's folder (found in your Steam libraries unless overridden), the bspPack and studiomdl
-  executables (Momentum's own studiomdl unless overridden), an optional pre-pack command, the work folder, the output
-  folder packs fall back to when Momentum isn't found, and which known games were found. Saved to
-  `%AppData%/MomentumPorter/settings.json`.
+- **Settings**: Momentum's and Kreedz Climbing's folders (found in your Steam libraries unless overridden), the
+  studiomdl executable (Momentum's own unless overridden), the work folder, the output folder packs fall back to when
+  Momentum isn't found, and which known games were found. Saved to `%AppData%/MomentumPorter/settings.json`.
 - **Weapons**: pick a game mode and the Momentum weapon to replace, then the game and the weapon that goes in its
   place, and build the pack (see [weapons.md](weapons.md)).
 - **Player Sounds**: pick a game (and a Quake 3 character or CS:GO team) and the jump/land/footstep options, then build
@@ -63,13 +63,8 @@ files that a VPK searched before them shadows (the game never loads them, and Mo
 | Kreedz Climbing | `kz_textures`, `kz_sounds` and `kz_misc` extracted, then the loose `kz` folder | KZ's HL2 VPKs |
 | CS:GO (GOKZ) | the loose `csgo` folder (Momentum mounts CS:GO's VPKs) | `pak01` |
 
-A bspPack set in Settings is left as it is: set up its `config.ini` and `ResourceConfig.ini` by hand, e.g. with a stub
-game folder like the ones above. The porter won't run one without a `config.ini`, since bspPack would ask which game
-to pack from and wait for an answer.
-
-The pre-pack command runs through the shell before every bspPack run, after the porter writes its files;
-`{resourceconfig}`, `{bsppack}`, `{bsppackdir}` and `{bsp}` are replaced with paths, e.g.
-`python "<path>\my_excludes.py" "{resourceconfig}"`.
+Kreedz Climbing is found in your Steam libraries unless its folder is set in Settings, and CS:GO in your Steam
+libraries. KZ maps from outside KZ's `maps` folder also get their shared soundscapes from that KZ folder.
 
 ## Quake 3 and GoldSrc maps
 

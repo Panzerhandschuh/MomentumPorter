@@ -3,7 +3,6 @@ namespace MomentumPorter.Settings;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MomentumPorter.Steam;
-using MomentumPorter.Tools;
 
 /// <summary>
 /// Machine-specific settings shared by the desktop app and the CLI: where the tools and games are.
@@ -27,20 +26,17 @@ public sealed class PorterSettings
     /// </summary>
     public string? MomentumDirectory { get; set; }
 
-    /// <summary>bspPack.exe. Null to use <see cref="BspPackTool.FindDefault"/>.</summary>
-    public string? BspPackPath { get; set; }
+    /// <summary>
+    /// Kreedz Climbing's install folder (the one holding <c>kz/</c>), where KZ maps' assets and soundscapes come from.
+    /// Null to find it in the Steam libraries.
+    /// </summary>
+    public string? KreedzClimbingDirectory { get; set; }
 
     /// <summary>
     /// studiomdl.exe, which compiles the models GoldSrc maps and converted weapons use. Null for Momentum's own
     /// (bin/win64/studiomdl.exe in its install), see <see cref="ResolveStudiomdlPath"/>.
     /// </summary>
     public string? StudiomdlPath { get; set; }
-
-    /// <summary>
-    /// Command run (through the shell) before each bspPack run, e.g. a script that updates ResourceConfig.ini.
-    /// See <see cref="BspPackTool.ExpandPrePackCommand"/> for the placeholders it may use.
-    /// </summary>
-    public string? PrePackCommand { get; set; }
 
     /// <summary>Folder for jobs' temporary files. Null for the system temp folder.</summary>
     public string? WorkDirectory { get; set; }
@@ -53,7 +49,24 @@ public sealed class PorterSettings
 
     public string ResolveOutputDirectory() => string.IsNullOrWhiteSpace(OutputDirectory) ? DefaultOutputDirectory : OutputDirectory;
 
-    public string? ResolveBspPackPath() => string.IsNullOrWhiteSpace(BspPackPath) ? BspPackTool.FindDefault() : BspPackPath;
+    /// <summary>
+    /// Kreedz Climbing's content folder (<c>&lt;install&gt;/kz</c>), or null if KZ can't be found.
+    /// The override may point at the install folder or the content folder.
+    /// </summary>
+    public string? ResolveKreedzClimbingContentDirectory(SteamLocator? steam = null)
+    {
+        if (!string.IsNullOrWhiteSpace(KreedzClimbingDirectory))
+        {
+            string dir = Path.GetFullPath(KreedzClimbingDirectory.Trim());
+            string content = Path.Combine(dir, KnownGame.KreedzClimbing.ContentFolder);
+            if (File.Exists(Path.Combine(content, "gameinfo.txt")))
+                return content;
+
+            return File.Exists(Path.Combine(dir, "gameinfo.txt")) ? dir : null;
+        }
+
+        return (steam ?? new SteamLocator()).Find(KnownGame.KreedzClimbing)?.ContentDirectory;
+    }
 
     /// <summary>
     /// The studiomdl to compile models with: the override, else Momentum's <c>bin/win64/studiomdl.exe</c>, or null

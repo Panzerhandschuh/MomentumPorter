@@ -7,10 +7,10 @@ using MomentumPorter.Steam;
 using MomentumPorter.Tools;
 
 /// <summary>
-/// Packs the assets the ported map uses from its source game into it with bspPack (<c>-M -C</c>).
-/// The map is packed in the job's work folder; if the output lies elsewhere, it is copied in and back.
-/// bspPack's location and pre-pack command come from the <see cref="PorterSettings"/> in the context. The bundled
-/// bspPack is pointed at the map's game first (see <see cref="BspPackGames"/>); other copies use their own config.ini.
+/// Packs the assets the ported map uses from its source game into it with the bundled bspPack (<c>-M -C</c>), after
+/// pointing it at the map's game (see <see cref="BspPackGames"/>). The map is packed in the job's work folder; if the
+/// output lies elsewhere, it is copied in and back. Momentum's and the games' folders come from the
+/// <see cref="PorterSettings"/> in the context.
 /// </summary>
 public sealed class BspPackStep : IPortStep
 {
@@ -20,23 +20,9 @@ public sealed class BspPackStep : IPortStep
     {
         MapPortState state = context.Get<MapPortState>();
         PorterSettings settings = context.TryGet<PorterSettings>() ?? new PorterSettings();
-
-        string? executable = settings.ResolveBspPackPath();
-        if (executable is null)
-        {
-            throw new PortStepException("bspPack wasn't found. Set its location in Settings (looked in: "
-                + string.Join(", ", BspPackTool.DefaultCandidates()) + ").");
-        }
-
-        var tool = new BspPackTool(executable);
+        BspPackTool tool = context.TryGet<BspPackTool>() ?? new BspPackTool(BspPackTool.BundledPath);
         if (!tool.Exists)
-            throw new PortStepException($"bspPack wasn't found at {executable}. Set its location in Settings.");
-
-        if (!tool.IsBundled && !tool.IsConfigured)
-        {
-            throw new PortStepException($"bspPack has no config.ini ({tool.ConfigPath}). Create one naming the game folder to pack "
-                + "assets from (the folder with gameinfo.txt, with bspzip in ../bin/win64), or clear bspPack's location in Settings to use the one that comes with the porter.");
-        }
+            throw new PortStepException($"bspPack wasn't found at {tool.ExecutablePath}; it comes with the porter, so the install is incomplete");
 
         if (!File.Exists(state.OutputPath))
             throw new PortStepException($"{state.OutputPath} doesn't exist, there's nothing to pack");
@@ -51,18 +37,8 @@ public sealed class BspPackStep : IPortStep
             File.Copy(output, target, overwrite: true);
         }
 
-        if (tool.IsBundled)
-        {
-            BspPackGame game = PrepareGame(context, state, settings, tool);
-            context.Log.Info($"bspPack packs assets from {game.Name} ({game.GameFolder})");
-        }
-        else if (tool.ReadConfiguredGameFolder() is { } gameFolder)
-        {
-            context.Log.Info($"bspPack packs assets from {gameFolder} (set in {tool.ConfigPath})");
-        }
-
-        if (!string.IsNullOrWhiteSpace(settings.PrePackCommand))
-            await tool.RunPrePackCommandAsync(settings.PrePackCommand, target, context.WorkDirectory, context.Log, context.Cancellation).ConfigureAwait(false);
+        BspPackGame game = PrepareGame(context, state, settings, tool);
+        context.Log.Info($"bspPack packs assets from {game.Name} ({game.GameFolder})");
 
         long sizeBefore = new FileInfo(target).Length;
         await tool.PackAsync(target, context.Log, context.Cancellation).ConfigureAwait(false);
@@ -88,7 +64,7 @@ public sealed class BspPackStep : IPortStep
             : throw new PortStepException("Momentum Mod wasn't found; bspPack needs its bspzip. Set Momentum's folder in Settings.");
 
         BspPackGames games = context.TryGet<BspPackGames>() ?? new BspPackGames(BspPackGames.DefaultRootDirectory);
-        BspPackGame game = games.Prepare(profile.Name, state.GameDirectory, momentumInstall, steam, context.Log, context.Cancellation);
+        BspPackGame game = games.Prepare(profile.Name, state.GameDirectory, momentumInstall, settings, steam, context.Log, context.Cancellation);
         tool.WriteConfig(game, steam.SteamRoot);
         return game;
     }

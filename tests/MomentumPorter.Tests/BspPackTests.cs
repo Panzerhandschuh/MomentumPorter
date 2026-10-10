@@ -31,45 +31,10 @@ public class BspPackTests
 
         var context = new PortJobContext { Log = NullLog.Instance, WorkDirectory = temp.Path };
         context.Set(new MapPortState(temp.Combine("in.bsp"), bsp, new MapPortOptions()));
-        context.Set(new PorterSettings { BspPackPath = missing });
+        context.Set(new BspPackTool(missing));
 
         var ex = await Assert.ThrowsAsync<PortStepException>(() => new BspPackStep().RunAsync(context));
         Assert.Contains(missing, ex.Message);
-    }
-
-    [Fact]
-    public async Task RefusesToRunBspPackWithoutConfigIni()
-    {
-        using var temp = new TempFolder();
-        string bsp = temp.Combine("kz_test.bsp");
-        File.WriteAllText(bsp, "map");
-        string exe = temp.Combine("tools", BspPackTool.ExecutableName);
-        Directory.CreateDirectory(Path.GetDirectoryName(exe)!);
-        File.WriteAllText(exe, "not run");
-
-        var context = new PortJobContext { Log = NullLog.Instance, WorkDirectory = temp.Path };
-        context.Set(new MapPortState(temp.Combine("in.bsp"), bsp, new MapPortOptions()));
-        context.Set(new PorterSettings { BspPackPath = exe });
-
-        var ex = await Assert.ThrowsAsync<PortStepException>(() => new BspPackStep().RunAsync(context));
-        Assert.Contains(temp.Combine("tools", "config.ini"), ex.Message);
-    }
-
-    [Fact]
-    public void ExpandsPrePackPlaceholders()
-    {
-        var tool = new BspPackTool(@"C:\tools\bspPack\bspPack.exe");
-        string command = tool.ExpandPrePackCommand("python \"x.py\" \"{ResourceConfig}\" {bsp} {unknown}", @"C:\work\kz_a.bsp");
-
-        Assert.Equal($"python \"x.py\" \"{Path.Combine(@"C:\tools\bspPack", "ResourceConfig.ini")}\" {Path.GetFullPath(@"C:\work\kz_a.bsp")} {{unknown}}", command);
-    }
-
-    [Fact]
-    public void ReadsTheGameFolderFromConfigIni()
-    {
-        using var temp = new TempFolder();
-        File.WriteAllText(temp.Combine("config.ini"), "[GameFolder]\n#comment\nC:\\games\\kz_stub\n[SteamPath]\nC:\\Steam\n");
-        Assert.Equal(@"C:\games\kz_stub", new BspPackTool(temp.Combine(BspPackTool.ExecutableName)).ReadConfiguredGameFolder());
     }
 
     [Fact]
@@ -110,7 +75,7 @@ public class BspPackTests
         var log = new List<string>();
         var context = new PortJobContext { Log = new DelegateLog((_, message) => { lock (log) log.Add(message); }), WorkDirectory = work };
         context.Set(state);
-        context.Set(new PorterSettings { BspPackPath = bspPack, MomentumDirectory = momentum });
+        context.Set(new PorterSettings { MomentumDirectory = momentum });
 
         PortJobResult result = await job.RunAsync(context);
 

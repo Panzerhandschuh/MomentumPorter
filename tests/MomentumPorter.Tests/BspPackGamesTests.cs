@@ -2,6 +2,7 @@ namespace MomentumPorter.Tests;
 
 using System.Text;
 using MomentumPorter.Pipeline;
+using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 using MomentumPorter.Tools;
 using ValvePak;
@@ -21,8 +22,8 @@ public class BspPackGamesTests
 
         tool.WriteConfig(new BspPackGame("Kreedz Climbing", temp.Combine("games", "kzmod"), [excluded]), steam);
 
-        Assert.Equal(temp.Combine("games", "kzmod"), tool.ReadConfiguredGameFolder());
         string[] config = File.ReadAllLines(tool.ConfigPath);
+        Assert.Equal(["[GameFolder]", temp.Combine("games", "kzmod")], config.Where(x => !x.StartsWith('#')).Take(2));
         Assert.DoesNotContain(config, string.IsNullOrWhiteSpace);
         Assert.Equal(steam, config[^1]);
 
@@ -100,7 +101,7 @@ public class BspPackGamesTests
         WriteFile(Path.Combine(momentum, "bin", "win64", "bspzip.exe"));
         var games = new BspPackGames(temp.Combine("bspPack"));
 
-        BspPackGame game = games.Prepare("kzmod", content, momentum, new SteamLocator(steamRoot: null), NullLog.Instance);
+        BspPackGame game = games.Prepare("kzmod", content, momentum, new PorterSettings(), new SteamLocator(steamRoot: null), NullLog.Instance);
 
         Assert.Equal(Path.Combine(games.RootDirectory, "kzmod"), game.GameFolder);
         string gameInfo = File.ReadAllText(Path.Combine(game.GameFolder, "gameinfo.txt"));
@@ -113,7 +114,7 @@ public class BspPackGamesTests
         Assert.True(File.Exists(Path.Combine(game.GameFolder, "..", "bin", "win64", "bspzip.exe")));
 
         // Again, with the junction and the extraction already there
-        games.Prepare("kzmod", content, momentum, new SteamLocator(steamRoot: null), NullLog.Instance);
+        games.Prepare("kzmod", content, momentum, new PorterSettings(), new SteamLocator(steamRoot: null), NullLog.Instance);
     }
 
     [Fact]
@@ -122,7 +123,7 @@ public class BspPackGamesTests
         using var temp = new TempFolder();
         var games = new BspPackGames(temp.Combine("bspPack"));
 
-        var ex = Assert.Throws<PortStepException>(() => games.Prepare("kzmod", null, temp.CreateMomentumInstall(), new SteamLocator(steamRoot: null), NullLog.Instance));
+        var ex = Assert.Throws<PortStepException>(() => games.Prepare("kzmod", null, temp.CreateMomentumInstall(), new PorterSettings(), new SteamLocator(steamRoot: null), NullLog.Instance));
         Assert.Contains("bspzip", ex.Message);
     }
 
@@ -133,8 +134,38 @@ public class BspPackGamesTests
         string momentum = temp.CreateMomentumInstall();
         WriteFile(Path.Combine(momentum, "bin", "win64", "bspzip.exe"));
 
-        var ex = Assert.Throws<PortStepException>(() => new BspPackGames(temp.Combine("bspPack")).Prepare("tf2", null, momentum, new SteamLocator(steamRoot: null), NullLog.Instance));
-        Assert.Contains("config.ini", ex.Message);
+        var ex = Assert.Throws<PortStepException>(() => new BspPackGames(temp.Combine("bspPack")).Prepare("tf2", null, momentum, new PorterSettings(), new SteamLocator(steamRoot: null), NullLog.Instance));
+        Assert.Contains("tf2", ex.Message);
+    }
+
+    [Fact]
+    public void UsesTheKreedzClimbingFolderFromSettings()
+    {
+        using var temp = new TempFolder();
+        string install = temp.Combine("My KZ");
+        string content = Path.Combine(install, "kz");
+        WriteFile(Path.Combine(content, "gameinfo.txt"));
+        WriteVpk(Path.Combine(content, "kz_misc_dir.vpk"), ("models/kz/thing.mdl", "kz"));
+        string momentum = temp.CreateMomentumInstall();
+        WriteFile(Path.Combine(momentum, "bin", "win64", "bspzip.exe"));
+        var games = new BspPackGames(temp.Combine("bspPack"));
+
+        // The setting wins over the folder the map came from
+        BspPackGame game = games.Prepare("kzmod", temp.Combine("elsewhere"), momentum, new PorterSettings { KreedzClimbingDirectory = install }, new SteamLocator(steamRoot: null), NullLog.Instance);
+
+        Assert.Contains($"\"{content}\"", File.ReadAllText(Path.Combine(game.GameFolder, "gameinfo.txt")));
+    }
+
+    [Fact]
+    public void FailsWhenTheKreedzClimbingFolderIsWrong()
+    {
+        using var temp = new TempFolder();
+        string momentum = temp.CreateMomentumInstall();
+        WriteFile(Path.Combine(momentum, "bin", "win64", "bspzip.exe"));
+        var settings = new PorterSettings { KreedzClimbingDirectory = temp.Combine("not kz") };
+
+        var ex = Assert.Throws<PortStepException>(() => new BspPackGames(temp.Combine("bspPack")).Prepare("kzmod", null, momentum, settings, new SteamLocator(steamRoot: null), NullLog.Instance));
+        Assert.Contains(temp.Combine("not kz"), ex.Message);
     }
 
     private static string WriteVpk(string path, params (string Path, string Data)[] files) => WriteVpk(path, false, files);

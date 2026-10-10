@@ -2,6 +2,7 @@ namespace MomentumPorter.Tests;
 
 using MomentumPorter.Options;
 using MomentumPorter.Settings;
+using MomentumPorter.Steam;
 using MomentumPorter.UI.Services;
 using MomentumPorter.UI.ViewModels.Pages;
 using Xunit;
@@ -16,8 +17,7 @@ public class SettingsTests
         var settings = new PorterSettings
         {
             MomentumDirectory = @"D:\Momentum",
-            BspPackPath = @"C:\bspPack\bspPack.exe",
-            PrePackCommand = "python x.py \"{resourceconfig}\"",
+            KreedzClimbingDirectory = @"D:\KreedzClimbing",
             StudiomdlPath = @"C:\tools\studiomdl.exe",
         };
 
@@ -25,10 +25,31 @@ public class SettingsTests
         PorterSettings loaded = PorterSettings.Load(path);
 
         Assert.Equal(settings.MomentumDirectory, loaded.MomentumDirectory);
-        Assert.Equal(settings.BspPackPath, loaded.BspPackPath);
-        Assert.Equal(settings.PrePackCommand, loaded.PrePackCommand);
+        Assert.Equal(settings.KreedzClimbingDirectory, loaded.KreedzClimbingDirectory);
         Assert.Equal(settings.StudiomdlPath, loaded.StudiomdlPath);
         Assert.Null(PorterSettings.Load(temp.Combine("missing.json")).StudiomdlPath);
+    }
+
+    [Fact]
+    public void KreedzClimbingIsTheOverrideElseSteams()
+    {
+        using var temp = new TempFolder();
+        string install = temp.Combine("KZ");
+        string content = Path.Combine(install, "kz");
+        Directory.CreateDirectory(content);
+        File.WriteAllText(Path.Combine(content, "gameinfo.txt"), "\"GameInfo\" {}");
+
+        // The install folder or the kz folder itself
+        Assert.Equal(content, new PorterSettings { KreedzClimbingDirectory = install }.ResolveKreedzClimbingContentDirectory());
+        Assert.Equal(content, new PorterSettings { KreedzClimbingDirectory = content }.ResolveKreedzClimbingContentDirectory());
+        Assert.Null(new PorterSettings { KreedzClimbingDirectory = temp.Combine("nope") }.ResolveKreedzClimbingContentDirectory());
+
+        // Without an override, KreedzClimbing/kz in the Steam libraries
+        string steam = temp.Combine("Steam");
+        string steamContent = Path.Combine(steam, "steamapps", "common", "KreedzClimbing", "kz");
+        Directory.CreateDirectory(steamContent);
+        Assert.Equal(steamContent, new PorterSettings().ResolveKreedzClimbingContentDirectory(new SteamLocator(steam)));
+        Assert.Null(new PorterSettings().ResolveKreedzClimbingContentDirectory(new SteamLocator(steamRoot: null)));
     }
 
     [Fact]
@@ -93,13 +114,11 @@ public class SettingsTests
         string path = temp.Combine("settings.json");
         var page = new SettingsPageViewModel(SettingsService.Load(path), new NoDialogs(), action => action());
 
-        page.BspPackPath = "  ";
-        page.PrePackCommand = "echo hi";
+        page.KreedzClimbingDirectory = "  ";
         page.StudiomdlPath = @"C:\tools\studiomdl.exe";
 
         PorterSettings saved = PorterSettings.Load(path);
-        Assert.Null(saved.BspPackPath);
-        Assert.Equal("echo hi", saved.PrePackCommand);
+        Assert.Null(saved.KreedzClimbingDirectory);
         Assert.Equal(@"C:\tools\studiomdl.exe", saved.StudiomdlPath);
         Assert.StartsWith(@"C:\tools\studiomdl.exe doesn't exist", page.StudiomdlStatus);
         Assert.Null(page.SaveError);

@@ -3,6 +3,7 @@ namespace MomentumPorter.Tools;
 using System.Diagnostics;
 using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Pipeline;
+using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 using ValvePak;
 
@@ -45,25 +46,28 @@ public sealed class BspPackGames(string rootDirectory)
     /// Sets up the game a profile's maps pack assets from.
     /// </summary>
     /// <param name="profile">The game profile's name (see <see cref="Porting.GameProfiles"/>)</param>
-    /// <param name="gameDirectory">The game folder the map came from, if any, preferred over the Steam install</param>
+    /// <param name="gameDirectory">The game folder the map came from, if any, for when the game isn't found otherwise</param>
     /// <param name="momentumInstall">Momentum's install folder, for its bspzip</param>
-    public BspPackGame Prepare(string profile, string? gameDirectory, string momentumInstall, SteamLocator steam, IPortLog log, CancellationToken cancellation = default)
+    /// <param name="settings">Where the games are, when they aren't found in the Steam libraries</param>
+    public BspPackGame Prepare(string profile, string? gameDirectory, string momentumInstall, PorterSettings settings, SteamLocator steam, IPortLog log, CancellationToken cancellation = default)
     {
         LinkBspZip(momentumInstall);
         return profile.ToLowerInvariant() switch
         {
-            "kzmod" => PrepareKreedzClimbing(gameDirectory, steam, log, cancellation),
+            "kzmod" => PrepareKreedzClimbing(gameDirectory, settings, steam, log, cancellation),
             "gokz" => PrepareGokz(gameDirectory, steam, log, cancellation),
-            _ => throw new PortStepException($"The porter doesn't know which game {profile} maps pack their assets from. Set a bspPack with its own config.ini in Settings."),
+            _ => throw new PortStepException($"The porter doesn't know which game {profile} maps pack their assets from"),
         };
     }
 
-    private BspPackGame PrepareKreedzClimbing(string? gameDirectory, SteamLocator steam, IPortLog log, CancellationToken cancellation)
+    private BspPackGame PrepareKreedzClimbing(string? gameDirectory, PorterSettings settings, SteamLocator steam, IPortLog log, CancellationToken cancellation)
     {
-        string content = HasFile(gameDirectory, "kz_misc_dir.vpk")
-            ? gameDirectory!
-            : steam.Find(KnownGame.KreedzClimbing)?.ContentDirectory
-                ?? throw new PortStepException("Kreedz Climbing wasn't found in the Steam libraries; bspPack packs KZ maps' assets from it");
+        bool overridden = !string.IsNullOrWhiteSpace(settings.KreedzClimbingDirectory);
+        string content = settings.ResolveKreedzClimbingContentDirectory(steam)
+            ?? (!overridden && HasFile(gameDirectory, "kz_misc_dir.vpk") ? gameDirectory : null)
+            ?? throw new PortStepException(overridden
+                ? $"{settings.KreedzClimbingDirectory} doesn't look like a Kreedz Climbing install (no kz/gameinfo.txt). Fix its folder in Settings."
+                : "Kreedz Climbing wasn't found in your Steam libraries; bspPack packs KZ maps' assets from it. Set its folder in Settings.");
         string install = Path.GetDirectoryName(Path.GetFullPath(content))!;
 
         // KZ searches its own VPKs, then HL2's, then its loose files (kz/gameinfo.txt). Momentum mounts HL2 itself.

@@ -204,7 +204,7 @@ public class MapsPageTests
     public async Task PortsAKzMapToTheOutputFolder()
     {
         string? input = KzMaps.Find("kz_dance");
-        if (input is null || MomentumPorter.Tools.BspPackTool.FindDefault() is null)
+        if (input is null || !File.Exists(MomentumPorter.Tools.BspPackTool.BundledPath))
             return;
 
         using var temp = new TempFolder();

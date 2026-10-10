@@ -5,7 +5,6 @@ using System.Reactive;
 using Material.Icons;
 using MomentumPorter.Settings;
 using MomentumPorter.Steam;
-using MomentumPorter.Tools;
 using MomentumPorter.UI.Services;
 using ReactiveUI;
 
@@ -16,7 +15,7 @@ public sealed record DetectedGame(string Name, string? Path, bool Found)
 }
 
 /// <summary>
-/// Where Momentum, the tools (bspPack, studiomdl) and the folders are. Every change is saved straight away.
+/// Where Momentum, the games, studiomdl and the folders are. Every change is saved straight away.
 /// </summary>
 public sealed class SettingsPageViewModel : PageViewModel
 {
@@ -25,6 +24,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     private readonly Action<Action> _post;
     private string? _detectedMomentum;
     private string? _detectedMomentumMaps;
+    private string? _detectedKreedzClimbing;
+    private string? _detectedKreedzClimbingContent;
     private string? _saveError;
     private bool _isScanning;
 
@@ -40,11 +41,10 @@ public sealed class SettingsPageViewModel : PageViewModel
             if (await _dialogs.PickFolderAsync("Momentum Mod's install folder") is { } folder)
                 MomentumDirectory = folder;
         });
-        BrowseBspPackCommand = ReactiveCommand.CreateFromTask(async () =>
+        BrowseKreedzClimbingCommand = ReactiveCommand.CreateFromTask(async () =>
         {
-            IReadOnlyList<string> files = await _dialogs.PickFilesAsync("bspPack executable", false, new FileFilter("bspPack", BspPackTool.ExecutableName, "*"));
-            if (files.Count > 0)
-                BspPackPath = files[0];
+            if (await _dialogs.PickFolderAsync("Kreedz Climbing's install folder") is { } folder)
+                KreedzClimbingDirectory = folder;
         });
         BrowseStudiomdlCommand = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -103,38 +103,39 @@ public sealed class SettingsPageViewModel : PageViewModel
             ? IsScanning ? "Looking for Momentum Mod..." : "Momentum Mod wasn't found in your Steam libraries"
             : "That folder doesn't look like a Momentum Mod install";
 
-    public string? BspPackPath
+    public string? KreedzClimbingDirectory
     {
-        get => Settings.BspPackPath;
-        set => Update(() => Settings.BspPackPath = Blank(value), nameof(BspPackPath), nameof(BspPackStatus));
+        get => Settings.KreedzClimbingDirectory;
+        set => Update(() => Settings.KreedzClimbingDirectory = Blank(value), nameof(KreedzClimbingDirectory), nameof(KreedzClimbingStatus));
     }
 
-    public string? DefaultBspPackPath => BspPackTool.FindDefault();
-
-    public string BspPackStatus
+    /// <summary>Kreedz Climbing found in the Steam libraries, used when there's no override.</summary>
+    public string? DetectedKreedzClimbing
     {
-        get
+        get => _detectedKreedzClimbing;
+        private set
         {
-            if (Settings.ResolveBspPackPath() is not { } path)
-                return "bspPack wasn't found; set its location to pack maps";
-
-            var tool = new BspPackTool(path);
-            if (!tool.Exists)
-                return $"{path} doesn't exist";
-
-            if (tool.IsBundled)
-                return $"Using the bspPack that comes with the porter ({path}), set up for each map's game";
-
-            return tool.ReadConfiguredGameFolder() is { } game
-                ? $"Using {path}, packing assets from {game}"
-                : $"Using {path}; it needs a config.ini naming the game folder to pack assets from";
+            this.RaiseAndSetIfChanged(ref _detectedKreedzClimbing, value);
+            this.RaisePropertyChanged(nameof(KreedzClimbingStatus));
         }
     }
 
-    public string? PrePackCommand
+    public string KreedzClimbingStatus
     {
-        get => Settings.PrePackCommand;
-        set => Update(() => Settings.PrePackCommand = Blank(value), nameof(PrePackCommand));
+        get
+        {
+            if (Settings.KreedzClimbingDirectory is not null)
+            {
+                return Settings.ResolveKreedzClimbingContentDirectory() is { } content
+                    ? $"KZ maps' assets are packed from {content}"
+                    : "That folder doesn't look like a Kreedz Climbing install";
+            }
+
+            if (_detectedKreedzClimbingContent is { } detected)
+                return $"KZ maps' assets are packed from {detected}";
+
+            return IsScanning ? "Looking for Kreedz Climbing..." : "Kreedz Climbing wasn't found in your Steam libraries; it's needed to pack KZ maps' assets";
+        }
     }
 
     public string? StudiomdlPath
@@ -189,7 +190,7 @@ public sealed class SettingsPageViewModel : PageViewModel
 
     public ReactiveCommand<Unit, Unit> BrowseMomentumCommand { get; }
 
-    public ReactiveCommand<Unit, Unit> BrowseBspPackCommand { get; }
+    public ReactiveCommand<Unit, Unit> BrowseKreedzClimbingCommand { get; }
 
     public ReactiveCommand<Unit, Unit> BrowseStudiomdlCommand { get; }
 
@@ -207,7 +208,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         IsScanning = true;
         try
         {
-            (List<DetectedGame> games, GameLocation? momentum) = await Task.Run(() =>
+            (List<DetectedGame> games, GameLocation? momentum, GameLocation? kreedzClimbing) = await Task.Run(() =>
             {
                 var steam = new SteamLocator();
                 var games = KnownGame.All
@@ -215,7 +216,7 @@ public sealed class SettingsPageViewModel : PageViewModel
                         ? new DetectedGame(game.Name, location.ContentDirectory ?? location.InstallDirectory, true)
                         : new DetectedGame(game.Name, null, false))
                     .ToList();
-                return (games, steam.FindMomentum());
+                return (games, steam.FindMomentum(), steam.Find(KnownGame.KreedzClimbing));
             });
 
             _post(() =>
@@ -226,6 +227,8 @@ public sealed class SettingsPageViewModel : PageViewModel
 
                 _detectedMomentumMaps = momentum?.ContentDirectory is { } content ? Path.Combine(content, "maps") : null;
                 DetectedMomentum = momentum?.InstallDirectory;
+                _detectedKreedzClimbingContent = kreedzClimbing?.ContentDirectory;
+                DetectedKreedzClimbing = kreedzClimbing?.InstallDirectory;
             });
         }
         finally
@@ -234,6 +237,7 @@ public sealed class SettingsPageViewModel : PageViewModel
             {
                 IsScanning = false;
                 this.RaisePropertyChanged(nameof(MomentumStatus));
+                this.RaisePropertyChanged(nameof(KreedzClimbingStatus));
             });
         }
     }

@@ -51,27 +51,25 @@
 
       <Border Classes="panel" Padding="16">
         <StackPanel Spacing="16">
-          <TextBlock Text="Tools" Classes="h2" />
+          <TextBlock Text="Kreedz Climbing" Classes="h2" />
           <StackPanel Classes="setting">
-            <TextBlock Classes="label" Text="bspPack" />
+            <TextBlock Classes="label" Text="Install folder" />
             <DockPanel>
-              <Button DockPanel.Dock="Right" Margin="6 0 0 0" Command="{Binding BrowseBspPackCommand}" ToolTip.Tip="Browse">
+              <Button DockPanel.Dock="Right" Margin="6 0 0 0" Command="{Binding BrowseKreedzClimbingCommand}" ToolTip.Tip="Browse">
                 <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
               </Button>
-              <TextBox Text="{Binding BspPackPath, UpdateSourceTrigger=LostFocus}"
-                       Watermark="{Binding DefaultBspPackPath, TargetNullValue='Path to bspPack.exe', StringFormat='Default: {0}'}" />
+              <TextBox Text="{Binding KreedzClimbingDirectory, UpdateSourceTrigger=LostFocus}"
+                       Watermark="{Binding DetectedKreedzClimbing, TargetNullValue='Not found in your Steam libraries', StringFormat='Detected: {0}'}" />
             </DockPanel>
-            <TextBlock Classes="hint" Text="{Binding BspPackStatus}" />
-            <TextBlock Classes="hint"
-                       Text="bspPack reads config.ini (the game folder it packs assets from) and ResourceConfig.ini from its own folder. For KZ maps, point config.ini at a stub game folder that only mounts KZ's content." />
+            <TextBlock Classes="hint" Text="{Binding KreedzClimbingStatus}" />
+            <TextBlock Classes="hint" Text="Leave empty to use the install found in your Steam libraries. KZ maps get their textures, models and sounds packed from it, and their soundscapes from its shared soundscape files." />
           </StackPanel>
-          <StackPanel Classes="setting">
-            <TextBlock Classes="label" Text="Pre-pack command (optional)" />
-            <TextBox Text="{Binding PrePackCommand, UpdateSourceTrigger=LostFocus}" FontFamily="{StaticResource Monospace}"
-                     Watermark="python &quot;C:\path\to\kz_shadowed_excludes.py&quot; &quot;{resourceconfig}&quot;" />
-            <TextBlock Classes="hint"
-                       Text="Run through the shell before every bspPack run, e.g. to update ResourceConfig.ini. Placeholders: {resourceconfig}, {bsppack}, {bsppackdir}, {bsp}. Quote paths with spaces." />
-          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="16">
+          <TextBlock Text="Tools" Classes="h2" />
           <StackPanel Classes="setting">
             <TextBlock Classes="label" Text="studiomdl" />
             <DockPanel>

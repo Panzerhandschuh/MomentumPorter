@@ -3,6 +3,8 @@ namespace MomentumPorter.Steps;
 using MomentumPorter.Detection;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
+using MomentumPorter.Settings;
+using MomentumPorter.Steam;
 
 /// <summary>
 /// Runs the game profile's conversions on the loaded BSP.
@@ -33,6 +35,13 @@ public sealed class ApplyProfileStep : IPortStep
             context.Log.Info($"Treating the map as {profile.Description}, going by {detection.Reason}");
             if (!detection.Certain)
                 context.Report.Warn($"guessed the game from {detection.Reason}; pass the game explicitly if that's wrong");
+        }
+
+        // A KZ map from outside KZ's maps folder still gets KZ's files (e.g. its shared soundscapes)
+        if (state.GameDirectory is null && profile.Name == "kzmod")
+        {
+            PorterSettings settings = context.TryGet<PorterSettings>() ?? new PorterSettings();
+            state.GameDirectory = settings.ResolveKreedzClimbingContentDirectory(context.TryGet<SteamLocator>());
         }
 
         var portContext = new PortContext(bsp, state.MapName, state.GameDirectory, context.Report);
