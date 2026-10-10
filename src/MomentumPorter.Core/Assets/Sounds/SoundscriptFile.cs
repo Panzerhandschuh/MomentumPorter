@@ -104,11 +104,27 @@ public sealed class SoundscriptEntry
         set => SetOrRemove("volume", value);
     }
 
+    /// <summary>
+    /// The <c>soundlevel</c>. Setting it replaces the entry's other ways of giving one (<c>attenuation</c>,
+    /// <c>CompatibilityAttenuation</c>, <c>CompatibilitySoundlevel</c>, as Momentum's footsteps have): the engine
+    /// complains about an entry with more than one ("has multiple attenuation ... and/or soundlevel entries").
+    /// </summary>
     public string? SoundLevel
     {
         get => Node.GetValue("soundlevel");
-        set => SetOrRemove("soundlevel", value);
+        set
+        {
+            if (value is not null)
+            {
+                foreach (string other in AttenuationKeys)
+                    Node.RemoveAll(other);
+            }
+
+            SetOrRemove("soundlevel", value);
+        }
     }
+
+    private static readonly string[] AttenuationKeys = ["attenuation", "CompatibilityAttenuation", "CompatibilitySoundlevel"];
 
     public string? Pitch
     {

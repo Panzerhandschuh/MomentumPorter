@@ -75,6 +75,26 @@ public class SoundscriptFileTests
         Assert.Equal("[$X360]", file.Find("Console.Only")!.Node.Children![0].Conditional);
     }
 
+    /// <summary>The engine warns about an entry with a soundlevel and an attenuation, as Momentum's footsteps had once the game's level was set.</summary>
+    [Fact]
+    public void SoundLevelReplacesAttenuation()
+    {
+        SoundscriptFile file = SoundscriptFile.Parse("""
+            "Cardboard.StepRight"
+            {
+            	"CompatibilityAttenuation"	"1.0"
+            	"attenuation"	"0.8"
+            	"wave"	"player/footsteps/cardboard/cardboard_box_impact_soft2.wav"
+            }
+            """);
+        SoundscriptEntry step = file.Find("Cardboard.StepRight")!;
+
+        step.SoundLevel = "SNDLVL_70dB";
+
+        Assert.Equal(["soundlevel", "wave"], step.Node.Children!.Select(x => x.Key).Order(StringComparer.Ordinal));
+        Assert.Equal("SNDLVL_70dB", step.SoundLevel);
+    }
+
     [Fact]
     public void ReplacesOneEntryAndKeepsTheRest()
     {
