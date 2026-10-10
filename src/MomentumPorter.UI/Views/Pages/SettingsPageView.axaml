@@ -121,22 +121,34 @@
                 <TextBlock Text="Rescan" />
               </StackPanel>
             </Button>
-            <TextBlock Text="Detected games" Classes="h2" VerticalAlignment="Center" />
+            <TextBlock Text="Games" Classes="h2" VerticalAlignment="Center" />
           </DockPanel>
+          <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                     Text="Set a game's folder when your Steam libraries don't have it, or have a different copy. Weapons and player sounds are ported from it, and GoldSrc maps take their WADs from Half-Life's and Counter-Strike 1.6's. Leave empty to use the one detected." />
           <TextBlock Text="Looking for games..." Classes="muted" IsVisible="{Binding IsScanning}" />
           <ItemsControl ItemsSource="{Binding Games}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="vm:DetectedGame">
-                <Grid ColumnDefinitions="24, 240, *" Margin="0 3">
+              <DataTemplate DataType="vm:DetectedGameViewModel">
+                <Grid ColumnDefinitions="24, 240, *" RowDefinitions="Auto, Auto" Margin="0 3">
                   <materialIcons:MaterialIcon Grid.Column="0" Width="16" Height="16" HorizontalAlignment="Left"
                                               Kind="CheckCircle" Foreground="{StaticResource SuccessBrush}"
                                               IsVisible="{Binding Found}" />
                   <materialIcons:MaterialIcon Grid.Column="0" Width="16" Height="16" HorizontalAlignment="Left"
                                               Kind="MinusCircleOutline" Foreground="{StaticResource MutedBrush}"
                                               IsVisible="{Binding !Found}" />
-                  <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
                   <SelectableTextBlock Grid.Column="2" Text="{Binding PathText}" Classes.muted="{Binding !Found}"
-                                       TextTrimming="CharacterEllipsis" />
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                       IsVisible="{Binding !CanSetFolder}" />
+                  <DockPanel Grid.Column="2" IsVisible="{Binding CanSetFolder}">
+                    <Button DockPanel.Dock="Right" Margin="6 0 0 0" Command="{Binding BrowseCommand}" ToolTip.Tip="Browse">
+                      <materialIcons:MaterialIcon Kind="FolderOpenOutline" />
+                    </Button>
+                    <TextBox Text="{Binding Folder, UpdateSourceTrigger=LostFocus}" Watermark="{Binding Watermark}" />
+                  </DockPanel>
+                  <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding FolderStatus}" Classes="error" FontSize="12"
+                             TextWrapping="Wrap" Margin="0 2 0 0"
+                             IsVisible="{Binding FolderStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 </Grid>
               </DataTemplate>
             </ItemsControl.ItemTemplate>

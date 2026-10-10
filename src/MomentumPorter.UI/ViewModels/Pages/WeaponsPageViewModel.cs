@@ -4,9 +4,11 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using Material.Icons;
+using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Settings;
+using MomentumPorter.Steam;
 using MomentumPorter.UI.Services;
 using MomentumPorter.UI.ViewModels.Shared;
 using ReactiveUI;
@@ -24,6 +26,7 @@ public sealed class WeaponsPageViewModel : PageViewModel
     private CatalogGame? _selectedGame;
     private CatalogWeapon? _selectedWeapon;
     private WeaponPackBuildViewModel? _selectedBuild;
+    private int _gameSearch;
 
     public WeaponsPageViewModel(SettingsService settings, JobRunnerService runner, Action<Action> post, WeaponCatalog? catalog = null)
     {
@@ -32,20 +35,24 @@ public sealed class WeaponsPageViewModel : PageViewModel
         Runner = runner;
         Catalog = catalog ?? WeaponCatalog.Default;
         Games = Catalog.Games;
+        GameChoices = Games.Select(x => new WeaponGameViewModel(x)).ToList();
         Modes = GameModes.Groups;
         _selectedMode = Modes[0];
         _selectedGame = DefaultGameFor(_selectedMode);
 
         IObservable<bool> running = runner.WhenAnyValue(x => x.IsRunning);
-        IObservable<bool> canBuild = this.WhenAnyValue(x => x.SelectedWeapon, x => x.SelectedSlot, x => x.Runner.IsRunning, (weapon, slot, isRunning) => weapon is not null && slot is not null && !isRunning);
+        IObservable<bool> canBuild = this.WhenAnyValue(x => x.SelectedWeapon, x => x.SelectedSlot, x => x.Runner.IsRunning, x => x.SelectedGameMissing, (weapon, slot, isRunning, missing) => weapon is not null && slot is not null && !isRunning && missing is null);
         BuildCommand = ReactiveCommand.CreateFromTask(BuildAsync, canBuild);
-        IObservable<bool> canBuildAll = this.WhenAnyValue(x => x.SelectedGame, x => x.SelectedMode, x => x.Runner.IsRunning, (game, mode, isRunning) => game is not null && !isRunning && game.LoadoutFor(mode.Slots, mode.PicksFor(game.Id)).Count > 0);
+        IObservable<bool> canBuildAll = this.WhenAnyValue(x => x.SelectedGame, x => x.SelectedMode, x => x.Runner.IsRunning, x => x.SelectedGameMissing, (game, mode, isRunning, missing) => game is not null && !isRunning && missing is null && game.LoadoutFor(mode.Slots, mode.PicksFor(game.Id)).Count > 0);
         BuildAllCommand = ReactiveCommand.CreateFromTask(BuildAllAsync, canBuildAll);
         ResetCommand = ReactiveCommand.CreateFromTask<MomentumWeaponViewModel>(ResetAsync, running.Select(x => !x));
         CancelCommand = ReactiveCommand.Create(runner.Cancel, running);
         OpenPackFolderCommand = ReactiveCommand.Create(OpenPackFolder);
 
         RefreshSlots();
+        // A game's folder may have been set on the Settings page
+        settings.Saved += (_, _) => _ = FindGamesAsync();
+        _ = FindGamesAsync();
     }
 
     public override string Title => "Weapons";
@@ -71,6 +78,8 @@ public sealed class WeaponsPageViewModel : PageViewModel
             // Each mode starts on the game it comes from (TF2 for Rocket and Sticky Jump, Quake 3 for Defrag...)
             _selectedGame = DefaultGameFor(value);
             this.RaisePropertyChanged(nameof(SelectedGame));
+            this.RaisePropertyChanged(nameof(SelectedGameChoice));
+            this.RaisePropertyChanged(nameof(SelectedGameMissing));
             RefreshSlots();
             this.RaisePropertyChanged(nameof(BuildAllTip));
         }
@@ -99,15 +108,68 @@ public sealed class WeaponsPageViewModel : PageViewModel
     /// <summary>Step 3: the games the catalog has weapons from.</summary>
     public IReadOnlyList<CatalogGame> Games { get; }
 
+    /// <summary><see cref="Games"/> as the page lists them, marked where the game's files weren't found.</summary>
+    public IReadOnlyList<WeaponGameViewModel> GameChoices { get; }
+
     public CatalogGame? SelectedGame
     {
         get => _selectedGame;
         set
         {
             this.RaiseAndSetIfChanged(ref _selectedGame, value);
+            this.RaisePropertyChanged(nameof(SelectedGameChoice));
+            this.RaisePropertyChanged(nameof(SelectedGameMissing));
             this.RaisePropertyChanged(nameof(BuildAllTip));
             RefreshWeapons();
         }
+    }
+
+    /// <summary><see cref="SelectedGame"/> for the game list.</summary>
+    public WeaponGameViewModel? SelectedGameChoice
+    {
+        get => GameChoices.FirstOrDefault(x => x.Game == SelectedGame);
+        set
+        {
+            if (value is not null && value.Game != SelectedGame)
+                SelectedGame = value.Game;
+        }
+    }
+
+    /// <summary>Why the selected game's files can't be opened, or null when they can (or haven't been looked for yet).</summary>
+    public string? SelectedGameMissing => SelectedGameChoice?.Missing;
+
+    /// <summary>
+    /// Looks for every game's files on a worker thread, where a build would (the folder set on the Settings page, else
+    /// the Steam libraries), and marks the games that weren't found. Called again whenever the settings change.
+    /// </summary>
+    public async Task FindGamesAsync()
+    {
+        PorterSettings settings = _settings.Settings.Clone();
+        int search = ++_gameSearch;
+        List<string?> missing = await Task.Run(() =>
+        {
+            var steam = new SteamLocator();
+            string? momentum = settings.ResolveMomentumContentDirectory(steam) is { } content
+                ? Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(content))
+                : null;
+            return GameChoices
+                .Select(x => SourceGames.Find(x.Game.Id) is { } source
+                    ? SourceGames.WhyNotFound(source, steam, momentum, settings.ResolveGameContentDirectory(source))
+                    : $"The porter can't open {x.Game.Name}'s files")
+                .ToList();
+        });
+
+        _post(() =>
+        {
+            // A newer search (the settings changed again meanwhile) wins
+            if (search != _gameSearch)
+                return;
+
+            for (int i = 0; i < GameChoices.Count; i++)
+                GameChoices[i].Missing = missing[i];
+
+            this.RaisePropertyChanged(nameof(SelectedGameMissing));
+        });
     }
 
     /// <summary>Step 4: the game's weapons that fit the selected Momentum weapon.</summary>
@@ -310,6 +372,9 @@ public sealed class WeaponsPageViewModel : PageViewModel
         if (string.IsNullOrWhiteSpace(options.StudioMdlPath) && !string.IsNullOrWhiteSpace(settings.StudiomdlPath))
             options.StudioMdlPath = settings.StudiomdlPath;
 
+        if (string.IsNullOrWhiteSpace(options.GameDirectory) && SourceGames.Find(options.Game) is { } source && settings.ResolveGameContentDirectory(source) is { } gameDirectory)
+            options.GameDirectory = gameDirectory;
+
         if (string.IsNullOrWhiteSpace(options.OutputDirectory))
             options.OutputDirectory = OutputDirectory(settings);
 
@@ -362,6 +427,29 @@ public sealed class WeaponPackBuildViewModel(string title, WeaponPackOptions? op
     public override string Title { get; } = title;
 
     public WeaponPackOptions? Options { get; } = options;
+}
+
+/// <summary>A game in the Weapons page's list, with why its files weren't found if they weren't.</summary>
+public sealed class WeaponGameViewModel(CatalogGame game) : ReactiveObject
+{
+    private string? _missing;
+
+    public CatalogGame Game { get; } = game;
+
+    public string Name => Game.Name;
+
+    /// <summary>Why the game's files can't be opened, or null when they can (or haven't been looked for yet).</summary>
+    public string? Missing
+    {
+        get => _missing;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _missing, value);
+            this.RaisePropertyChanged(nameof(IsFound));
+        }
+    }
+
+    public bool IsFound => Missing is null;
 }
 
 /// <summary>A Momentum weapon of the selected mode in the Weapons page's list, with what the pack holds for it there.</summary>

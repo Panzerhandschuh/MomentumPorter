@@ -2,6 +2,7 @@ namespace MomentumPorter.Settings;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Steam;
 
 /// <summary>
@@ -31,6 +32,19 @@ public sealed class PorterSettings
     /// Null to find it in the Steam libraries.
     /// </summary>
     public string? KreedzClimbingDirectory { get; set; }
+
+    /// <summary>
+    /// Folders of the games weapons and player sounds are ported from, by game id (cs16, css, q3... as in
+    /// <see cref="SourceGames"/>), for copies the Steam libraries don't have. Each may be the game's install or its
+    /// content folder. Half-Life's and Counter-Strike 1.6's are also searched for GoldSrc maps' WADs.
+    /// </summary>
+    public Dictionary<string, string> GameDirectories
+    {
+        get => _gameDirectories;
+        set => _gameDirectories = value ?? [];
+    }
+
+    private Dictionary<string, string> _gameDirectories = [];
 
     /// <summary>
     /// studiomdl.exe, which compiles the models GoldSrc maps and converted weapons use. Null for Momentum's own
@@ -66,6 +80,34 @@ public sealed class PorterSettings
         }
 
         return (steam ?? new SteamLocator()).Find(KnownGame.KreedzClimbing)?.ContentDirectory;
+    }
+
+    /// <summary>The folder set for the game in <see cref="GameDirectories"/>, or null to find it through Steam.</summary>
+    public string? GetGameDirectory(string gameId)
+    {
+        string? folder = GameDirectories.FirstOrDefault(x => x.Key.Equals(gameId, StringComparison.OrdinalIgnoreCase)).Value;
+        return string.IsNullOrWhiteSpace(folder) ? null : folder.Trim();
+    }
+
+    /// <summary>Sets the game's folder in <see cref="GameDirectories"/>; a blank one removes it.</summary>
+    public void SetGameDirectory(string gameId, string? folder)
+    {
+        foreach (string key in GameDirectories.Keys.Where(x => x.Equals(gameId, StringComparison.OrdinalIgnoreCase)).ToList())
+            GameDirectories.Remove(key);
+
+        if (!string.IsNullOrWhiteSpace(folder))
+            GameDirectories[gameId] = folder.Trim();
+    }
+
+    /// <summary>
+    /// The game's content folder from <see cref="GameDirectories"/> (cstrike for a Half-Life install set for CS 1.6),
+    /// or null when none is set. A folder that isn't the game's is returned as it is, so what reads it says what's wrong
+    /// rather than quietly using another copy.
+    /// </summary>
+    public string? ResolveGameContentDirectory(SourceGameInfo game)
+    {
+        string? folder = GetGameDirectory(game.Id);
+        return folder is null ? null : SourceGames.FindContentDirectory(game, Path.GetFullPath(folder)) ?? folder;
     }
 
     /// <summary>

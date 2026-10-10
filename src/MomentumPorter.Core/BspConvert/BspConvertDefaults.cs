@@ -1,6 +1,8 @@
 namespace MomentumPorter.BspConvert;
 
+using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Detection;
+using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 
 /// <summary>
@@ -13,8 +15,9 @@ public static class BspConvertDefaults
     /// <see cref="BspConvertOptions.OutputDirectory"/> where they're empty and the games are installed.
     /// </summary>
     /// <param name="inputPath">The map being converted, so its own mod's folders are searched first</param>
+    /// <param name="settings">For the Half-Life and Counter-Strike 1.6 folders set on the Settings page</param>
     /// <returns>What was filled in, for the log</returns>
-    public static IReadOnlyList<string> Fill(BspConvertOptions options, SteamLocator steam, string? inputPath = null, bool output = true)
+    public static IReadOnlyList<string> Fill(BspConvertOptions options, SteamLocator steam, string? inputPath = null, bool output = true, PorterSettings? settings = null)
     {
         var filled = new List<string>();
         GameLocation? momentum = steam.FindMomentum();
@@ -22,7 +25,7 @@ public static class BspConvertDefaults
 
         if (goldSrc && string.IsNullOrWhiteSpace(options.Wads))
         {
-            IReadOnlyList<string> wads = FindWadDirectories(steam, inputPath);
+            IReadOnlyList<string> wads = FindWadDirectories(steam, inputPath, settings);
             if (wads.Count > 0)
             {
                 options.Wads = string.Join(',', wads);
@@ -49,18 +52,21 @@ public static class BspConvertDefaults
     /// The Half-Life mod folders GoldSrc maps take their WADs, skies, sounds and models from: the input's own mod
     /// first (when it's inside a Half-Life install), then Counter-Strike, then Half-Life itself, each followed by
     /// its _downloads folder, where the game keeps what it downloaded from servers. GoldSrc searches a mod before valve too.
+    /// Counter-Strike's and Half-Life's folders are the ones set in <paramref name="settings"/> where there are any.
     /// </summary>
-    public static IReadOnlyList<string> FindWadDirectories(SteamLocator steam, string? inputPath = null)
+    public static IReadOnlyList<string> FindWadDirectories(SteamLocator steam, string? inputPath = null, PorterSettings? settings = null)
     {
         var mods = new List<string>();
         if (inputPath is not null && FindModDirectory(inputPath) is string inputMod)
             mods.Add(inputMod);
 
         GameLocation? halfLife = steam.Find(KnownGame.HalfLife);
-        if (halfLife is not null)
+        foreach (SourceGameInfo game in new[] { SourceGames.CounterStrike16, SourceGames.HalfLife })
         {
-            foreach (KnownGame game in new[] { KnownGame.CounterStrike16, KnownGame.HalfLife })
-                mods.Add(Path.Combine(halfLife.InstallDirectory, game.ContentFolder));
+            if (settings?.ResolveGameContentDirectory(game) is { } set)
+                mods.Add(set);
+            else if (halfLife is not null)
+                mods.Add(Path.Combine(halfLife.InstallDirectory, SourceGames.ContentFolderName(game)));
         }
 
         var dirs = new List<string>();

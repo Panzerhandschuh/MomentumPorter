@@ -295,7 +295,7 @@ public sealed class MapsPageViewModel : PageViewModel
         if (settings.ResolveStudiomdlPath(steam) is { } studiomdl)
             options.Studiomdl = studiomdl;
 
-        foreach (string filled in BspConvertDefaults.Fill(options, steam, item.InputPath, output: false))
+        foreach (string filled in BspConvertDefaults.Fill(options, steam, item.InputPath, output: false, settings))
             item.Log.Add(LogLevel.Info, filled);
 
         (PortJob job, BspConvertState state) = BspConvertJobs.Create(item.InputPath, options, copyToOutput: true, steam);

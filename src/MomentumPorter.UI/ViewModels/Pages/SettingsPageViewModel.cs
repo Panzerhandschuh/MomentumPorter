@@ -3,15 +3,86 @@ namespace MomentumPorter.UI.ViewModels.Pages;
 using System.Collections.ObjectModel;
 using System.Reactive;
 using Material.Icons;
+using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 using MomentumPorter.UI.Services;
 using ReactiveUI;
 
-/// <summary>A game the porter knows about, and whether it's installed.</summary>
-public sealed record DetectedGame(string Name, string? Path, bool Found)
+/// <summary>
+/// A game the porter knows about and whether it's installed. The games weapons and player sounds come from can have
+/// their folder set, for a copy the Steam libraries don't have.
+/// </summary>
+public sealed class DetectedGameViewModel : ReactiveObject
 {
-    public string PathText => Path ?? "not found";
+    private readonly PorterSettings _settings;
+    private readonly Action _save;
+    private string? _detectedPath;
+
+    public DetectedGameViewModel(KnownGame game, PorterSettings settings, Action save, IDialogService dialogs)
+    {
+        Game = game;
+        Source = SourceGames.Find(game.Id);
+        _settings = settings;
+        _save = save;
+        BrowseCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            if (await dialogs.PickFolderAsync($"{game.Name}'s install folder") is { } folder)
+                Folder = folder;
+        });
+    }
+
+    public KnownGame Game { get; }
+
+    public string Name => Game.Name;
+
+    /// <summary>The game as weapons and sounds are ported from it, or null for one whose folder can't be set here.</summary>
+    public SourceGameInfo? Source { get; }
+
+    public bool CanSetFolder => Source is not null;
+
+    /// <summary>The folder set for the game (its install or content folder), or null to find it through Steam.</summary>
+    public string? Folder
+    {
+        get => Source is null ? null : _settings.GetGameDirectory(Game.Id);
+        set
+        {
+            if (Source is null)
+                return;
+
+            _settings.SetGameDirectory(Game.Id, value);
+            _save();
+            this.RaisePropertyChanged();
+            this.RaisePropertyChanged(nameof(FolderStatus));
+            this.RaisePropertyChanged(nameof(Found));
+        }
+    }
+
+    /// <summary>Where the Steam libraries have the game, or null if they don't.</summary>
+    public string? DetectedPath
+    {
+        get => _detectedPath;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _detectedPath, value);
+            this.RaisePropertyChanged(nameof(PathText));
+            this.RaisePropertyChanged(nameof(Watermark));
+            this.RaisePropertyChanged(nameof(Found));
+        }
+    }
+
+    public bool Found => Folder is not null ? FolderStatus is null : DetectedPath is not null;
+
+    public string PathText => DetectedPath ?? "not found";
+
+    public string Watermark => DetectedPath is { } path ? $"Detected: {path}" : "Not found in your Steam libraries";
+
+    /// <summary>Why the folder set isn't the game's, or null when it is or none is set.</summary>
+    public string? FolderStatus => Source is not null && Folder is { } folder && SourceGames.FindContentDirectory(Source, folder) is null
+        ? $"That folder isn't {Name}'s {SourceGames.ContentFolderName(Source)} folder or the install holding it"
+        : null;
+
+    public ReactiveCommand<Unit, Unit> BrowseCommand { get; }
 }
 
 /// <summary>
@@ -174,7 +245,7 @@ public sealed class SettingsPageViewModel : PageViewModel
 
     public string DefaultOutputDirectory => PorterSettings.DefaultOutputDirectory;
 
-    public ObservableCollection<DetectedGame> Games { get; } = [];
+    public ObservableCollection<DetectedGameViewModel> Games { get; } = [];
 
     public bool IsScanning
     {
@@ -208,22 +279,23 @@ public sealed class SettingsPageViewModel : PageViewModel
         IsScanning = true;
         try
         {
-            (List<DetectedGame> games, GameLocation? momentum, GameLocation? kreedzClimbing) = await Task.Run(() =>
+            (List<string?> found, GameLocation? momentum, GameLocation? kreedzClimbing) = await Task.Run(() =>
             {
                 var steam = new SteamLocator();
-                var games = KnownGame.All
-                    .Select(game => steam.Find(game) is { } location
-                        ? new DetectedGame(game.Name, location.ContentDirectory ?? location.InstallDirectory, true)
-                        : new DetectedGame(game.Name, null, false))
-                    .ToList();
-                return (games, steam.FindMomentum(), steam.Find(KnownGame.KreedzClimbing));
+                var found = KnownGame.All.Select(game => Detect(game, steam)).ToList();
+                return (found, steam.FindMomentum(), steam.Find(KnownGame.KreedzClimbing));
             });
 
             _post(() =>
             {
-                Games.Clear();
-                foreach (DetectedGame game in games)
-                    Games.Add(game);
+                if (Games.Count == 0)
+                {
+                    foreach (KnownGame game in KnownGame.All)
+                        Games.Add(new DetectedGameViewModel(game, Settings, () => SaveError = _settings.Save(), _dialogs));
+                }
+
+                for (int i = 0; i < Games.Count; i++)
+                    Games[i].DetectedPath = found[i];
 
                 _detectedMomentumMaps = momentum?.ContentDirectory is { } content ? Path.Combine(content, "maps") : null;
                 DetectedMomentum = momentum?.InstallDirectory;
@@ -240,6 +312,24 @@ public sealed class SettingsPageViewModel : PageViewModel
                 this.RaisePropertyChanged(nameof(KreedzClimbingStatus));
             });
         }
+    }
+
+    // Where the game is: for the games weapons and sounds come from, the content folder they'd be read from
+    private static string? Detect(KnownGame game, SteamLocator steam)
+    {
+        if (SourceGames.Find(game.Id) is { } source)
+        {
+            try
+            {
+                return SourceGames.LocateContentDirectory(source, steam);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return null;
+            }
+        }
+
+        return steam.Find(game) is { } location ? location.ContentDirectory ?? location.InstallDirectory : null;
     }
 
     private void Update(Action change, params string[] properties)

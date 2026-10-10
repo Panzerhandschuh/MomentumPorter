@@ -118,13 +118,20 @@
       <DockPanel>
         <StackPanel DockPanel.Dock="Top" Margin="12 8 12 6" Spacing="4">
           <TextBlock Text="Game" Classes="h2" />
-          <ComboBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}" HorizontalAlignment="Stretch">
+          <ComboBox ItemsSource="{Binding GameChoices}" SelectedItem="{Binding SelectedGameChoice}" HorizontalAlignment="Stretch">
             <ComboBox.ItemTemplate>
-              <DataTemplate DataType="weapons:CatalogGame">
-                <TextBlock Text="{Binding Name}" />
+              <DataTemplate DataType="vm:WeaponGameViewModel">
+                <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Missing}">
+                  <TextBlock Text="{Binding Name}" Classes.muted="{Binding !IsFound}" />
+                  <TextBlock Text="not found" Classes="muted" FontSize="11" VerticalAlignment="Center" IsVisible="{Binding !IsFound}" />
+                </StackPanel>
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
+          <StackPanel Spacing="2" IsVisible="{Binding SelectedGameMissing, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding SelectedGameMissing}" Classes="warning" FontSize="12" TextWrapping="Wrap" />
+            <TextBlock Text="Set its folder on the Settings page to build its weapons." Classes="muted" FontSize="12" TextWrapping="Wrap" />
+          </StackPanel>
           <TextBlock Text="Weapon" Classes="h2" Margin="0 8 0 0" />
         </StackPanel>
         <Panel>

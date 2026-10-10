@@ -32,6 +32,8 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
     private string? _sourceDescription;
     private SoundPackBuildViewModel? _selectedBuild;
     private int _scan;
+    private bool _scanned;
+    private string? _scannedDirectory;
     private readonly Lock _previewLock = new();
     private PlayerSoundSource? _previewSource;
     private string? _previewKey;
@@ -54,7 +56,16 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
         CancelCommand = ReactiveCommand.Create(runner.Cancel, running);
         OpenPackFolderCommand = ReactiveCommand.Create(OpenPackFolder);
         RescanCommand = ReactiveCommand.CreateFromTask(ScanAsync, running.Select(x => !x));
+        // The game's folder may have been set on the Settings page
+        settings.Saved += (_, _) =>
+        {
+            if (_scanned && GameDirectory(SelectedGame) != _scannedDirectory)
+                _ = ScanAsync();
+        };
     }
+
+    /// <summary>The folder the game's sounds come from as set here or on the Settings page, or null to find it.</summary>
+    private string? GameDirectory(SourceGameInfo game) => _options.ResolveGameDirectory() ?? _settings.Settings.ResolveGameContentDirectory(game);
 
     public override string Title => "Player Sounds";
 
@@ -168,7 +179,9 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
     public async Task ScanAsync()
     {
         SourceGameInfo game = SelectedGame;
-        string? path = _options.ResolveGameDirectory();
+        string? path = GameDirectory(game);
+        _scanned = true;
+        _scannedDirectory = path;
         int scan = ++_scan;
         (List<string> characters, string? defaultCharacter, string kind, string? description) = await Task.Run(() =>
         {
@@ -178,8 +191,8 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
                 if (found is null)
                 {
                     return ([], null, "character", game.Engine == ContentEngine.Quake3
-                        ? "Quake 3 Arena or Quake Live wasn't found in your Steam libraries"
-                        : $"{game.Name} wasn't found in your Steam libraries");
+                        ? "Quake 3 Arena or Quake Live wasn't found in your Steam libraries; set its folder on the Settings page"
+                        : $"{game.Name} wasn't found in your Steam libraries; set its folder on the Settings page");
                 }
 
                 // Only Quake 3's characters come from its files; opening a Source game reads all its soundscripts
@@ -235,7 +248,7 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
     {
         SourceGameInfo game = SelectedGame;
         string? character = SelectedCharacter;
-        string? directory = _options.ResolveGameDirectory();
+        string? directory = GameDirectory(game);
         string? momentumDirectory = _settings.Settings.MomentumDirectory;
         PlayerSoundPackOptions options = OptionsPreset.Clone(_options);
         options.ApplyGameAccurate();
@@ -355,6 +368,14 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
         PorterSettings settings = _settings.Settings.Clone();
         if (string.IsNullOrWhiteSpace(options.MomentumDirectory) && !string.IsNullOrWhiteSpace(settings.MomentumDirectory))
             options.MomentumDirectory = settings.MomentumDirectory;
+
+        if (options.ResolveGameDirectory() is null && PlayerSoundSources.Find(options.Game) is { } game && settings.ResolveGameContentDirectory(game) is { } gameDirectory)
+        {
+            if (options.IsQuake3)
+                options.Quake3Path = gameDirectory;
+            else
+                options.GameDirectory = gameDirectory;
+        }
 
         (PortJob job, PlayerSoundPackState state) = PlayerSoundPackJob.Create(options);
         string workDirectory = PortJob.CreateWorkDirectory(options.ResolvePackName());

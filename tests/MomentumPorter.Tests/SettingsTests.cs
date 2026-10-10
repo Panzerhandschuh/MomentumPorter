@@ -1,5 +1,7 @@
 namespace MomentumPorter.Tests;
 
+using MomentumPorter.Assets.Vpk;
+using MomentumPorter.BspConvert;
 using MomentumPorter.Options;
 using MomentumPorter.Settings;
 using MomentumPorter.Steam;
@@ -67,6 +69,51 @@ public class SettingsTests
         Assert.Equal(studiomdl, new PorterSettings { MomentumDirectory = install }.ResolveStudiomdlPath());
         Assert.Equal(studiomdl, new PorterSettings { MomentumDirectory = Path.Combine(install, "momentum") }.ResolveStudiomdlPath());
         Assert.Null(new PorterSettings { MomentumDirectory = temp.Combine("nope") }.ResolveStudiomdlPath());
+    }
+
+    [Fact]
+    public void AGamesFolderMayBeItsInstallOrContentFolder()
+    {
+        using var temp = new TempFolder();
+        string install = temp.Combine("Half-Life");
+        string cstrike = Path.Combine(install, "cstrike");
+        Directory.CreateDirectory(Path.Combine(cstrike, "models"));
+        Directory.CreateDirectory(Path.Combine(install, "valve", "models"));
+        string path = temp.Combine("settings.json");
+
+        var settings = new PorterSettings();
+        settings.SetGameDirectory("cs16", install);
+        settings.SetGameDirectory("hl1", Path.Combine(install, "valve"));
+        settings.SetGameDirectory("q3", temp.Combine("not q3"));
+        settings.Save(path);
+        PorterSettings loaded = PorterSettings.Load(path);
+
+        Assert.Equal(cstrike, loaded.ResolveGameContentDirectory(SourceGames.CounterStrike16));
+        Assert.Equal(Path.Combine(install, "valve"), loaded.ResolveGameContentDirectory(SourceGames.HalfLife));
+        Assert.Null(loaded.ResolveGameContentDirectory(SourceGames.CounterStrikeSource));
+        // A folder that isn't the game's is kept as it is, so the build says what's wrong
+        Assert.Equal(temp.Combine("not q3"), loaded.ResolveGameContentDirectory(SourceGames.Quake3));
+
+        var noSteam = new SteamLocator(steamRoot: null);
+        Assert.Null(SourceGames.WhyNotFound(SourceGames.CounterStrike16, noSteam, contentDirectory: install));
+        Assert.Contains("isn't Quake III Arena's baseq3 folder", SourceGames.WhyNotFound(SourceGames.Quake3, noSteam, contentDirectory: temp.Combine("not q3")));
+        Assert.Equal("Counter-Strike 1.6 wasn't found in your Steam libraries", SourceGames.WhyNotFound(SourceGames.CounterStrike16, noSteam));
+
+        // Blank removes it, whatever the key's case
+        loaded.SetGameDirectory("CS16", " ");
+        Assert.Null(loaded.GetGameDirectory("cs16"));
+    }
+
+    [Fact]
+    public void GoldSrcWadsComeFromTheGameFoldersSet()
+    {
+        using var temp = new TempFolder();
+        string cstrike = temp.Combine("elsewhere", "cstrike");
+        Directory.CreateDirectory(Path.Combine(cstrike, "models"));
+        var settings = new PorterSettings();
+        settings.SetGameDirectory("cs16", cstrike);
+
+        Assert.Equal([cstrike], BspConvertDefaults.FindWadDirectories(new SteamLocator(steamRoot: null), settings: settings));
     }
 
     [Fact]
