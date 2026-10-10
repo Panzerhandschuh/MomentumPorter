@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MomentumPorter.UI.ViewModels.Pages"
              xmlns:vpk="using:MomentumPorter.Assets.Vpk"
+             xmlns:weapons="using:MomentumPorter.Assets.Weapons"
              xmlns:shared="using:MomentumPorter.UI.ViewModels.Shared"
              xmlns:views="using:MomentumPorter.UI.Views.Shared"
              xmlns:conv="using:MomentumPorter.UI.Converters"
@@ -42,12 +43,21 @@
       </StackPanel>
     </DockPanel>
 
-    <!-- Game, character and the preview; everything else is fixed (PlayerSoundPackOptions.ApplyGameAccurate) -->
+    <!-- Game mode, game, character and the preview; everything else is fixed (PlayerSoundPackOptions.ApplyGameAccurate) -->
     <Border Grid.Row="1" Grid.Column="0" Classes="panel">
       <DockPanel>
         <TextBlock DockPanel.Dock="Top" Text="Sounds" Classes="h2" Margin="12 8 12 4" />
         <StackPanel DockPanel.Dock="Top" Margin="12 4 12 8" Spacing="4">
-          <TextBlock Text="Game" FontWeight="SemiBold" />
+          <TextBlock Text="Game mode" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" HorizontalAlignment="Stretch"
+                    ToolTip.Tip="Every mode replaces Momentum's sounds everywhere. One mode's pack is only used in that mode (scripts/&lt;mode&gt;/, which needs the engine change in docs/engine-changes.md) and wins over an every-mode pack there">
+            <ComboBox.ItemTemplate>
+              <DataTemplate DataType="weapons:GameModeGroup">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="Game" FontWeight="SemiBold" Margin="0 4 0 0" />
           <ComboBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}" HorizontalAlignment="Stretch">
             <ComboBox.ItemTemplate>
               <DataTemplate DataType="vpk:SourceGameInfo">
@@ -105,7 +115,7 @@
         <Panel>
           <StackPanel IsVisible="{Binding !Builds.Count}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="420">
             <materialIcons:MaterialIcon Kind="VolumeHigh" Width="40" Height="40" Opacity="0.5" />
-            <TextBlock Text="Pick a game, then Build pack. Momentum's jump, landing, footstep and sprint sounds become the game's on every surface, and the ones it has nothing like are muted. The pack goes to momentum/custom; delete it to get Momentum's sounds back. Only one player sound pack is used at a time."
+            <TextBlock Text="Pick a game mode and a game, then Build pack. Momentum's jump, landing, footstep and sprint sounds become the game's on every surface, and the ones it has nothing like are muted. The pack goes to momentum/custom; delete it to get Momentum's sounds back. Each mode uses one player sound pack: its own if it has one, else the every-mode pack."
                        Classes="muted" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
           </StackPanel>
           <ListBox ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}" Background="Transparent"

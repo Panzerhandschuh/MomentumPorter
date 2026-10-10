@@ -68,4 +68,32 @@ public class PlayerSoundsPageTests
         Assert.Null(page.Options.OutputDirectory);
         Assert.Null(page.Options.GameDirectory);
     }
+
+    [Fact]
+    public void SelectingAModeSwitchesToItsGameAndPack()
+    {
+        PlayerSoundsPageViewModel page = CreatePage();
+        Assert.Same(PlayerSoundsPageViewModel.EveryMode, page.SelectedMode);
+        Assert.Null(page.Options.GameModes);
+
+        page.SelectedMode = page.Modes.Single(x => x.Name == "Climb (1.6)");
+        Assert.Equal("cs16", page.SelectedGame.Id);
+        Assert.Equal("kz16", page.Options.GameModes);
+        Assert.Equal("kz16_sounds", page.Options.ResolvePackName());
+
+        // The game can still be changed for the mode
+        page.SelectedGame = SourceGames.CounterStrikeSource;
+        Assert.Equal("kz16", page.Options.GameModes);
+
+        page.SelectedMode = page.Modes.Single(x => x.Name == "Defrag");
+        Assert.Equal("q3", page.SelectedGame.Id);
+        Assert.Equal("defrag_sounds", page.Options.ResolvePackName());
+
+        // Every mode keeps the game picked
+        page.SelectedMode = PlayerSoundsPageViewModel.EveryMode;
+        Assert.Null(page.Options.GameModes);
+        Assert.Equal("q3", page.SelectedGame.Id);
+        Assert.Equal("q3_sounds_ranger", page.Options.ResolvePackName());
+        Assert.Equal("q3_sounds_ranger (Quake 3)", new SoundPackBuildViewModel(null, "q3_sounds_ranger", "Quake 3").Title);
+    }
 }

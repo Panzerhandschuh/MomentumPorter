@@ -7,6 +7,7 @@ using Material.Icons;
 using MomentumPorter.Assets.Output;
 using MomentumPorter.Assets.Sounds;
 using MomentumPorter.Assets.Vpk;
+using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Settings;
 using MomentumPorter.UI.Services;
@@ -16,13 +17,15 @@ using ReactiveUI;
 /// <summary>
 /// Builds packs with another game's movement sounds (Quake 3, CS:S, CS:GO, TF2, HL2, CS 1.6, Half-Life) into
 /// Momentum's custom folder. The pack always sounds as much like the game as it can
-/// (<see cref="PlayerSoundPackOptions.ApplyGameAccurate"/>): only the game, its character and the folders are picked here.
+/// (<see cref="PlayerSoundPackOptions.ApplyGameAccurate"/>): only the game mode, the game, its character and the folders
+/// are picked here.
 /// </summary>
 public sealed class PlayerSoundsPageViewModel : PageViewModel
 {
     private readonly SettingsService _settings;
     private readonly Action<Action> _post;
     private readonly PlayerSoundPackOptions _options = new();
+    private GameModeGroup _selectedMode;
     private SourceGameInfo _selectedGame;
     private string? _selectedCharacter;
     private string _characterLabel = "Character";
@@ -41,6 +44,8 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
         _post = post;
         Runner = runner;
         _options.ApplyGameAccurate();
+        Modes = [EveryMode, .. GameModes.Groups];
+        _selectedMode = EveryMode;
         _selectedGame = PlayerSoundSources.Find(_options.Game) ?? PlayerSoundSources.Games[0];
         _selectedCharacter = _options.ResolveCharacter();
 
@@ -59,6 +64,31 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
 
     /// <summary>The options the next build uses: the game and character picked here, everything else game accurate.</summary>
     public PlayerSoundPackOptions Options => _options;
+
+    /// <summary>The choice for a pack that replaces Momentum's sounds in every mode, which any Momentum build loads.</summary>
+    public static readonly GameModeGroup EveryMode = new("Every mode", []);
+
+    /// <summary>
+    /// The modes a pack can be for: every mode, or one mode as the Weapons page offers them (the Defrag modes as one),
+    /// which needs the gamemode-weapon-scripts engine change.
+    /// </summary>
+    public IReadOnlyList<GameModeGroup> Modes { get; }
+
+    /// <summary>The modes the pack is for. Picking one mode switches to the game it comes from, as the Weapons page does.</summary>
+    public GameModeGroup SelectedMode
+    {
+        get => _selectedMode;
+        set
+        {
+            if (value is null || value == _selectedMode)
+                return;
+
+            this.RaiseAndSetIfChanged(ref _selectedMode, value);
+            _options.GameModes = value.Modes.Count == 0 ? null : value.ModeList;
+            if (value.Modes.Count > 0 && PlayerSoundSources.Find(value.DefaultGame) is { } game)
+                SelectedGame = game;
+        }
+    }
 
     public IReadOnlyList<SourceGameInfo> Games => PlayerSoundSources.Games;
 
@@ -309,7 +339,7 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
 
     public async Task BuildAsync()
     {
-        var build = new SoundPackBuildViewModel(_options.ResolveCharacter(), _options.ResolvePackName());
+        var build = new SoundPackBuildViewModel(_options.ResolveCharacter(), _options.ResolvePackName(), _options.GameModes is null ? null : SelectedGame.Name);
         Builds.Insert(0, build);
         SelectedBuild = build;
         await Runner.RunAsync(new List<SoundPackBuildViewModel> { build }, Prepare);
@@ -374,11 +404,14 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
 /// One sound pack build, with its log and report.
 /// </summary>
 /// <param name="character">The Quake 3 character or CS:GO team, or null for games with one set of sounds</param>
-public sealed class SoundPackBuildViewModel(string? character, string packName) : QueueItemViewModel
+/// <param name="game">The game, for a pack named after its modes rather than the game; else null</param>
+public sealed class SoundPackBuildViewModel(string? character, string packName, string? game = null) : QueueItemViewModel
 {
     public string? Character { get; } = character;
 
     public string PackName { get; } = packName;
 
-    public override string Title => Character is null ? PackName : $"{PackName} ({Character})";
+    public string? Game { get; } = game;
+
+    public override string Title => string.Join(", ", new[] { Game, Character }.OfType<string>()) is { Length: > 0 } detail ? $"{PackName} ({detail})" : PackName;
 }

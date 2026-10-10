@@ -5,6 +5,7 @@ using System.Text;
 using MomentumPorter.Assets.Common;
 using MomentumPorter.Assets.Output;
 using MomentumPorter.Assets.Vpk;
+using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
 
@@ -19,7 +20,8 @@ public sealed record PlayerSoundPackResult(string PackName, string? Character, s
 /// Builds a custom pack that gives the player another game's movement sounds. Like the hand-made overrides it
 /// automates, the pack ships a full copy of Momentum's scripts/game_sounds_momentum_player.txt with the movement and
 /// footstep entries changed (the manifest that lists the file lives in the base game, so the file can only be replaced
-/// whole), the WAVs those entries play, and optionally a cfg.
+/// whole), the WAVs those entries play, and optionally a cfg. A pack for some game modes instead ships only the changed
+/// entries as each mode's overrides (<see cref="ModeSoundscriptPath"/>).
 /// </summary>
 public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog log, PortReport report)
 {
@@ -30,6 +32,12 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
     public const string LandSoft = "MomPlayer.LandSoft";
     public const string LandHard = "MomPlayer.LandHard";
     public const string Sprint = "MomPlayer.SprintStart";
+
+    /// <summary>
+    /// A mode's overrides of <see cref="SoundscriptPath"/>, which the engine loads at level init in that mode (the
+    /// gamemode-weapon-scripts engine change, docs/engine-changes.md).
+    /// </summary>
+    public static string ModeSoundscriptPath(GameMode mode) => $"scripts/{mode.Id}/game_sounds_momentum_player.txt";
 
     /// <summary>Momentum-only movement sounds the other games have nothing like, muted by Pure.</summary>
     public static readonly IReadOnlyList<string> MomentumOnlySounds = ["MomPlayer.AirJump", "MomPlayer.SprintStart", "MomPlayer.PowerSlide", "MomPlayer.WallRun"];
@@ -92,6 +100,7 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
 
         bool sprintSet = SetSprint(options, soundscript, pack, halfLife2);
 
+        IReadOnlyList<GameMode> modes = options.ResolveGameModes();
         string? execCommand = null;
         switch (options.Footsteps)
         {
@@ -110,6 +119,10 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
                 AddSilentWave(pack);
                 report.Change("footstep sounds muted", count);
 
+                // snd_volume_footsteps is saved in the player's config, so it would mute every mode
+                if (modes.Count > 0)
+                    break;
+
                 // The game's own footstep volume too, so footsteps stay silent whatever soundscript ends up loaded
                 string packName = pack.Name;
                 pack.AddText($"cfg/{packName}.cfg", CfgText(packName));
@@ -126,7 +139,24 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
                 Mute(soundscript, name, pack);
         }
 
-        pack.AddText(SoundscriptPath, soundscript.ToText());
+        if (modes.Count == 0)
+        {
+            pack.AddText(SoundscriptPath, soundscript.ToText());
+        }
+        else
+        {
+            // Only the changed entries, so the ones left as Momentum's keep following Momentum's own file when it's updated
+            string overrides = soundscript.ToChangedText(
+            [
+                $"Made by MomentumPorter: {source.Game.Name}'s player sounds for {GameModes.Describe(modes)}.",
+                $"Loaded over {SoundscriptPath} in this mode only, by Momentum builds with the",
+                "gamemode-weapon-scripts engine change (other builds ignore it). Each entry replaces Momentum's whole entry.",
+            ]);
+            foreach (GameMode mode in modes)
+                pack.AddText(ModeSoundscriptPath(mode), overrides);
+            report.Change($"sounds only for {GameModes.Describe(modes)}: {string.Join(", ", modes.Select(ModeSoundscriptPath))}");
+        }
+
         log.Info($"Built {pack.Name}: {pack.Files.Count} files");
         return new PlayerSoundPackResult(pack.Name, character, execCommand);
     }

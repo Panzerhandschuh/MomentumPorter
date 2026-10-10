@@ -38,8 +38,8 @@ go along with it.
   Momentum isn't found, and which known games were found. Saved to `%AppData%/MomentumPorter/settings.json`.
 - **Weapons**: pick a game mode and the Momentum weapon to replace, then the game and the weapon that goes in its
   place, and build the pack (see [weapons.md](weapons.md)).
-- **Player Sounds**: pick a game (and a Quake 3 character or CS:GO team) and the jump/land/footstep options, then build
-  the pack (see [player-sounds.md](player-sounds.md)).
+- **Player Sounds**: pick every game mode or one, a game (and a Quake 3 character or CS:GO team), then build the
+  pack (see [player-sounds.md](player-sounds.md)).
 - **Player Models**: placeholder; see [player-models.md](player-models.md) for the feasibility study.
 
 ## Packing assets

@@ -3,6 +3,7 @@ namespace MomentumPorter.Assets.Sounds;
 using System.Text.RegularExpressions;
 using MomentumPorter.Assets.Output;
 using MomentumPorter.Assets.Vpk;
+using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Steam;
 
@@ -28,6 +29,9 @@ public sealed class PlayerSoundPackState(PlayerSoundPackOptions options)
     public string? OutputDirectory { get; set; }
 
     public SoundscriptFile? Soundscript { get; set; }
+
+    /// <summary>The modes the pack is for, or empty for every mode.</summary>
+    public IReadOnlyList<GameMode> GameModes { get; set; } = [];
 
     public IReadOnlyList<string> SurfaceFootsteps { get; set; } = [];
 
@@ -103,6 +107,15 @@ public sealed class FindPlayerSoundInputsStep : IPortStep
 
         state.Game = PlayerSoundSources.Find(options.Game)
             ?? throw new PortStepException($"Unknown game \"{options.Game}\"; use {string.Join(", ", PlayerSoundSources.Games.Select(x => x.Id))}");
+        try
+        {
+            state.GameModes = options.ResolveGameModes();
+        }
+        catch (FormatException ex)
+        {
+            throw new PortStepException(ex.Message, ex);
+        }
+
         string? directory = options.ResolveGameDirectory();
         state.GamePath = PlayerSoundSources.Locate(state.Game, directory, directory is null ? locator.Value : null);
         if (state.GamePath is null)
@@ -155,11 +168,17 @@ public sealed class FindPlayerSoundInputsStep : IPortStep
 
         context.Log.Info($"{state.Game.Name} sounds: {state.GamePath}");
         context.Log.Info($"Momentum: {content}");
+        if (state.GameModes.Count > 0)
+        {
+            context.Report.Warn($"The sounds are only for {GameModes.Describe(state.GameModes)}, which needs a Momentum build with the gamemode-weapon-scripts engine change in docs/engine-changes.md (other builds ignore scripts/<mode>/ and keep Momentum's sounds)");
+        }
+
         WarnAboutShadowingOverrides(context, state);
         return Task.CompletedTask;
     }
 
-    // Another folder in custom/ with its own copy of the soundscript would fight this pack over which one loads
+    // Another folder in custom/ with its own copy of the soundscript (or of a mode's overrides) would fight this pack
+    // over which one loads
     private static void WarnAboutShadowingOverrides(PortJobContext context, PlayerSoundPackState state)
     {
         string custom = Path.Combine(state.MomentumContentDirectory!, "custom");
@@ -167,14 +186,20 @@ public sealed class FindPlayerSoundInputsStep : IPortStep
             return;
 
         string packName = state.Options.ResolvePackName();
+        IEnumerable<string> paths = state.GameModes.Count == 0
+            ? [PlayerSoundPackBuilder.SoundscriptPath]
+            : state.GameModes.Select(PlayerSoundPackBuilder.ModeSoundscriptPath);
         foreach (string folder in Directory.GetDirectories(custom))
         {
             if (Path.GetFileName(folder).Equals(packName, StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            string other = Path.Combine(folder, PlayerSoundPackBuilder.SoundscriptPath.Replace('/', Path.DirectorySeparatorChar));
-            if (File.Exists(other))
-                context.Report.Warn($"{other} also replaces Momentum's player sounds and may win over this pack; rename or remove it");
+            foreach (string path in paths)
+            {
+                string other = Path.Combine(folder, path.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(other))
+                    context.Report.Warn($"{other} also replaces Momentum's player sounds{(state.GameModes.Count == 0 ? "" : " in that mode")} and may win over this pack; rename or remove it");
+            }
         }
     }
 }

@@ -59,7 +59,8 @@ changes that aren't in Momentum yet, see
 
 Give the player another game's footsteps (per surface, as that game plays
 them), jump and landing sounds, and Half-Life 2's suit sprint sound for
-Accelerated Hop. Pick a Quake 3 character or a CS:GO team for their own sets.
+Accelerated Hop. Pick a Quake 3 character or a CS:GO team for their own sets,
+and every game mode or just one (e.g. CS 1.6's sounds only in Climb (1.6)).
 
 ![Player Sounds](docs/images/player-sounds.png)
 

@@ -298,6 +298,56 @@ public sealed class PlayerSoundPackTests : IDisposable
     }
 
     [Fact]
+    public async Task BuildsOnlyTheChangedEntriesForSomeModes()
+    {
+        (PortJobResult result, _, PlayerSoundPackState state) = await RunAsync(new PlayerSoundPackOptions
+        {
+            GameModes = "df_cpm, kz16",
+            Footsteps = FootstepMode.Silent,
+            SprintSound = SprintSoundMode.MomentumDefault,
+            OutputAsVpk = false,
+        });
+
+        Assert.True(result.Succeeded, result.Error);
+        string pack = Path.Combine(_output, "kz16_df_cpm_sounds");
+        Assert.False(File.Exists(Path.Combine(pack, "scripts", "game_sounds_momentum_player.txt")));
+        // snd_volume_footsteps would mute every mode, so the soundscript alone mutes them
+        Assert.False(Directory.Exists(Path.Combine(pack, "cfg")));
+        Assert.Null(state.Result!.ExecCommand);
+
+        string text = File.ReadAllText(Path.Combine(pack, "scripts", "kz16", "game_sounds_momentum_player.txt"));
+        Assert.Equal(text, File.ReadAllText(Path.Combine(pack, "scripts", "df_cpm", "game_sounds_momentum_player.txt")));
+        Assert.StartsWith("// Made by MomentumPorter: Quake III Arena's player sounds for Climb (1.6), Defrag CPM.", text);
+
+        // Each entry the engine loads replaces Momentum's whole entry, so the unchanged ones are left out
+        SoundscriptFile overrides = SoundscriptFile.Parse(text);
+        Assert.Equal(["player/ranger/jump1.wav"], overrides.Find("MomPlayer.Jump")!.Waves);
+        Assert.Equal("0.35", overrides.Find("MomPlayer.Jump")!.Volume);
+        Assert.Equal(["player/q3/land1.wav"], overrides.Find("MomPlayer.LandSoft")!.Waves);
+        Assert.Equal(["player/q3/silent.wav"], overrides.Find("SolidMetal.StepLeft")!.Waves);
+        Assert.Equal(["player/q3/silent.wav"], overrides.Find("Undefined.StepLeft")!.Waves);
+        Assert.Null(overrides.Find("MomPlayer.SprintStart"));
+        Assert.Null(overrides.Find("MomPlayer.AirJump"));
+
+        string report = Print(result);
+        Assert.Contains("gamemode-weapon-scripts", report);
+        Assert.Contains("scripts/kz16/game_sounds_momentum_player.txt", report);
+    }
+
+    [Fact]
+    public async Task NamesModePacksAfterTheModes()
+    {
+        Assert.Equal("defrag_sounds", new PlayerSoundPackOptions { GameModes = "df_vtg,df_cpm,df_vq3" }.ResolvePackName());
+        Assert.Equal("df_vq3_sounds", new PlayerSoundPackOptions { GameModes = "df_vq3" }.ResolvePackName());
+        Assert.Equal("kz16_sounds", new PlayerSoundPackOptions { Game = "cs16", GameModes = "kz16" }.ResolvePackName());
+        Assert.Equal("q3_sounds_ranger", new PlayerSoundPackOptions { GameModes = "" }.ResolvePackName());
+
+        (PortJobResult result, _, _) = await RunAsync(new PlayerSoundPackOptions { GameModes = "kz16,nomode", OutputAsVpk = false });
+        Assert.False(result.Succeeded);
+        Assert.Contains("Unknown game mode \"nomode\"", result.Error);
+    }
+
+    [Fact]
     public async Task FailsOnUnknownCharacter()
     {
         (PortJobResult result, _, _) = await RunAsync(new PlayerSoundPackOptions { Character = "nobody", OutputAsVpk = false });

@@ -1,5 +1,7 @@
 namespace MomentumPorter.Assets.Sounds;
 
+using MomentumPorter.Assets.Weapons;
+
 public enum JumpSoundMode
 {
     /// <summary>Leave Momentum's jump sound.</summary>
@@ -68,7 +70,7 @@ public enum Quake3FootstepType
 
 /// <summary>
 /// Options for a pack that gives the player another game's movement sounds (jump, land, footsteps). The app only picks
-/// the game and character (and applies <see cref="ApplyGameAccurate"/>); the command line exposes the rest.
+/// the game mode, game and character (and applies <see cref="ApplyGameAccurate"/>); the command line exposes the rest.
 /// </summary>
 public sealed class PlayerSoundPackOptions
 {
@@ -128,6 +130,14 @@ public sealed class PlayerSoundPackOptions
     /// metal, dirt, grass, wading... sounds). Off plays its default (concrete) footsteps everywhere.
     /// </summary>
     public bool SurfaceFootsteps { get; set; } = true;
+
+    /// <summary>
+    /// The game modes the pack is for, as mode ids separated by commas (<see cref="Weapons.GameModes.All"/>: kz16, df_cpm, ...),
+    /// or null for every mode. For some modes the pack only holds the changed sounds, in
+    /// <c>scripts/&lt;mode&gt;/game_sounds_momentum_player.txt</c>, which needs the gamemode-weapon-scripts engine change
+    /// (docs/engine-changes.md); for every mode it replaces Momentum's soundscript, which any build loads.
+    /// </summary>
+    public string? GameModes { get; set; }
 
     /// <summary>Volume of the game's jump and land sounds (0 to 1). Momentum's own jump sound is 0.1. Footsteps play at the volume Momentum's movement gives them.</summary>
     public float Volume { get; set; } = 0.35f;
@@ -202,10 +212,36 @@ public sealed class PlayerSoundPackOptions
         return string.IsNullOrWhiteSpace(Character) ? fallback : Character.Trim().ToLowerInvariant();
     }
 
+    /// <summary>The modes in <see cref="GameModes"/>, or empty for every mode.</summary>
+    /// <exception cref="FormatException">An id isn't a mode.</exception>
+    public IReadOnlyList<GameMode> ResolveGameModes() => Weapons.GameModes.Parse(GameModes);
+
+    /// <summary>
+    /// The pack's name: the one set, else <c>&lt;game&gt;_sounds</c> plus the character or team (q3_sounds_ranger,
+    /// csgo_sounds_ct) for every mode, or <c>&lt;modes&gt;_sounds</c> for some (kz16_sounds, defrag_sounds), so
+    /// rebuilding a mode's sounds from another game replaces its pack rather than adding one that fights it.
+    /// </summary>
     public string ResolvePackName()
     {
         if (!string.IsNullOrWhiteSpace(PackName))
             return PackName.Trim();
+
+        // An unknown mode fails the job's first step, which says why
+        IReadOnlyList<GameMode> modes;
+        try
+        {
+            modes = ResolveGameModes();
+        }
+        catch (FormatException)
+        {
+            modes = [];
+        }
+
+        if (modes.Count > 0)
+        {
+            bool defrag = Weapons.GameModes.All.Where(x => x.IsDefrag).All(modes.Contains) && modes.All(x => x.IsDefrag);
+            return $"{(defrag ? "defrag" : string.Join("_", modes.Select(x => x.Id)))}_sounds";
+        }
 
         string? character = ResolveCharacter();
         return $"{Game.Trim().ToLowerInvariant()}_sounds{(character is null ? "" : "_" + character)}";

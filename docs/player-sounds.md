@@ -7,7 +7,7 @@ Builds a pack for Momentum's `custom` folder that gives the player another game'
 ```
 MomentumPorter sounds [--game q3|css|csgo|tf2|hl2|cs16|hl1] [--character <name>] [--jump game|default|none]
                       [--land game|default|none] [--footsteps game|default|silent] [--sprint game|default|hl2|none] [--pure]
-                      [--output <folder>|auto] [--vpk|--folder] [--name <pack>] [--list]
+                      [--modes <mode>[,<mode>...]] [--output <folder>|auto] [--vpk|--folder] [--name <pack>] [--list]
 ```
 
 | `--game` | Jump | Land | Footsteps |
@@ -37,11 +37,21 @@ MomentumPorter sounds [--game q3|css|csgo|tf2|hl2|cs16|hl1] [--character <name>]
   (`mount/hl2_dir.vpk` and its `scripts/game_sounds_player.txt`), so HL2 needn't be installed for it.
 - **`--pure`**: also mutes what the game doesn't have: `MomPlayer.AirJump`, `PowerSlide`, `WallRun`, and the jump and
   sprint sounds for games without them (unless `--sprint` picks one).
+- **`--modes`**: only use the sounds in these game modes (`surf`, `bhop`, `bhophl`, `kz`, `kzt`, `kz16`, `rj`, `sj`,
+  `ahop`, `conc`, `df_cpm`, `df_vq3`, `df_vtg`), e.g. CS 1.6's in Climb (1.6) and Quake 3's in Defrag. Instead of
+  replacing Momentum's soundscript, the pack has `scripts/<mode>/game_sounds_momentum_player.txt` for each mode with only
+  the entries it changes, which the engine loads over Momentum's in that mode. That needs the
+  `gamemode-weapon-scripts` engine change ([engine-changes.md](engine-changes.md)); other builds ignore it. The pack is
+  named after the modes (`kz16_sounds`, `defrag_sounds` for all three Defrag modes), so building a mode's sounds again
+  from another game replaces it. `--footsteps silent` writes no cfg for some modes, since `snd_volume_footsteps` is
+  saved in your config and would mute every mode; the soundscript mutes them on its own.
 
 The app always builds the pack that sounds most like the game: every sound set to `game`, surface footsteps on (the
 Quake 3 character's own footstep type), `--pure` on, and a VPK named as above in Momentum's `custom` folder that
-replaces the last build. It only asks for the game and the Quake 3 character or CS:GO team: the game is found through
-Steam and Momentum's folder comes from the Settings page. The command line keeps every option above, including the
+replaces the last build. It only asks for the game mode, the game and the Quake 3 character or CS:GO team: the game is
+found through Steam and Momentum's folder comes from the Settings page. The game mode is **Every mode** or one mode as the
+Weapons page offers them (the Defrag modes as one); picking a mode switches to the game it comes from (CS 1.6 for Climb
+(1.6), Quake 3 for Defrag, TF2 for Rocket and Sticky Jump...), which can still be changed. The command line keeps every option above, including the
 folder overrides.
 
 The app's **Preview** lists what the pack would play for the chosen game and character: the jump, soft and hard
@@ -62,8 +72,9 @@ base game, so the file is replaced whole) with only those entries changed, the W
 under `sound/player/<character>/`, `sound/player/q3/` and `sound/player/footsteps/q3/`, the other games' under
 `sound/porter/<game>/` with their own paths (own folders, so no mounted game's sounds are replaced, and HL2's and CS:S's
 same-named footsteps can't stand in for each other). WAVs Source can't play (rates other than 11025/22050/44100 Hz, more
-than 16 bits, float) are re-encoded. Only one pack can replace the soundscript, so the tool warns about other `custom`
-folders that have their own copy (e.g. `custom/overrides/scripts/game_sounds_momentum_player.txt`). Folder packs are only
+than 16 bits, float) are re-encoded. A mode with its own pack uses it, and the every-mode pack (or Momentum's sounds)
+for any entry it doesn't change. Only one pack can replace the soundscript (or a mode's), so the tool warns about other
+`custom` folders that have their own copy (e.g. `custom/overrides/scripts/game_sounds_momentum_player.txt`). Folder packs are only
 replaced if MomentumPorter wrote them (`momentumporter_pack.txt`).
 
 In code, `PlayerSoundPackJob.Create(PlayerSoundPackOptions)` builds the job; `CustomPackWriter` (folder or VPK) and

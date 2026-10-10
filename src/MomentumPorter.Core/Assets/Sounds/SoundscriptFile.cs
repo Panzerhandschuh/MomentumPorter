@@ -328,6 +328,27 @@ public sealed class SoundscriptFile
         return text.ToString();
     }
 
+    /// <summary>
+    /// Only the entries changed or added since parsing, for a file the engine loads as overrides of this one (each
+    /// entry in it replaces the whole entry of the same name). Removed entries can't be expressed that way and are left out.
+    /// </summary>
+    /// <param name="header">Comment lines to start the file with, without the leading <c>//</c></param>
+    public string ToChangedText(IEnumerable<string>? header = null)
+    {
+        var text = new StringBuilder();
+        foreach (string line in header ?? [])
+            text.Append("// ").Append(line).Append(NewLine);
+
+        foreach (SoundscriptEntry entry in _entries.Where(x => !_removed.Contains(x) && x.IsModified))
+        {
+            if (text.Length > 0)
+                text.Append(NewLine);
+            text.Append(entry.Format(NewLine));
+        }
+
+        return text.ToString();
+    }
+
     public void Save(string path) => File.WriteAllText(path, ToText(), new UTF8Encoding(false));
 
     private static bool EndsWithNewLine(StringBuilder text) => text[^1] == '\n';

@@ -4,6 +4,7 @@ using CommandLine;
 using MomentumPorter.Assets.Output;
 using MomentumPorter.Assets.Sounds;
 using MomentumPorter.Assets.Vpk;
+using MomentumPorter.Assets.Weapons;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Steam;
 
@@ -37,10 +38,13 @@ internal sealed class SoundsCliOptions
     [Option("pure", HelpText = "Also mute the sounds the game doesn't have: air jump, power slide, wall run, and the jump and sprint sounds for games without them")]
     public bool Pure { get; set; }
 
+    [Option('m', "modes", HelpText = "Game modes the sounds are used in (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop, conc, df_cpm, df_vq3, df_vtg), comma separated. Every mode by default. Needs the gamemode-weapon-scripts engine change (docs/engine-changes.md).")]
+    public string? Modes { get; set; }
+
     [Option("volume", HelpText = "Volume of the game's jump and land sounds, 0 to 1", Default = 0.35f)]
     public float Volume { get; set; } = 0.35f;
 
-    [Option("name", HelpText = "Pack name. Defaults to <game>_sounds, plus the character or team (q3_sounds_ranger, csgo_sounds_ct).")]
+    [Option("name", HelpText = "Pack name. Defaults to <game>_sounds, plus the character or team (q3_sounds_ranger, csgo_sounds_ct), or with --modes to <modes>_sounds (kz16_sounds, defrag_sounds).")]
     public string? Name { get; set; }
 
     [Option('o', "output", HelpText = "Folder to write the pack to, or auto for Momentum's custom folder", Default = "auto")]
@@ -115,6 +119,7 @@ internal static class SoundsCommand
                     : throw new ArgumentException($"Unknown --footstep-type \"{cli.FootstepType}\""),
                 SurfaceFootsteps = !cli.NoSurfaceFootsteps,
                 Pure = cli.Pure,
+                GameModes = GameModes.ToList(GameModes.Parse(cli.Modes)),
                 Volume = Math.Clamp(cli.Volume, 0, 1),
                 PackName = cli.Name,
                 OutputAsVpk = !cli.Folder,
@@ -124,7 +129,7 @@ internal static class SoundsCommand
                 MomentumDirectory = cli.MomentumDirectory,
             };
         }
-        catch (ArgumentException ex)
+        catch (Exception ex) when (ex is ArgumentException or FormatException)
         {
             Console.Error.WriteLine(ex.Message);
             return 1;
