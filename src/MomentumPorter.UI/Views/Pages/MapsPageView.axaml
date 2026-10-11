@@ -179,7 +179,7 @@
           <TextBlock Text="{Binding SelectedItem.Title, FallbackValue='', TargetNullValue=''}" Classes="muted"
                      VerticalAlignment="Center" Margin="8 0" TextTrimming="CharacterEllipsis" />
         </DockPanel>
-        <TabControl Padding="0" Margin="4 0 4 4">
+        <TabControl Padding="0" Margin="4 0 4 4" SelectedIndex="{Binding BottomTab}">
           <TabItem Header="Log" FontSize="14">
             <views:LogView DataContext="{Binding SelectedItem.Log, FallbackValue={x:Null}}" />
           </TabItem>
@@ -201,7 +201,15 @@
             </ScrollViewer>
           </TabItem>
           <!-- What's left to do by hand to get the map onto Momentum Mod's website, each step linked to its docs section -->
-          <TabItem Header="Next steps" FontSize="14">
+          <TabItem FontSize="14">
+            <TabItem.Header>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="Next steps" />
+                <!-- Dot while the selected map's steps haven't been looked at -->
+                <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{StaticResource WarningBrush}"
+                         IsVisible="{Binding NextStepsUnread}" ToolTip.Tip="New next steps" />
+              </StackPanel>
+            </TabItem.Header>
             <ScrollViewer Background="#33000000">
               <StackPanel Margin="10 6" Spacing="2">
                 <TextBlock Text="Once a map is ported, the steps to get it onto Momentum Mod's website are listed here: the entities to change with the in-game entity tools, the Lumper checks, zoning, screenshots and the submission form, each linked to the docs."

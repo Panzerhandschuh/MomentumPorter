@@ -41,6 +41,11 @@ public sealed class MapsPageViewModel : PageViewModel
     private bool _hasQueued;
     private bool _showBspConvertOptions = true;
     private bool _showAdvanced;
+    private int _bottomTab;
+    private bool _nextStepsUnread;
+
+    /// <summary>Index of the Next steps tab in the bottom panel (Log, Report, Next steps).</summary>
+    public const int NextStepsTab = 2;
 
     public MapsPageViewModel(SettingsService settings, IDialogService dialogs, JobRunnerService runner, Action<Action> post)
     {
@@ -65,6 +70,31 @@ public sealed class MapsPageViewModel : PageViewModel
         LoadPresetCommand = ReactiveCommand.CreateFromTask(LoadPresetAsync, running.Select(x => !x));
         OpenMomentumMapsCommand = ReactiveCommand.Create(OpenMomentumMaps);
         ReviewCommand = ReactiveCommand.CreateFromTask<MapQueueItemViewModel>(ReviewAsync);
+
+        // Looking at the Next steps tab reads the selected map's steps
+        this.WhenAnyValue(x => x.SelectedItem, x => x.BottomTab).Subscribe(_ => UpdateNextStepsUnread());
+    }
+
+    /// <summary>The bottom panel's selected tab (Log, Report, Next steps).</summary>
+    public int BottomTab
+    {
+        get => _bottomTab;
+        set => this.RaiseAndSetIfChanged(ref _bottomTab, value);
+    }
+
+    /// <summary>The selected map has next steps the user hasn't looked at yet, for the dot on the tab.</summary>
+    public bool NextStepsUnread
+    {
+        get => _nextStepsUnread;
+        private set => this.RaiseAndSetIfChanged(ref _nextStepsUnread, value);
+    }
+
+    private void UpdateNextStepsUnread()
+    {
+        if (BottomTab == NextStepsTab && SelectedItem is { NextStepsUnread: true } shown)
+            shown.NextStepsUnread = false;
+
+        NextStepsUnread = SelectedItem?.NextStepsUnread == true;
     }
 
     public override string Title => "Maps";
@@ -180,6 +210,7 @@ public sealed class MapsPageViewModel : PageViewModel
             var item = new MapQueueItemViewModel(full);
             item.WhenAnyValue(x => x.Status).Subscribe(_ => UpdateQueueState());
             item.WhenAnyValue(x => x.MapKinds).Subscribe(_ => UpdateVisibleOptions());
+            item.WhenAnyValue(x => x.NextStepsUnread).Subscribe(_ => UpdateNextStepsUnread());
             Queue.Add(item);
             added.Add(item);
             _ = item.DetectGameAsync(_post);
@@ -248,17 +279,12 @@ public sealed class MapsPageViewModel : PageViewModel
                 : new JobOutcome(QueueStatus.Failed, $"{result.FailedStep} failed: {result.Error}");
         }
 
-        // What's left to do by hand: entities the tools have to change in game, zoning, screenshots, the form
+        // What's left to do by hand: entities the tools have to change in game, zoning, screenshots, the form.
+        // Shown in the Next steps tab only (the report has the pending entities), so the log stays the tools' output.
         EntityReview? review = context.TryGet<EntityReview>();
         bool zoned = state.PortContext?.ExtraOutputs.Any(x => x.RelativePath.StartsWith("zones/", StringComparison.OrdinalIgnoreCase)) == true;
         IReadOnlyList<NextStep> steps = SubmissionSteps.For(state.MapName, review, zoned, state.Profile?.MountedGame);
         string? attention = review?.Summary;
-        if (review is not null)
-        {
-            foreach (string line in review.Lines())
-                context.Log.Info(line);
-        }
-        SubmissionSteps.Print(context.Log, state.MapName, steps);
 
         string? warnings = context.Report.HasWarnings ? " (with warnings, see the report)" : null;
         if (context.TryGet<InstallResult>() is { } install)
@@ -347,7 +373,6 @@ public sealed class MapsPageViewModel : PageViewModel
                 string mapName = firstMap is null ? item.MapName : Path.GetFileNameWithoutExtension(firstMap);
                 bool zoned = state.InstalledFiles.Any(x => x.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
                 IReadOnlyList<NextStep> steps = SubmissionSteps.For(mapName, review: null, zoned, mountedGame: null);
-                SubmissionSteps.Print(context.Log, mapName, steps);
 
                 return mapOptions.Install
                     ? new JobOutcome(QueueStatus.Done, $"Installed {what} into Momentum{warnings}", InstalledPath: firstMap, NextSteps: steps)

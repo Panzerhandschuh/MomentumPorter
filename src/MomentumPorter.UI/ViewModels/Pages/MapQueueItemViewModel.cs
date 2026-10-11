@@ -113,7 +113,6 @@ public sealed class MapQueueItemViewModel : QueueItemViewModel
             Attention = review.Summary ?? (review.HasMissingRequiredFixes ? review.Verdict : null);
             IReadOnlyList<Review.NextStep> steps = Review.SubmissionSteps.For(MapName, review, zoneFileWritten: false, mountedGame: null);
             SetNextSteps(steps);
-            Review.SubmissionSteps.Print(new DelegateLog((level, message) => Log.Add(level, message)), MapName, steps);
             StatusMessage = review.Verdict;
         });
     }

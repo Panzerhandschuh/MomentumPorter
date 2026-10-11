@@ -26,6 +26,7 @@ public abstract class QueueItemViewModel : ViewModel
     private string? _outputPath;
     private string? _installedPath;
     private string? _attention;
+    private bool _nextStepsUnread;
 
     protected QueueItemViewModel()
     {
@@ -106,11 +107,20 @@ public abstract class QueueItemViewModel : ViewModel
 
     public bool HasNextSteps => NextSteps.Count > 0;
 
+    /// <summary>The next steps were set since the user last looked at them (the page clears it when they're shown).</summary>
+    public bool NextStepsUnread
+    {
+        get => _nextStepsUnread;
+        set => this.RaiseAndSetIfChanged(ref _nextStepsUnread, value);
+    }
+
     public void SetNextSteps(IEnumerable<MomentumPorter.Review.NextStep>? steps)
     {
         NextSteps.Clear();
         foreach (MomentumPorter.Review.NextStep step in steps ?? [])
             NextSteps.Add(step);
+
+        NextStepsUnread = NextSteps.Count > 0;
     }
 
     public void Start()
@@ -121,6 +131,7 @@ public abstract class QueueItemViewModel : ViewModel
         Log.Clear();
         Report.Clear();
         NextSteps.Clear();
+        NextStepsUnread = false;
         Attention = null;
         OutputPath = null;
         InstalledPath = null;

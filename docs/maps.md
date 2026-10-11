@@ -263,7 +263,8 @@ still to confirm in game, since the tools left them unchanged: ..."). Required i
 `MomentumPorter review <map.bsp>` (1 when one is missing), which is the way to validate a map saved from Lumper after
 the in-game review, as is the clipboard button on a Source map in the app's queue (it reviews the file as it is).
 
-`SubmissionSteps.For` turns the review into the **Next steps** list (also printed to the log): the entity tools setup
+`SubmissionSteps.For` turns the review into the **Next steps** list (only there, so the log stays the tools' output;
+the tab shows a dot until the selected map's steps have been looked at; the CLI prints them after the report): the entity tools setup
 and one step per pending tool, the Lumper review, the packed assets, compressing, zoning (noting the zone file the
 porter wrote for GOKZ and Quake 3 maps), screenshots with `mom_official_screenshot`, the submission form and the review
 checklist, each linked to its section of the docs (`DocsLinks`).

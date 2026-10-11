@@ -183,6 +183,40 @@ public class MapsPageTests
     }
 
     [Fact]
+    public void NextStepsTabShowsADotUntilTheStepsAreLookedAt()
+    {
+        using var temp = new TempFolder();
+        MapsPageViewModel maps = CreateWindow(temp).Maps;
+        IReadOnlyList<MapQueueItemViewModel> items = maps.AddFiles([WriteFakeMap(temp, "kz_a.bsp", SourceHeader), WriteFakeMap(temp, "kz_b.bsp", SourceHeader)]);
+        Assert.Same(items[0], maps.SelectedItem);
+        Assert.False(maps.NextStepsUnread);
+
+        // Steps land on the selected map while the log is showing: the dot comes on
+        items[0].SetNextSteps(MomentumPorter.Review.SubmissionSteps.For("kz_a", null, false, null));
+        Assert.True(items[0].NextStepsUnread);
+        Assert.True(maps.NextStepsUnread);
+
+        // Opening the tab reads them
+        maps.BottomTab = MapsPageViewModel.NextStepsTab;
+        Assert.False(items[0].NextStepsUnread);
+        Assert.False(maps.NextStepsUnread);
+
+        // Steps for another map don't light the dot until that map is selected, and selecting it while the tab is open reads them at once
+        items[1].SetNextSteps(MomentumPorter.Review.SubmissionSteps.For("kz_b", null, false, null));
+        Assert.False(maps.NextStepsUnread);
+        maps.BottomTab = 0;
+        maps.SelectedItem = items[1];
+        Assert.True(maps.NextStepsUnread);
+        maps.BottomTab = MapsPageViewModel.NextStepsTab;
+        Assert.False(items[1].NextStepsUnread);
+
+        // Running the map again clears its steps
+        items[1].Start();
+        Assert.Empty(items[1].NextSteps);
+        Assert.False(items[1].NextStepsUnread);
+    }
+
+    [Fact]
     public void MapsAlwaysInstallIntoMomentum()
     {
         using var temp = new TempFolder();

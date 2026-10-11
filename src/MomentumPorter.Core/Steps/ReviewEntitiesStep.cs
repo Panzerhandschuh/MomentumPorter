@@ -25,7 +25,7 @@ public sealed class ReviewEntitiesStep : IPortStep
         context.Set(review);
 
         context.Log.Info(review.Summary is { } summary
-            ? $"{summary}. The next steps are listed after the port."
+            ? $"{summary}; see the next steps and the report"
             : "No entities that need changing by hand in game were found");
         return Task.CompletedTask;
     }
