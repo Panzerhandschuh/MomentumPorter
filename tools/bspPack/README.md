@@ -9,11 +9,14 @@ KZ ports need:
 - Pack materials of entity models
 - Keep soundscapes that are already packed in the map
 
-Built with:
+`bspPack.exe` is the Windows build and `bspPack` the Linux one, each built with:
 
 ```
 dotnet publish bspPack.csproj -c Release -r win-x64
+dotnet publish bspPack.csproj -c Release -r linux-x64
 ```
+
+Both are copied to every build; `tools/publish-release.ps1` keeps only the one for the release's platform.
 
 The porter writes its `config.ini` and `ResourceConfig.ini` before each pack, for the map's game (see
 [docs/maps.md](../../docs/maps.md#packing-assets)).

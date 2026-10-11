@@ -27,8 +27,11 @@ public sealed class UpdateService(
 
     public Version CurrentVersion { get; init; } = AppUpdater.CurrentVersion;
 
-    /// <summary>Whether this copy can update itself: a published release, not a development build.</summary>
-    public bool CanUpdate => !AppUpdater.IsDevelopmentBuild(CurrentVersion) && AppUpdater.IsSingleFileApp;
+    /// <summary>
+    /// Whether this copy can update itself: a published Windows release, not a development build. Releases only have a
+    /// win-x64 archive for the updater, so the Linux build is updated by hand.
+    /// </summary>
+    public bool CanUpdate => OperatingSystem.IsWindows() && !AppUpdater.IsDevelopmentBuild(CurrentVersion) && AppUpdater.IsSingleFileApp;
 
     /// <summary>
     /// The status message for a program started after an update, or null. Clears the variable so it isn't passed on.

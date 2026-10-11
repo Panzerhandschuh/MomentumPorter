@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <RootNamespace>MomentumPorter</RootNamespace>
+    <!-- A library without runtime identifiers is built without the referencing app's, so a Linux publish from Windows
+         would pick sourcepp's Windows libraries below. This passes the app's runtime through. -->
+    <IsRidAgnostic>false</IsRidAgnostic>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,9 +29,10 @@
     </Reference>
     <!-- sourcepp's native libraries (sourcepp_vtfppc, sourcepp_sourceppc). BSPConvert.Lib's project doesn't copy them,
          only BSPConvert.Cmd's does for itself, so without this a published porter can't write VTFs. As None items
-         they go into the output and publish folder of every project referencing Core, and into single-file bundles. -->
+         they go into the output and publish folder of every project referencing Core, and into single-file bundles.
+         The target runtime decides, then the building OS when there isn't one. -->
     <None Include="$(BspConvertDir)BSPConvert.Lib\Dependencies\sourcepp_win\*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false"
-          Condition="$([MSBuild]::IsOSPlatform('Windows')) or $(RuntimeIdentifier.StartsWith('win'))" />
+          Condition="($([MSBuild]::IsOSPlatform('Windows')) and '$(RuntimeIdentifier)' == '') or $(RuntimeIdentifier.StartsWith('win'))" />
     <None Include="$(BspConvertDir)BSPConvert.Lib\Dependencies\sourcepp_linux\*.so" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false"
           Condition="(!$([MSBuild]::IsOSPlatform('Windows')) and '$(RuntimeIdentifier)' == '') or $(RuntimeIdentifier.StartsWith('linux'))" />
     <!-- LibBSP (github.com/Panzerhandschuh/LibBSP's fork, for LZMA): BSPConvert's own copy by default (see
