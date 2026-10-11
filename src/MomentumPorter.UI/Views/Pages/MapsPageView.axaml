@@ -10,7 +10,12 @@
              x:DataType="vm:MapsPageViewModel"
              Name="Page">
 
-  <Grid RowDefinitions="Auto, *, 6, 260" ColumnDefinitions="*, 12, 340" Margin="16 14 16 12">
+  <Grid RowDefinitions="Auto, *, 6, 260" Margin="16 14 16 12">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" MinWidth="460" />
+      <ColumnDefinition Width="12" />
+      <ColumnDefinition Width="340" MinWidth="280" />
+    </Grid.ColumnDefinitions>
 
     <!-- Header and actions -->
     <!-- The buttons dock first so they keep their width; the description takes what's left and trims -->
@@ -132,6 +137,8 @@
         </Panel>
       </DockPanel>
     </Border>
+
+    <GridSplitter Grid.Row="1" Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
 
     <!-- Options: one flat list, the map options then BSPConvert's, with the advanced ones behind one toggle -->
     <Border Grid.Row="1" Grid.Column="2" Classes="panel">
