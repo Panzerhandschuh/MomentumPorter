@@ -9,6 +9,8 @@ using ReactiveUI;
 
 public sealed class MainWindowViewModel : ViewModel
 {
+    private const string ComingInGameUpdate = "This will be enabled in a future Momentum Mod update. Only map porting is supported for now.";
+
     private PageViewModel _selectedPage;
     private string? _statusMessage;
     private bool _isDragOver;
@@ -18,15 +20,18 @@ public sealed class MainWindowViewModel : ViewModel
         Maps = new MapsPageViewModel(settings, dialogs, runner, post);
         Settings = new SettingsPageViewModel(settings, dialogs, post);
         // Its own runner, so building a sound pack doesn't wait for the map queue
-        PlayerSounds = new PlayerSoundsPageViewModel(settings, new JobRunnerService(post), post);
-        Weapons = new WeaponsPageViewModel(settings, new JobRunnerService(post), post);
+        // Only map porting is supported in this release; the other pages need a future Momentum update
+        PlayerSounds = new PlayerSoundsPageViewModel(settings, new JobRunnerService(post), post)
+            { DisabledReason = ComingInGameUpdate };
+        Weapons = new WeaponsPageViewModel(settings, new JobRunnerService(post), post) { DisabledReason = ComingInGameUpdate };
         Pages =
         [
             Maps,
             Weapons,
             PlayerSounds,
             new PlaceholderPageViewModel("Player Models", MaterialIconKind.HumanHandsdown,
-                "Player models for ghosts, replays and third person are coming in a later phase."),
+                "Player models for ghosts, replays and third person are coming in a later phase.")
+                { DisabledReason = ComingInGameUpdate },
             Settings,
         ];
         _selectedPage = Maps;
@@ -61,7 +66,7 @@ public sealed class MainWindowViewModel : ViewModel
         set
         {
             // The nav list deselects briefly while it updates; keep showing a page
-            if (value is not null)
+            if (value is { IsEnabled: true })
                 this.RaiseAndSetIfChanged(ref _selectedPage, value);
         }
     }

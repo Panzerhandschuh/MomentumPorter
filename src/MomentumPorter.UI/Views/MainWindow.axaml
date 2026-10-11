@@ -28,10 +28,13 @@
         <ListBox ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}" Background="Transparent"
                  Margin="6 0">
           <ListBox.Styles>
-            <Style Selector="ListBoxItem">
+            <Style Selector="ListBoxItem" x:DataType="pages:PageViewModel">
               <Setter Property="CornerRadius" Value="4" />
               <Setter Property="Padding" Value="10 8" />
               <Setter Property="Margin" Value="0 1" />
+              <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+              <Setter Property="ToolTip.Tip" Value="{Binding DisabledReason}" />
+              <Setter Property="ToolTip.ShowOnDisabled" Value="True" />
             </Style>
           </ListBox.Styles>
           <ListBox.ItemTemplate>

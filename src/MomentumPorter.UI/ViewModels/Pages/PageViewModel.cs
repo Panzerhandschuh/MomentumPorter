@@ -10,6 +10,11 @@ public abstract class PageViewModel : ViewModel
     public abstract string Title { get; }
 
     public abstract MaterialIconKind Icon { get; }
+
+    /// <summary>Why the page can't be opened yet, shown as its navigation tooltip. Null when it can be.</summary>
+    public string? DisabledReason { get; init; }
+
+    public bool IsEnabled => DisabledReason is null;
 }
 
 /// <summary>
