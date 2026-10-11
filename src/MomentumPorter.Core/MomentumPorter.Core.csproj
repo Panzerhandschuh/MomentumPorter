@@ -17,13 +17,20 @@
 
   <ItemGroup>
     <!-- Quake 3 and GoldSrc map conversion (github.com/momentum-mod/BSPConvert), the external/BSPConvert submodule
-         unless Directory.Build.local.props sets BspConvertDir. It brings its sourcepp native dlls, Assets, Q3Content and
-         CustomContent folders into the output of every project referencing Core. -->
+         unless Directory.Build.local.props sets BspConvertDir. It brings its Assets, Q3Content and CustomContent
+         folders into the output of every project referencing Core. -->
     <ProjectReference Include="$(BspConvertDir)BSPConvert.Lib\BSPConvert.Lib.csproj" />
     <!-- BSPConvert.Lib's VTF writer, used directly for Quake 3 weapon textures (assembly references don't flow) -->
     <Reference Include="sourcepp">
       <HintPath>$(BspConvertDir)BSPConvert.Lib\Dependencies\sourcepp.dll</HintPath>
     </Reference>
+    <!-- sourcepp's native libraries (sourcepp_vtfppc, sourcepp_sourceppc). BSPConvert.Lib's project doesn't copy them,
+         only BSPConvert.Cmd's does for itself, so without this a published porter can't write VTFs. As None items
+         they go into the output and publish folder of every project referencing Core, and into single-file bundles. -->
+    <None Include="$(BspConvertDir)BSPConvert.Lib\Dependencies\sourcepp_win\*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false"
+          Condition="$([MSBuild]::IsOSPlatform('Windows')) or $(RuntimeIdentifier.StartsWith('win'))" />
+    <None Include="$(BspConvertDir)BSPConvert.Lib\Dependencies\sourcepp_linux\*.so" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false"
+          Condition="(!$([MSBuild]::IsOSPlatform('Windows')) and '$(RuntimeIdentifier)' == '') or $(RuntimeIdentifier.StartsWith('linux'))" />
     <!-- LibBSP (github.com/Panzerhandschuh/LibBSP's fork, for LZMA): BSPConvert's own copy by default (see
          Directory.Build.props). It has the same assembly identity as the copy BSPConvert.Lib references, and this
          primary reference wins over that dependency here and in the projects referencing Core, so the output always has
