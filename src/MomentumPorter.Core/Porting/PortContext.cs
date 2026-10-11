@@ -42,6 +42,45 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
     public List<ExtraOutput> ExtraOutputs { get; } = [];
 
     /// <summary>
+    /// The source game's files (its VPKs and loose folders), for conversions that need to look at a model or
+    /// material the map uses but doesn't pack. Null when the game isn't available; the caller disposes it.
+    /// </summary>
+    public Assets.Vpk.GameContent? GameContent { get; set; }
+
+    /// <summary>
+    /// Whether a model the map uses has a collision model (a .phy next to its .mdl), looked for in the map's pak file
+    /// and then the game's files. Null when the game's files aren't available and the map doesn't pack it, so it
+    /// can't be told.
+    /// </summary>
+    public bool? ModelHasCollision(string modelPath)
+    {
+        string phy = Path.ChangeExtension(modelPath.Replace('\\', '/'), ".phy");
+        if (HasPakFile(phy))
+            return true;
+
+        if (GameContent is null)
+            return null;
+
+        // The map packs the model itself: it would pack the .phy alongside, so none means none
+        if (HasPakFile(modelPath.Replace('\\', '/')))
+            return false;
+
+        return GameContent.Exists(phy) ? true : GameContent.Exists(modelPath.Replace('\\', '/')) ? false : null;
+    }
+
+    /// <summary>
+    /// Whether a file is packed in the map.
+    /// </summary>
+    public bool HasPakFile(string path)
+    {
+        if (Bsp.PakFile is not { Data.Length: > 0 } pak)
+            return false;
+
+        using ZipArchive zip = ZipArchive.Open(new MemoryStream(pak.Data));
+        return FindEntry(zip, path) is not null;
+    }
+
+    /// <summary>
     /// Reads a text file packed in the map, or returns null if it isn't packed.
     /// </summary>
     public string? ReadPakFile(string path)

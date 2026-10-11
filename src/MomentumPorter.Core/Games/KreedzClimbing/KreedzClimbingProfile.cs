@@ -18,6 +18,9 @@ public sealed partial class KreedzClimbingProfile : IGameProfile
 
     public string Description => "Kreedz Climbing Mod";
 
+    // Momentum doesn't mount KZ, so its maps carry what they use from it
+    public bool PacksAssets => true;
+
     public void Apply(PortContext context)
     {
         var allowList = new AllowList();

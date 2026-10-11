@@ -20,11 +20,25 @@ game's own files, so deleting a pack brings Momentum's assets back.
 Queue up maps, pick options and run: each map is converted, its assets packed
 and the map installed into Momentum.
 
-- **Source maps** from Kreedz Climbing Mod and CS:GO (GOKZ): the game's own
-  entities become Momentum's (bhop blocks, teleports, anti-bhop and
-  checkpoint triggers), GOKZ's timer entities become a Momentum zone file, and
+- **Source maps** from Kreedz Climbing Mod, CS:GO (GOKZ) and Counter-Strike:
+  Source (surf, bhop, kz): the game's own entities become Momentum's (bhop
+  blocks, teleports, anti-bhop and checkpoint triggers), GOKZ's timer entities
+  become a Momentum zone file, the fixes Momentum's in-game entity tools apply
+  to every map of a game are baked in (CS:S bhop triggers, scaled props, bhop
+  blocks, CS:GO's cascaded shadow light), and
   [bspPack](https://github.com/Natanxp2/bspPack) (bundled) packs the assets
-  the map needs from its game.
+  a Kreedz Climbing map needs from KZ (Momentum mounts the other games, so
+  their maps aren't packed).
+- **Entity review**: each ported map is checked the way Momentum's
+  [entity tools](https://docs.momentum-mod.org/guide/map_submission/fixing_entities/)
+  and [review checklist](https://docs.momentum-mod.org/guide/map_submission/review_checklist/)
+  would check it. Maps with entities that still need changing by hand in game
+  (boost triggers, gravity triggers, teleports into clip brushes...) are
+  flagged in the queue, and a **Next steps** tab lists what's left to submit
+  the map to Momentum Mod's website (entity tools, Lumper, zoning,
+  screenshots, the form), each step linked to its docs section. The same
+  check validates a map that has been through the tools (`review` on the
+  command line).
 - **Quake 3 and GoldSrc maps** convert in process through
   [BSPConvert](https://github.com/momentum-mod/BSPConvert), with the base game
   content and WADs found automatically. GoldSrc bhop blocks become
@@ -75,7 +89,7 @@ play Momentum's animations; it isn't in the app yet. See
 
 | Game                     | Maps | Weapons | Player sounds |
 |--------------------------|:----:|:-------:|:-------------:|
-| Counter-Strike: Source   |      |    ✓    |       ✓       |
+| Counter-Strike: Source   |  ✓   |    ✓    |       ✓       |
 | Counter-Strike: GO       | ✓ ¹  |    ✓    |       ✓       |
 | Team Fortress 2          |      |    ✓    |       ✓       |
 | Half-Life 2              |      |    ✓    |       ✓       |

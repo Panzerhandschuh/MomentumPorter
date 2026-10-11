@@ -25,10 +25,12 @@ public abstract class QueueItemViewModel : ViewModel
     private double _progress;
     private string? _outputPath;
     private string? _installedPath;
+    private string? _attention;
 
     protected QueueItemViewModel()
     {
         Report.CollectionChanged += (_, _) => this.RaisePropertyChanged(nameof(HasReport));
+        NextSteps.CollectionChanged += (_, _) => this.RaisePropertyChanged(nameof(HasNextSteps));
     }
 
     public abstract string Title { get; }
@@ -83,11 +85,33 @@ public abstract class QueueItemViewModel : ViewModel
 
     public bool IsFinished => Status is QueueStatus.Done or QueueStatus.Failed or QueueStatus.Skipped;
 
+    /// <summary>
+    /// Something the user has to do by hand before the result is usable (e.g. entities to change in game), shown as a
+    /// warning on the item even though the job succeeded.
+    /// </summary>
+    public string? Attention
+    {
+        get => _attention;
+        set => this.RaiseAndSetIfChanged(ref _attention, value);
+    }
+
     public LogViewModel Log { get; } = new();
 
     public ObservableCollection<ReportLine> Report { get; } = [];
 
     public bool HasReport => Report.Count > 0;
+
+    /// <summary>What's left to do by hand after the job, with links to the docs for each step.</summary>
+    public ObservableCollection<MomentumPorter.Review.NextStep> NextSteps { get; } = [];
+
+    public bool HasNextSteps => NextSteps.Count > 0;
+
+    public void SetNextSteps(IEnumerable<MomentumPorter.Review.NextStep>? steps)
+    {
+        NextSteps.Clear();
+        foreach (MomentumPorter.Review.NextStep step in steps ?? [])
+            NextSteps.Add(step);
+    }
 
     public void Start()
     {
@@ -96,6 +120,8 @@ public abstract class QueueItemViewModel : ViewModel
 
         Log.Clear();
         Report.Clear();
+        NextSteps.Clear();
+        Attention = null;
         OutputPath = null;
         InstalledPath = null;
         StatusMessage = null;

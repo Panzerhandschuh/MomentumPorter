@@ -149,7 +149,7 @@ public class MapsPageTests
         job.Configure(context);
 
         Assert.StartsWith(temp.Combine("work"), job.WorkDirectory);
-        Assert.Equal(["Load map", "Convert entities", "Write map", "Pack assets"], job.Job.Steps.Select(x => x.Name));
+        Assert.Equal(["Load map", "Convert entities", "Check entities", "Write map", "Pack assets"], job.Job.Steps.Select(x => x.Name));
         MapPortState state = context.Get<MapPortState>();
         Assert.Equal(Path.Combine(job.WorkDirectory, "kz_x.bsp"), state.OutputPath);
         Assert.NotSame(maps.Options, state.Options);
@@ -175,9 +175,9 @@ public class MapsPageTests
         maps.LoadPreset(stream);
 
         Assert.False(maps.Options.Compress);
-        Assert.False(maps.Options.Pack);
-        Assert.False(((BoolOptionViewModel)maps.OptionsForm.Find(nameof(MapPortOptions.Pack))!).Value);
-        // The page always installs and replaces, whatever the preset says
+        // The page always packs KZ maps, installs and replaces, whatever the preset says; packing isn't on the form
+        Assert.True(maps.Options.Pack);
+        Assert.Null(maps.OptionsForm.Find(nameof(MapPortOptions.Pack)));
         Assert.True(maps.Options.Install);
         Assert.True(maps.Options.Overwrite);
     }

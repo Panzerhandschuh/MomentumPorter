@@ -17,7 +17,15 @@ public sealed record PreparedJob(
     Action<PortJobContext> Configure,
     Func<PortJobContext, PortJobResult, JobOutcome> Finish);
 
-public sealed record JobOutcome(QueueStatus Status, string? Message, string? OutputPath = null, string? InstalledPath = null);
+/// <param name="Attention">Something left to do by hand, shown as a warning on the item (see <see cref="QueueItemViewModel.Attention"/>)</param>
+/// <param name="NextSteps">The steps to take after the job, with docs links</param>
+public sealed record JobOutcome(
+    QueueStatus Status,
+    string? Message,
+    string? OutputPath = null,
+    string? InstalledPath = null,
+    string? Attention = null,
+    IReadOnlyList<MomentumPorter.Review.NextStep>? NextSteps = null);
 
 /// <summary>
 /// Thrown while preparing a job to skip the item instead of failing it, e.g. for inputs a later phase will handle.
@@ -145,6 +153,8 @@ public sealed class JobRunnerService : ReactiveObject
 
             item.OutputPath = outcome.OutputPath;
             item.InstalledPath = outcome.InstalledPath;
+            item.Attention = outcome.Attention;
+            item.SetNextSteps(outcome.NextSteps);
             item.Finish(outcome.Status, outcome.Message);
             finished.SetResult();
         });

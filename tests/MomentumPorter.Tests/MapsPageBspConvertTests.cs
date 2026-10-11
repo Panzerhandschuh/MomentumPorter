@@ -75,7 +75,7 @@ public class MapsPageBspConvertTests
             Assert.True(page.ShowBspConvertOptions);
             Assert.Contains(BspConvertOptions.GoldSrcGroup, Groups());
             Assert.Contains(BspConvertOptions.Quake3Group, Groups());
-            Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.Pack)], MapFields());
+            Assert.Equal([nameof(MapPortOptions.Compress)], MapFields());
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.Overwrite)));
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.OutputDirectory)));
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.Studiomdl)));

@@ -4,7 +4,7 @@ namespace MomentumPorter.Options;
 /// Options for porting a Source engine map (KZ Mod, GOKZ) with a game profile.
 /// Quake 3 and GoldSrc maps have their own options, see the BSPConvert integration.
 /// Only the options with a <see cref="PortOptionAttribute"/> are on the app's Maps page; the rest are the command
-/// line's (the app detects the game, always installs into Momentum and replaces what's there).
+/// line's (the app detects the game, always packs KZ maps, installs into Momentum and replaces what's there).
 /// </summary>
 public sealed class MapPortOptions
 {
@@ -20,7 +20,11 @@ public sealed class MapPortOptions
     /// </summary>
     public string? GameDirectory { get; set; }
 
-    [PortOption("Pack assets", "Run bspPack after porting so the map carries the assets it needs from the source game.", Order = 10)]
+    /// <summary>
+    /// Run bspPack after porting so a Kreedz Climbing map carries the assets it needs from KZ, which Momentum doesn't
+    /// mount (the other games are mounted, so their maps are never packed). Always on in the app, since a KZ map
+    /// isn't playable without it; the command line turns it off because it only ports.
+    /// </summary>
     public bool Pack { get; set; } = true;
 
     /// <summary>Copy the finished map into Momentum Mod's maps folder; otherwise it's left where the job wrote it.</summary>

@@ -3,6 +3,7 @@ namespace MomentumPorter.Tests;
 using LibBSP;
 using MomentumPorter.Options;
 using MomentumPorter.Pipeline;
+using MomentumPorter.Porting;
 using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 using MomentumPorter.Steps;
@@ -30,7 +31,7 @@ public class BspPackTests
         string missing = temp.Combine("tools", "bspPack.exe");
 
         var context = new PortJobContext { Log = NullLog.Instance, WorkDirectory = temp.Path };
-        context.Set(new MapPortState(temp.Combine("in.bsp"), bsp, new MapPortOptions()));
+        context.Set(new MapPortState(temp.Combine("in.bsp"), bsp, new MapPortOptions()) { Profile = GameProfiles.Find("kzmod") });
         context.Set(new BspPackTool(missing));
 
         var ex = await Assert.ThrowsAsync<PortStepException>(() => new BspPackStep().RunAsync(context));
@@ -41,10 +42,10 @@ public class BspPackTests
     public void FactoryAppendsPackAndInstallSteps()
     {
         (PortJob job, _) = PortJobFactory.CreateSourceMapJob("in.bsp", "out.bsp", new MapPortOptions { Pack = true, Install = true });
-        Assert.Equal(["Load map", "Convert entities", "Write map", "Pack assets", "Install into Momentum"], job.Steps.Select(x => x.Name));
+        Assert.Equal(["Load map", "Convert entities", "Check entities", "Write map", "Pack assets", "Install into Momentum"], job.Steps.Select(x => x.Name));
 
         (job, _) = PortJobFactory.CreateSourceMapJob("in.bsp", "out.bsp", new MapPortOptions { Pack = false, Install = false });
-        Assert.Equal(3, job.Steps.Count);
+        Assert.Equal(4, job.Steps.Count);
     }
 
     /// <summary>

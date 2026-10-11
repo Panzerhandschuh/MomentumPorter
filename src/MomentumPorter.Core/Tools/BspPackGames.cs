@@ -55,8 +55,8 @@ public sealed class BspPackGames(string rootDirectory)
         return profile.ToLowerInvariant() switch
         {
             "kzmod" => PrepareKreedzClimbing(gameDirectory, settings, steam, log, cancellation),
-            "gokz" => PrepareGokz(gameDirectory, steam, log, cancellation),
-            _ => throw new PortStepException($"The porter doesn't know which game {profile} maps pack their assets from"),
+            // Momentum mounts the other games (CS:S, CS:GO), so their maps aren't packed at all
+            _ => throw new PortStepException($"{profile} maps don't pack assets; only Kreedz Climbing maps do"),
         };
     }
 
@@ -81,29 +81,6 @@ public sealed class BspPackGames(string rootDirectory)
             hl2Vpks.Select(x => Path.Combine(install, "hl2", x + "_dir.vpk")).Where(File.Exists).ToArray(),
             log,
             cancellation);
-    }
-
-    private BspPackGame PrepareGokz(string? gameDirectory, SteamLocator steam, IPortLog log, CancellationToken cancellation)
-    {
-        string content;
-        if (HasFile(gameDirectory, "pak01_dir.vpk"))
-        {
-            content = gameDirectory!;
-        }
-        else
-        {
-            try
-            {
-                content = SourceGames.LocateContentDirectory(SourceGames.CounterStrikeGlobalOffensive, steam);
-            }
-            catch (DirectoryNotFoundException ex)
-            {
-                throw new PortStepException($"bspPack packs GOKZ maps' assets from CS:GO, but {ex.Message}");
-            }
-        }
-
-        // Momentum mounts CS:GO's VPKs, so only loose files that they don't shadow are worth packing
-        return PrepareGame("gokz", "Counter-Strike: Global Offensive", content, [], [Path.Combine(content, "pak01_dir.vpk")], log, cancellation);
     }
 
     /// <param name="vpks">The game's VPKs to extract, searched before its loose files</param>

@@ -60,6 +60,64 @@ public sealed class MapQueueItemViewModel : QueueItemViewModel
     /// <summary>Shown under the item when it can't be ported yet.</summary>
     public string? Note => IsSupported ? null : "Not a map";
 
+    /// <summary>
+    /// Source maps can be checked against Momentum's entity tools without porting them, e.g. a ported map saved from
+    /// Lumper after the in-game review, to see whether anything was left out.
+    /// </summary>
+    public bool CanReview => Kind == InputKind.SourceBsp;
+
+    /// <summary>
+    /// Reviews the map file as it is (not a port of it) on a worker thread and shows the result in the item's log,
+    /// report and next steps.
+    /// </summary>
+    public async Task ReviewAsync(Action<Action> post)
+    {
+        if (!CanReview || IsRunning)
+            return;
+
+        post(() =>
+        {
+            Log.Clear();
+            Report.Clear();
+            Log.Add(LogLevel.Info, $"Checking {Title} against Momentum's entity tools...");
+        });
+
+        (Review.EntityReview? review, string? error) = await Task.Run(() =>
+        {
+            try
+            {
+                return (Review.EntityReview.AnalyzeFile(InputPath), (string?)null);
+            }
+            catch (Exception ex)
+            {
+                return ((Review.EntityReview?)null, $"Couldn't review the map: {ex.Message}");
+            }
+        });
+
+        post(() =>
+        {
+            if (review is null)
+            {
+                Log.Add(LogLevel.Error, error ?? "Couldn't review the map");
+                return;
+            }
+
+            foreach (string line in review.Lines())
+                Log.Add(LogLevel.Info, line);
+
+            var report = new PortReport();
+            review.Report(report);
+            foreach (ReportLine line in ReportLine.FromReport(report))
+                Report.Add(line);
+
+            Attention = review.Summary ?? (review.HasMissingRequiredFixes ? review.Verdict : null);
+            IReadOnlyList<Review.NextStep> steps = Review.SubmissionSteps.For(MapName, review, zoneFileWritten: false, mountedGame: null);
+            SetNextSteps(steps);
+            Review.SubmissionSteps.Print(new DelegateLog((level, message) => Log.Add(level, message)), MapName, steps);
+            StatusMessage = review.Verdict;
+        });
+    }
+
     /// <summary>The game the map was detected as, for display.</summary>
     public string? Game
     {

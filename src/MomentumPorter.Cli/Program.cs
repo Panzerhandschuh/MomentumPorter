@@ -14,7 +14,7 @@ internal sealed partial class CliOptions
     [Value(1, Required = true, MetaName = "output", HelpText = "Where to write the ported BSP. For Quake 3 and GoldSrc maps, the game folder (e.g. Momentum's momentum folder) the map goes into, as maps/<name>.bsp with its zone file.")]
     public required string Output { get; set; }
 
-    [Option('g', "game", HelpText = "Game a Source map was made for: kzmod (Kreedz Climbing) or gokz (CS:GO with the GOKZ mapping API). Detected from the map's entities if not given.")]
+    [Option('g', "game", HelpText = "Game a Source map was made for: kzmod (Kreedz Climbing), gokz (CS:GO with the GOKZ mapping API) or css (Counter-Strike: Source). Detected from the map's entities if not given.")]
     public string? Game { get; set; }
 
     [Option('c', "compress", HelpText = "LZMA compress the output")]
@@ -33,6 +33,8 @@ internal static class Program
             return SoundsCommand.Run(args);
         if (args.Length > 0 && args[0].Equals(WeaponCommand.Verb, StringComparison.OrdinalIgnoreCase))
             return WeaponCommand.Run(args);
+        if (args.Length > 0 && args[0].Equals(ReviewCommand.Verb, StringComparison.OrdinalIgnoreCase))
+            return ReviewCommand.Run(args);
 
         return Parser.Default.ParseArguments<CliOptions>(args).MapResult(options => Run(options).GetAwaiter().GetResult(), _ => 1);
     }
@@ -69,7 +71,25 @@ internal static class Program
 
             PortJobResult result = await job.RunAsync(context);
             result.Report.Print(Console.Out);
-            return result.Succeeded ? 0 : 1;
+            if (!result.Succeeded)
+                return 1;
+
+            // What's left to do by hand: the entity tools, zoning, screenshots, the submission form
+            if (state is Steps.MapPortState mapState)
+            {
+                Review.EntityReview? review = context.TryGet<Review.EntityReview>();
+                if (review is not null)
+                {
+                    Console.WriteLine();
+                    review.Print(Console.Out);
+                }
+
+                Console.WriteLine();
+                bool zoned = mapState.PortContext?.ExtraOutputs.Any(x => x.RelativePath.StartsWith("zones/", StringComparison.OrdinalIgnoreCase)) == true;
+                Review.SubmissionSteps.Print(new CliLog(), mapState.MapName, Review.SubmissionSteps.For(mapState.MapName, review, zoned, mapState.Profile?.MountedGame));
+            }
+
+            return 0;
         }
         catch (PortStepException ex)
         {

@@ -95,7 +95,7 @@ public class OptionsFormTests
         OptionGroupViewModel general = Assert.Single(form.Groups);
         Assert.False(general.ShowHeader);
         Assert.False(form.HasAdvanced);
-        Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.Pack)], general.Fields.Select(x => x.Name));
+        Assert.Equal([nameof(MapPortOptions.Compress)], general.Fields.Select(x => x.Name));
     }
 
     [Fact]

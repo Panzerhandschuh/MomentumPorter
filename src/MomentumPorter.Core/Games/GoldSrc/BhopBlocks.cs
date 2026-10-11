@@ -65,13 +65,17 @@ public static class BhopBlocks
 
     private sealed record Teleport(Entity Entity, List<Box> Brushes);
 
+    /// <summary>A dropping block and the teleport the player falls into from it.</summary>
+    public sealed record Block(Entity Entity, Entity Teleport);
+
     /// <summary>
-    /// Turns the map's dropping blocks into func_bhops. Returns how many it converted.
+    /// The map's dropping blocks that lead into a teleport, which <see cref="Convert"/> would turn into func_bhops.
     /// </summary>
-    public static int Convert(PortContext context)
+    public static List<Block> Find(PortContext context)
     {
         BSP bsp = context.Bsp;
         List<Entity> entities = context.Entities;
+        var blocks = new List<Block>();
 
         List<Teleport> teleports = entities
             .Where(x => x.ClassName is "trigger_teleport" or "trigger_momentum_teleport" && !string.IsNullOrEmpty(x["target"]) && x.ModelNumber > 0)
@@ -80,29 +84,41 @@ public static class BhopBlocks
             .ToList();
 
         if (teleports.Count == 0)
-            return 0;
+            return blocks;
 
-        List<Box> solids = GetBrushBoxes(bsp, 0, Vector3.Zero, PlayerSolidContents);
-        foreach (Entity entity in entities.Where(x => SolidClasses.Contains(x.ClassName) && x.ModelNumber > 0))
-            solids.AddRange(GetBrushBoxes(bsp, entity.ModelNumber, entity.Origin, PlayerSolidContents));
-
-        int converted = 0;
+        List<Box>? solids = null;
         foreach (Entity entity in entities)
         {
             if (GetDroppingBlock(bsp, entity) is not Box block)
                 continue;
 
-            if (FindTeleportBelow(block, teleports, solids) is not Entity teleport)
-                continue;
+            if (solids is null)
+            {
+                solids = GetBrushBoxes(bsp, 0, Vector3.Zero, PlayerSolidContents);
+                foreach (Entity solid in entities.Where(x => SolidClasses.Contains(x.ClassName) && x.ModelNumber > 0))
+                    solids.AddRange(GetBrushBoxes(bsp, solid.ModelNumber, solid.Origin, PlayerSolidContents));
+            }
 
-            ConvertToBhop(context, entity, teleport);
-            converted++;
+            if (FindTeleportBelow(block, teleports, solids) is Entity teleport)
+                blocks.Add(new Block(entity, teleport));
         }
 
-        if (converted > 0)
-            context.Report.Change("dropping func_door/func_button bhop blocks -> func_bhop", converted);
+        return blocks;
+    }
 
-        return converted;
+    /// <summary>
+    /// Turns the map's dropping blocks into func_bhops. Returns how many it converted.
+    /// </summary>
+    public static int Convert(PortContext context)
+    {
+        List<Block> blocks = Find(context);
+        foreach (Block block in blocks)
+            ConvertToBhop(context, block.Entity, block.Teleport);
+
+        if (blocks.Count > 0)
+            context.Report.Change("dropping func_door/func_button bhop blocks -> func_bhop", blocks.Count);
+
+        return blocks.Count;
     }
 
     // A door or button that moves straight down when the player touches it (CBaseDoor::Spawn, CBaseButton::Spawn):

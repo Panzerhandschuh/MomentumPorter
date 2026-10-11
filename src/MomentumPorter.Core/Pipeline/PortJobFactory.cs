@@ -20,6 +20,7 @@ public static class PortJobFactory
         {
             new LoadBspStep(),
             new ApplyProfileStep(),
+            new ReviewEntitiesStep(),
             new WriteBspStep(),
         };
 

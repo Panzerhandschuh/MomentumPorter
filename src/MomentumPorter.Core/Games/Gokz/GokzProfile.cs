@@ -10,9 +10,9 @@ using MomentumPorter.Porting;
 /// </summary>
 public sealed partial class GokzProfile : IGameProfile
 {
-    // Momentum's ENTITY_TOOLS_VERSION. Tagging converted entities tells the in-game tools they're done.
-    private const string PortedByToolsKey = "_ported_by_tools";
-    private const int EntityToolsVersion = 2;
+    // Tagging converted entities tells the in-game tools (and the porter's entity review) they're done
+    private const string PortedByToolsKey = EntityTools.PortedByToolsKey;
+    private const int EntityToolsVersion = EntityTools.Version;
 
     // kz_mapping_api.fgd's worldspawn key ("KZ | Mapping API Version")
     private const string MappingApiVersionKey = "climb_mapping_api_version";
@@ -21,6 +21,8 @@ public sealed partial class GokzProfile : IGameProfile
     public string Name => "gokz";
 
     public string Description => "Counter-Strike: Global Offensive (GOKZ)";
+
+    public string? MountedGame => "Counter-Strike: Global Offensive";
 
     public void Apply(PortContext context)
     {

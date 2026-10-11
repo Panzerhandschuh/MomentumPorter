@@ -9,6 +9,7 @@ using MomentumPorter.Detection;
 using MomentumPorter.Options;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
+using MomentumPorter.Review;
 using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 using MomentumPorter.Steps;
@@ -24,9 +25,6 @@ public sealed class MapsPageViewModel : PageViewModel
 {
     public static readonly FileFilter MapFilter = new("Maps", "*.bsp", "*.pk3", "*.zip");
     public static readonly FileFilter PresetFilter = new("Momentum Porter preset", "*" + OptionsPreset.Extension);
-
-    /// <summary>Map options only Source maps use; the rest (compress) apply to every map.</summary>
-    private static readonly HashSet<string> SourceOnlyOptions = [nameof(MapPortOptions.Pack)];
 
     /// <summary>BSPConvert options the page fills in itself (from the map options, the settings or Momentum's install), so they aren't in its form.</summary>
     private static readonly string[] SharedBspConvertOptions = [nameof(BspConvertOptions.OutputDirectory), nameof(BspConvertOptions.Compress), nameof(BspConvertOptions.Overwrite), nameof(BspConvertOptions.Studiomdl)];
@@ -66,6 +64,7 @@ public sealed class MapsPageViewModel : PageViewModel
         SavePresetCommand = ReactiveCommand.CreateFromTask(SavePresetAsync);
         LoadPresetCommand = ReactiveCommand.CreateFromTask(LoadPresetAsync, running.Select(x => !x));
         OpenMomentumMapsCommand = ReactiveCommand.Create(OpenMomentumMaps);
+        ReviewCommand = ReactiveCommand.CreateFromTask<MapQueueItemViewModel>(ReviewAsync);
     }
 
     public override string Title => "Maps";
@@ -163,6 +162,9 @@ public sealed class MapsPageViewModel : PageViewModel
 
     public ReactiveCommand<Unit, Unit> OpenMomentumMapsCommand { get; }
 
+    /// <summary>Checks a Source map against Momentum's entity tools as it is, without porting it.</summary>
+    public ReactiveCommand<MapQueueItemViewModel, Unit> ReviewCommand { get; }
+
     /// <summary>
     /// Adds map files to the queue, skipping ones already waiting in it. Returns the items added.
     /// </summary>
@@ -246,12 +248,24 @@ public sealed class MapsPageViewModel : PageViewModel
                 : new JobOutcome(QueueStatus.Failed, $"{result.FailedStep} failed: {result.Error}");
         }
 
+        // What's left to do by hand: entities the tools have to change in game, zoning, screenshots, the form
+        EntityReview? review = context.TryGet<EntityReview>();
+        bool zoned = state.PortContext?.ExtraOutputs.Any(x => x.RelativePath.StartsWith("zones/", StringComparison.OrdinalIgnoreCase)) == true;
+        IReadOnlyList<NextStep> steps = SubmissionSteps.For(state.MapName, review, zoned, state.Profile?.MountedGame);
+        string? attention = review?.Summary;
+        if (review is not null)
+        {
+            foreach (string line in review.Lines())
+                context.Log.Info(line);
+        }
+        SubmissionSteps.Print(context.Log, state.MapName, steps);
+
         string? warnings = context.Report.HasWarnings ? " (with warnings, see the report)" : null;
         if (context.TryGet<InstallResult>() is { } install)
         {
             return install.Skipped
                 ? new JobOutcome(QueueStatus.Skipped, "Already in Momentum's maps folder, kept the existing map")
-                : new JobOutcome(QueueStatus.Done, $"Installed into Momentum{warnings}", InstalledPath: install.InstalledPath);
+                : new JobOutcome(QueueStatus.Done, $"Installed into Momentum{warnings}", InstalledPath: install.InstalledPath, Attention: attention, NextSteps: steps);
         }
 
         string outputDirectory = settings.ResolveOutputDirectory();
@@ -271,7 +285,13 @@ public sealed class MapsPageViewModel : PageViewModel
             context.Log.Info($"Saved {target}");
         }
 
-        return new JobOutcome(QueueStatus.Done, $"Saved to the output folder{warnings}", OutputPath: output);
+        return new JobOutcome(QueueStatus.Done, $"Saved to the output folder{warnings}", OutputPath: output, Attention: attention, NextSteps: steps);
+    }
+
+    private async Task ReviewAsync(MapQueueItemViewModel item)
+    {
+        SelectedItem = item;
+        await item.ReviewAsync(_post);
     }
 
     /// <summary>
@@ -322,9 +342,16 @@ public sealed class MapsPageViewModel : PageViewModel
                 string? firstMap = state.InstalledFiles.FirstOrDefault(x => x.EndsWith(".bsp", StringComparison.OrdinalIgnoreCase));
                 int maps = state.InstalledFiles.Count(x => x.EndsWith(".bsp", StringComparison.OrdinalIgnoreCase));
                 string what = maps == 1 ? "1 map" : $"{maps} maps";
+
+                // The same road to the website as Source maps, minus the entity tools (Quake 3 maps get their zones from BSPConvert)
+                string mapName = firstMap is null ? item.MapName : Path.GetFileNameWithoutExtension(firstMap);
+                bool zoned = state.InstalledFiles.Any(x => x.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
+                IReadOnlyList<NextStep> steps = SubmissionSteps.For(mapName, review: null, zoned, mountedGame: null);
+                SubmissionSteps.Print(context.Log, mapName, steps);
+
                 return mapOptions.Install
-                    ? new JobOutcome(QueueStatus.Done, $"Installed {what} into Momentum{warnings}", InstalledPath: firstMap)
-                    : new JobOutcome(QueueStatus.Done, $"Saved {what} to the output folder{warnings}", OutputPath: firstMap);
+                    ? new JobOutcome(QueueStatus.Done, $"Installed {what} into Momentum{warnings}", InstalledPath: firstMap, NextSteps: steps)
+                    : new JobOutcome(QueueStatus.Done, $"Saved {what} to the output folder{warnings}", OutputPath: firstMap, NextSteps: steps);
             });
     }
 
@@ -363,11 +390,10 @@ public sealed class MapsPageViewModel : PageViewModel
         HashSet<InputKind> kinds = Queue.Count == 0
             ? [InputKind.SourceBsp, InputKind.Quake3Bsp, InputKind.GoldSrcBsp]
             : Queue.SelectMany(x => x.MapKinds).ToHashSet();
-        bool source = kinds.Contains(InputKind.SourceBsp);
         bool quake3 = kinds.Contains(InputKind.Quake3Bsp);
         bool goldSrc = kinds.Contains(InputKind.GoldSrcBsp);
 
-        OptionsForm.SetFilter(x => source || !SourceOnlyOptions.Contains(x.Name));
+        // The map options (compress) apply to every kind of map; only BSPConvert's are per kind
         BspConvertOptionsForm.SetFilter(x => x.Info.Attribute.Group switch
         {
             BspConvertOptions.Quake3Group or BspConvertOptions.ExperimentalGroup or BspConvertOptions.AnimatedTexturesGroup => quake3,
@@ -396,11 +422,12 @@ public sealed class MapsPageViewModel : PageViewModel
     }
 
     /// <summary>
-    /// Replaces the options, e.g. from a preset, and rebuilds the form. The page always installs into Momentum and
-    /// replaces what's there, whatever a preset says.
+    /// Replaces the options, e.g. from a preset, and rebuilds the form. The page always packs KZ maps (they aren't
+    /// playable otherwise), installs into Momentum and replaces what's there, whatever a preset says.
     /// </summary>
     public void SetOptions(MapPortOptions options)
     {
+        options.Pack = true;
         options.Install = true;
         options.Overwrite = true;
         Options = options;

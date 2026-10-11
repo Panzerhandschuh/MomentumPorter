@@ -21,6 +21,18 @@ public static class SourceGameSniffer
         "logic_kzmod_timer",
     };
 
+    // Entity classes of Counter-Strike (Source and GO) maps; the BSP version tells the two apart
+    private static readonly HashSet<string> CounterStrikeClasses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "info_player_counterterrorist",
+        "info_player_terrorist",
+        "func_buyzone",
+        "func_bomb_target",
+        "func_hostage_rescue",
+        "hostage_entity",
+        "info_map_parameters",
+    };
+
     public sealed record Detection(string Profile, string Reason, bool Certain);
 
     /// <summary>
@@ -36,8 +48,14 @@ public static class SourceGameSniffer
         if (gameDirectory is not null && DetectFromGameInfo(gameDirectory) is { } fromGame)
             return fromGame;
 
-        if (mapName is not null && (mapName.StartsWith("kz_", StringComparison.OrdinalIgnoreCase) || mapName.StartsWith("bhop_", StringComparison.OrdinalIgnoreCase)))
-            return new Detection("kzmod", "the map's name; it has no game specific entities", Certain: false);
+        if (mapName is not null)
+        {
+            if (mapName.StartsWith("kz_", StringComparison.OrdinalIgnoreCase))
+                return new Detection("kzmod", "the map's name; it has no game specific entities", Certain: false);
+
+            if (mapName.StartsWith("bhop_", StringComparison.OrdinalIgnoreCase) || mapName.StartsWith("surf_", StringComparison.OrdinalIgnoreCase))
+                return new Detection("css", "the map's name; it has no game specific entities", Certain: false);
+        }
 
         return null;
     }
@@ -51,10 +69,14 @@ public static class SourceGameSniffer
 
         bool kzMod = false;
         bool gokz = false;
+        bool counterStrike = false;
         foreach (Entity entity in entities)
         {
             if (KzModClasses.Contains(entity.ClassName))
                 kzMod = true;
+
+            if (CounterStrikeClasses.Contains(entity.ClassName))
+                counterStrike = true;
 
             // GOKZ's mapping API is driven purely by targetnames (climb_teleport, climb_startzone, ...)
             if (entity.Name.StartsWith("climb_", StringComparison.OrdinalIgnoreCase))
@@ -66,6 +88,16 @@ public static class SourceGameSniffer
 
         if (gokz)
             return new Detection("gokz", "its GOKZ mapping API entities", Certain: true);
+
+        if (counterStrike)
+        {
+            // CS:GO maps are BSP version 21; CS:S (and the other Source 2006/2007/2013 games) stop at 20
+            if (bsp.MapType == MapType.Source21)
+                return new Detection("gokz", "its Counter-Strike entities in a CS:GO (version 21) map; it has no GOKZ mapping API entities", Certain: false);
+
+            if (bsp.MapType is MapType.Source19 or MapType.Source20)
+                return new Detection("css", "its Counter-Strike entities", Certain: true);
+        }
 
         return null;
     }
@@ -79,6 +111,9 @@ public static class SourceGameSniffer
         string text = File.ReadAllText(gameInfo);
         if (text.Contains("Kreedz", StringComparison.OrdinalIgnoreCase) || text.Contains("kreedzclimbing", StringComparison.OrdinalIgnoreCase))
             return new Detection("kzmod", "the game folder it's in", Certain: true);
+
+        if (text.Contains("Counter-Strike: Source", StringComparison.OrdinalIgnoreCase) || File.Exists(Path.Combine(gameDirectory, "cstrike_pak_dir.vpk")))
+            return new Detection("css", "the game folder it's in", Certain: true);
 
         return null;
     }

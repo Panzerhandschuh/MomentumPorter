@@ -8,8 +8,9 @@ using MomentumPorter.Tools;
 
 /// <summary>
 /// Packs the assets the ported map uses from its source game into it with the bundled bspPack (<c>-M -C</c>), after
-/// pointing it at the map's game (see <see cref="BspPackGames"/>). The map is packed in the job's work folder; if the
-/// output lies elsewhere, it is copied in and back. Momentum's and the games' folders come from the
+/// pointing it at the map's game (see <see cref="BspPackGames"/>). Only Kreedz Climbing maps are packed
+/// (<see cref="IGameProfile.PacksAssets"/>); Momentum mounts the other games. The map is packed in the job's work
+/// folder; if the output lies elsewhere, it is copied in and back. Momentum's and the games' folders come from the
 /// <see cref="PorterSettings"/> in the context.
 /// </summary>
 public sealed class BspPackStep : IPortStep
@@ -19,6 +20,13 @@ public sealed class BspPackStep : IPortStep
     public async Task RunAsync(PortJobContext context)
     {
         MapPortState state = context.Get<MapPortState>();
+        IGameProfile profile = state.Profile ?? throw new InvalidOperationException("The map's game profile hasn't been applied");
+        if (!profile.PacksAssets)
+        {
+            context.Log.Info($"Nothing to pack: Momentum mounts {profile.MountedGame ?? "the map's game"}, so the map keeps the assets its author packed");
+            return;
+        }
+
         PorterSettings settings = context.TryGet<PorterSettings>() ?? new PorterSettings();
         BspPackTool tool = context.TryGet<BspPackTool>() ?? new BspPackTool(BspPackTool.BundledPath);
         if (!tool.Exists)

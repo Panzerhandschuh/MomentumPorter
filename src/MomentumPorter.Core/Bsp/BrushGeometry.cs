@@ -76,6 +76,15 @@ public static class BrushGeometry
         return GetCornerBounds(planes);
     }
 
+    /// <summary>
+    /// Whether a point (in the model's own space) is inside a brush: behind every one of its planes.
+    /// </summary>
+    public static bool Contains(BSP bsp, int brush, Vector3 point)
+    {
+        List<PlaneBSP> planes = GetBrushPlanes(bsp, brush);
+        return planes.Count > 0 && planes.All(x => Vector3.Dot(x.Normal, point) - x.Distance <= CornerEpsilon);
+    }
+
     private static List<PlaneBSP> GetBrushPlanes(BSP bsp, int brush)
     {
         Brush brushData = bsp.Brushes[brush];

@@ -4,6 +4,7 @@
              xmlns:shared="using:MomentumPorter.UI.ViewModels.Shared"
              xmlns:views="using:MomentumPorter.UI.Views.Shared"
              xmlns:conv="using:MomentumPorter.UI.Converters"
+             xmlns:review="using:MomentumPorter.Review"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="MomentumPorter.UI.Views.Pages.MapsPageView"
              x:DataType="vm:MapsPageViewModel"
@@ -36,7 +37,7 @@
       </StackPanel>
       <StackPanel Spacing="2" VerticalAlignment="Center">
         <TextBlock Text="Maps" Classes="h1" />
-        <TextBlock Text="Port KZ Mod, GOKZ, Quake 3 and GoldSrc maps, pack their assets and install them into Momentum Mod"
+        <TextBlock Text="Port KZ Mod, GOKZ, CS:S, Quake 3 and GoldSrc maps, pack their assets and install them into Momentum Mod"
                    Classes="muted" TextTrimming="CharacterEllipsis" />
       </StackPanel>
     </DockPanel>
@@ -97,8 +98,22 @@
                     <TextBlock Text="{Binding StatusMessage}" FontSize="12" TextWrapping="Wrap"
                                Foreground="{Binding Status, Converter={x:Static conv:QueueStatusConverters.Brush}}"
                                IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <!-- Entities the in-game entity tools still have to change; the Next steps tab says how -->
+                    <Grid ColumnDefinitions="Auto, *" Margin="0 2 0 0"
+                          IsVisible="{Binding Attention, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                          ToolTip.Tip="Something to do by hand before the map can be submitted. See the Next steps tab below.">
+                      <materialIcons:MaterialIcon Grid.Column="0" Kind="AlertOutline" Width="14" Height="14" VerticalAlignment="Top"
+                                                  Margin="0 1 4 0" Foreground="{StaticResource WarningBrush}" />
+                      <TextBlock Grid.Column="1" Text="{Binding Attention}" Classes="warning" FontSize="12" TextWrapping="Wrap" />
+                    </Grid>
                   </StackPanel>
                   <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" Spacing="2">
+                    <Button Classes="icon" IsVisible="{Binding CanReview}" IsEnabled="{Binding !IsRunning}"
+                            ToolTip.Tip="Check the map against Momentum's entity tools as it is, without porting it: for a ported map saved from Lumper after the in-game review, to see whether anything was left out"
+                            Command="{Binding #Page.((vm:MapsPageViewModel)DataContext).ReviewCommand}"
+                            CommandParameter="{Binding}">
+                      <materialIcons:MaterialIcon Kind="ClipboardCheckOutline" Width="16" Height="16" />
+                    </Button>
                     <Button Classes="icon" ToolTip.Tip="Queue again" IsVisible="{Binding IsFinished}"
                             Command="{Binding #Page.((vm:MapsPageViewModel)DataContext).RequeueCommand}"
                             CommandParameter="{Binding}">
@@ -179,6 +194,28 @@
                     <DataTemplate DataType="shared:ReportLine">
                       <SelectableTextBlock Text="{Binding Text}" FontFamily="{StaticResource Monospace}" FontSize="12"
                                            Classes.warning="{Binding IsWarning}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+          <!-- What's left to do by hand to get the map onto Momentum Mod's website, each step linked to its docs section -->
+          <TabItem Header="Next steps" FontSize="14">
+            <ScrollViewer Background="#33000000">
+              <StackPanel Margin="10 6" Spacing="2">
+                <TextBlock Text="Once a map is ported, the steps to get it onto Momentum Mod's website are listed here: the entities to change with the in-game entity tools, the Lumper checks, zoning, screenshots and the submission form, each linked to the docs."
+                           Classes="muted" TextWrapping="Wrap"
+                           IsVisible="{Binding !SelectedItem.HasNextSteps, FallbackValue=True}" />
+                <ItemsControl ItemsSource="{Binding SelectedItem.NextSteps, FallbackValue={x:Null}}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="review:NextStep">
+                      <StackPanel Margin="0 0 0 10" Spacing="1">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" />
+                        <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12" />
+                        <HyperlinkButton NavigateUri="{Binding Uri}" Content="{Binding Url}" FontSize="12" Padding="0 2"
+                                         IsVisible="{Binding Url, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                      </StackPanel>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>

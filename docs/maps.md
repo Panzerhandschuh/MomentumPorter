@@ -1,13 +1,14 @@
 # Maps
 
-Porting maps made for other games: Source maps (Kreedz Climbing Mod, CS:GO with GOKZ) in the porter itself, Quake 3 and GoldSrc maps through BSPConvert. See the [README](../README.md) for an overview.
+Porting maps made for other games: Source maps (Kreedz Climbing Mod, CS:GO with GOKZ, Counter-Strike: Source) in the porter itself, Quake 3 and GoldSrc maps through BSPConvert. See the [README](../README.md) for an overview.
 
 ## Command line
 
-The verbs `sounds` and `weapon` build asset packs (see [weapons.md](weapons.md) and [player-sounds.md](player-sounds.md)). Without a verb, the arguments are a map to port:
+The verbs `sounds` and `weapon` build asset packs (see [weapons.md](weapons.md) and [player-sounds.md](player-sounds.md)), and `review` checks a map against Momentum's entity tools (see [Entity review](#entity-review-and-next-steps)). Without a verb, the arguments are a map to port:
 
 ```
-MomentumPorter <input.bsp> <output.bsp> [--game kzmod] [--compress] [--game-dir <folder>]
+MomentumPorter <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--game-dir <folder>]
+MomentumPorter review <map.bsp> [--steps]
 ```
 
 `--game-dir` is the source game's folder (the one with `gameinfo.txt`), for game files the map relies on, such as
@@ -15,14 +16,16 @@ shared soundscapes. It defaults to the folder above the input's `maps` folder, o
 Climbing's folder in your Steam libraries.
 
 The output is written as a new file, uncompressed unless `--compress` is given, and the tool prints what it converted
-and anything it couldn't. It doesn't pack assets; the desktop app does. Packed files named after the map, such as
-cubemap materials, aren't renamed, so keep the map's name or rename it with Lumper afterwards.
+and anything it couldn't, then the entity review and the steps left to submit the map. It doesn't pack assets; the
+desktop app does. Packed files named after the map, such as cubemap materials, aren't renamed, so keep the map's name
+or rename it with Lumper afterwards.
 
 ## Desktop app
 
 `src/MomentumPorter.UI` (`MomentumPorterUI.exe`) does what `pack_for_momentum.bat` did, with a window: drop maps on it
 (or pass them on the command line), pick options, Run. Each queued Source map is ported, packed with bspPack
-(`-M -C`) and copied into Momentum's `momentum/maps` folder, one map at a time. Everything happens in a temp work folder
+(`-M -C`) if it's a Kreedz Climbing map (always, since Momentum doesn't mount KZ; the games it mounts, CS:S, CS:GO,
+TF2 and Portal 2, need no packing) and copied into Momentum's `momentum/maps` folder, one map at a time. Everything happens in a temp work folder
 and the map is only moved into `maps/` once every step succeeded, so a failed or cancelled map never leaves a broken
 file there. An installed map of the same name is replaced. The game a Source map was made for is detected from its
 entities. The options panel only shows the options for the kinds of map in the queue, and the rarely needed ones only
@@ -30,9 +33,11 @@ with its **Advanced** toggle on. Files the conversion writes next to the map, su
 go along with it.
 
 - **Maps**: the queue (status per map, detected kind and game), the options form (generated from the
-  `[PortOption]` attributes on `MapPortOptions` and `BspConvertOptions`), and the log and report of the selected map.
-  Options can be saved and loaded as JSON presets. Quake 3 and GoldSrc maps in the queue go through BSPConvert instead
-  (its options follow the Source map options in the same list) into Momentum's game folder.
+  `[PortOption]` attributes on `MapPortOptions` and `BspConvertOptions`), and the log, report and next steps of the
+  selected map. A ported map whose entities still need changing by hand in game gets a warning line in the queue
+  (see [Entity review](#entity-review-and-next-steps)); the clipboard button on a Source map checks it as it is,
+  without porting. Options can be saved and loaded as JSON presets. Quake 3 and GoldSrc maps in the queue go through
+  BSPConvert instead (its options follow the Source map options in the same list) into Momentum's game folder.
 - **Settings**: Momentum's and Kreedz Climbing's folders (found in your Steam libraries unless overridden), the
   studiomdl executable (Momentum's own unless overridden), the work folder, the output folder packs fall back to when
   Momentum isn't found, and which known games were found. Saved to `%AppData%/MomentumPorter/settings.json`.
@@ -61,10 +66,11 @@ files that a VPK searched before them shadows (the game never loads them, and Mo
 | Game | Searches | Excludes loose files shadowed by |
 |---|---|---|
 | Kreedz Climbing | `kz_textures`, `kz_sounds` and `kz_misc` extracted, then the loose `kz` folder | KZ's HL2 VPKs |
-| CS:GO (GOKZ) | the loose `csgo` folder (Momentum mounts CS:GO's VPKs) | `pak01` |
 
-Kreedz Climbing is found in your Steam libraries unless its folder is set in Settings, and CS:GO in your Steam
-libraries. KZ maps from outside KZ's `maps` folder also get their shared soundscapes from that KZ folder.
+Only Kreedz Climbing maps are packed (`IGameProfile.PacksAssets`): Momentum mounts CS:S and CS:GO, so their maps keep
+whatever their authors packed and the pack step just logs that. Kreedz Climbing is found in your Steam libraries unless
+its folder is set in Settings. KZ maps from outside KZ's `maps` folder also get their shared soundscapes from that KZ
+folder.
 
 ## Quake 3 and GoldSrc maps
 
@@ -120,9 +126,20 @@ GoldSrc maps don't get timer zones, and `--scale` isn't supported for them.
 |---|---|
 | `kzmod` | Kreedz Climbing Mod |
 | `gokz` | Counter-Strike: Global Offensive (GOKZ) |
+| `css` | Counter-Strike: Source |
 
 Each game is an `IGameProfile` in `src/MomentumPorter/Games/<Game>/`, registered in `GameProfiles.All`. Profiles work on
 a `PortContext`, which provides the entities and generic operations such as `SplitByBrush` and `RewriteOutputs`.
+
+The game is detected from the map (`SourceGameSniffer`): KZ Mod's own entity classes, GOKZ's `climb_*` names, and
+Counter-Strike entities (spawns, buy zones...) in a version 19/20 BSP for CS:S or a version 21 one for CS:GO (a CS:GO
+map without GOKZ entities goes through the GOKZ profile, which only adds the cascaded shadow light and zones nothing).
+Failing those, the game folder the map sits in, then its name (`kz_` KZ Mod, `bhop_`/`surf_` CS:S), with a warning.
+
+Whatever the game, a Source map named `bhop_*` or `kz_*` gets the bhop block fix baked in after the profile ran
+(dropping `func_door`/`func_button` blocks over a teleport become `func_bhop`s, see
+[Quake 3 and GoldSrc maps](#quake-3-and-goldsrc-maps)), since those are the maps Momentum's own runtime block fix
+would run on.
 
 ### Kreedz Climbing Mod
 
@@ -192,6 +209,64 @@ Not reproducible, and listed as warnings:
 - `climb_teleport_reorient_player` and `climb_teleport_relative`: those triggers teleport to the destination as is.
 - Sequential bhops act as single bhops per trigger; they don't share which triggers of the set were used.
 - Courses with no start or end aren't zoned; without a main course, no zone file is written.
+
+### Counter-Strike: Source
+
+CS:S surf, bhop and kz maps use stock entities Momentum already runs, so the profile only bakes in the two fixes
+Momentum's in-game entity tools apply to every CS:S map of their kind, tagging the entities `_ported_by_tools 2` as the
+tools do:
+
+- **Bhop trigger fix** (bhop maps): a bhop block's `trigger_multiple` renames the player (`AddOutput targetname X`) a
+  moment after touching and back to `default` a little later, and the `trigger_teleport` around the block only takes
+  players with that name through a `filter_activator_name`. Momentum's fix (`Bhop Trigger Fix` in the tools) makes the
+  renames happen `OnLand`, marks the player as off the ground with a `_mom_leftground` context `OnJump`/`OnEndTouch`,
+  and points the teleports at a `filter_multi` (`momentum_tools__filter_bhop_multi`) of the name filter and a
+  `filter_activator_context` that rejects players with that context. Detection is the engine's `IsBhopTrigger`
+  (exactly two renames within a second on `OnStartTouch` or `OnTrigger`, the earlier one a name some teleport's filter
+  accepts) and the rewrite copies the tools' key lists. Triggers using a second filter are left for the tools.
+- **Model scale fix** (every CS:S map): older Source games squared a prop's `ModelScale`, so `prop_dynamic`,
+  `prop_dynamic_override` and `prop_dynamic_glow` with a scale other than 1 get `ScaleType 1` (non-hierarchical), which
+  brings that behaviour back. Like the tool, props with a collision model are skipped; the porter looks for the model's
+  `.phy` in the map's pak file and then in CS:S's files (found through Steam or the Settings page). Without CS:S the
+  fix is applied anyway, with a warning.
+
+Everything else the tools do for CS:S maps needs someone in game and is left to the entity review below.
+
+## Entity review and next steps
+
+After the profile, `ReviewEntitiesStep` goes through the map the way Momentum's
+[entity tools](https://docs.momentum-mod.org/guide/map_submission/fixing_entities/) and
+[review checklist](https://docs.momentum-mod.org/guide/map_submission/review_checklist/) would
+(`EntityReview.Analyze`, `src/MomentumPorter.Core/Review/`). Each tool becomes a `ReviewItem` with how many entities
+it would list, how many are already dealt with (tagged by the tools or the porter, or fine as they are) and a docs
+link. Pending items that aren't notes go in the report as warnings, into the queue item's warning line ("Needs manual
+entity changes in game: 3 boost triggers, ...") and into the **Next steps** tab:
+
+| Tool | Severity | Found | Done when |
+|---|---|---|---|
+| Bhop Trigger Fix | required | `trigger_multiple`s matching `IsBhopTrigger` | the renames are on `OnLand` |
+| Bhop Block Fix | required for `bhop_`/`kz_` maps | dropping blocks over a teleport (`BhopBlocks.Find`) | `func_bhop` |
+| Model Scale Fix | required | scaled dynamic props without a collision model | `ScaleType 1` |
+| CSM Fix | required for version 21 (CS:GO) maps | the map | it has an `env_cascade_light` |
+| Teleport Velocity Mode | review on `surf_` maps, note otherwise | destinations inside `playerclip` brushes (surf cages, jails), which the docs say should keep only downward velocity; bhop maps box their fail destinations in clip too | every teleport to it has a `VelocityMode` |
+| Teleport Velocity Mode | note | every other destination | same |
+| Landmark Teleports | review | `trigger_teleport`s with a `landmark` | tagged |
+| Boost Triggers | review | horizontal `trigger_push`es, `trigger_setspeed`s, `trigger_multiple`s adding basevelocity, lowering gravity for a moment or renaming the player for a filtered push (`BoostTriggers.Find`) | tagged |
+| Gravity Triggers | review | `trigger_gravity` | has a `persist` key |
+| Weapon strip | review | `player_weaponstrip`, `game_player_equip` | never |
+| logic_timer | note | `logic_timer` | never |
+| func_button | note | `func_button` | spawnflag 1 |
+
+Review items are judgement calls the tools can't make for you, so a map that went through the tools still shows the
+boosts and gravity triggers the reviewer decided to leave alone; the verdict line says so ("every required fix is in;
+still to confirm in game, since the tools left them unchanged: ..."). Required items decide the exit code of
+`MomentumPorter review <map.bsp>` (1 when one is missing), which is the way to validate a map saved from Lumper after
+the in-game review, as is the clipboard button on a Source map in the app's queue (it reviews the file as it is).
+
+`SubmissionSteps.For` turns the review into the **Next steps** list (also printed to the log): the entity tools setup
+and one step per pending tool, the Lumper review, the packed assets, compressing, zoning (noting the zone file the
+porter wrote for GOKZ and Quake 3 maps), screenshots with `mom_official_screenshot`, the submission form and the review
+checklist, each linked to its section of the docs (`DocsLinks`).
 
 ## Splitting brush entities
 
