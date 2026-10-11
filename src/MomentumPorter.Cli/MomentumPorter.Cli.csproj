@@ -17,8 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The bundled bspPack, next to the app where BspPackTool looks first -->
-    <None Include="$(RepoRoot)tools\bspPack\**" Exclude="$(RepoRoot)tools\bspPack\README.md" LinkBase="bspPack" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+    <!-- The bundled bspPack, next to the app where BspPackTool looks first. Kept out of single-file releases, which
+         would otherwise bundle bspPack.exe as a native library and extract it to a temp folder. -->
+    <None Include="$(RepoRoot)tools\bspPack\**" Exclude="$(RepoRoot)tools\bspPack\README.md" LinkBase="bspPack" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" Visible="false" />
   </ItemGroup>
 
 </Project>
