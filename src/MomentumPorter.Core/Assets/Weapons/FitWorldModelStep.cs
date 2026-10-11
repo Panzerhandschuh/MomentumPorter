@@ -7,8 +7,8 @@ using MomentumPorter.Pipeline;
 /// <summary>
 /// Recompiles the weapon's world model onto Momentum's <c>weapon_bone.R</c>, placed like the Momentum model it
 /// replaces, so it sits in the player's hand in third person (and in replays and on spawners); see
-/// <see cref="WorldModelFitter"/>. Covers the games Momentum mounts and Quake 3; GoldSrc's world models are pickups lying
-/// on the ground with nothing that marks where they're held, so they're left as they are.
+/// <see cref="WorldModelFitter"/>. Covers the games Momentum mounts, Quake 3 and GoldSrc, whose held (p_) model is
+/// fitted by its Bip01 R Hand; a GoldSrc game without one keeps its w_ pickup model as it is.
 /// </summary>
 public sealed class FitWorldModelStep : IPortStep
 {
@@ -53,7 +53,24 @@ public sealed class FitWorldModelStep : IPortStep
         string modelName = converted is not null
             ? source["models/".Length..]
             : $"porter/{state.Game!.Id}/{Path.GetFileName(source).ToLowerInvariant()}";
-        GunFrame? sourceFrame = info.Engine == ContentEngine.Quake3 ? WorldModelFitter.Quake3Source : null;
+        GunFrame? sourceFrame = info.Engine switch
+        {
+            ContentEngine.Quake3 => WorldModelFitter.Quake3Source,
+            ContentEngine.GoldSrc => WorldModelFitter.GoldSrcSource,
+            _ => null,
+        };
+
+        // A GoldSrc p_ model is rigged to the whole player; only what the right hand holds goes on Momentum's grip bone
+        // (CS 1.6's dual Berettas hold a second pistol in the left)
+        if (info.Engine == ContentEngine.GoldSrc && mesh.Header.FindBone(WorldModelFitter.GoldSrcGripBone) is >= 0 and int hand)
+        {
+            SourceModelMesh held = mesh.OnBranch(hand);
+            if (held.Triangles.Count < mesh.Triangles.Count)
+                context.Log.Info($"{source}: {mesh.Triangles.Count - held.Triangles.Count} of its triangles aren't held by the right hand and are left out");
+
+            mesh = held;
+        }
+
         try
         {
             var compiler = new StudioMdlCompiler(studioMdl, Path.Combine(context.WorkDirectory, "studiomdl_world"), context.Log);
@@ -65,6 +82,14 @@ public sealed class FitWorldModelStep : IPortStep
                 if (state.Materials is { } materials && gamePath.EndsWith(".mdl", StringComparison.OrdinalIgnoreCase))
                     state.Sink!.AddFile(gamePath, materials.Patch(context, source, File.ReadAllBytes(file)));
                 else
+                    state.Sink!.AddFile(gamePath, file);
+            }
+
+            // A converted model's materials, which the fitted one still uses (GoldSrc's p_ models have their own
+            // textures; a Quake 3 world model shares its view model's)
+            foreach ((string gamePath, string file) in converted?.Files ?? [])
+            {
+                if (gamePath.StartsWith("materials/", StringComparison.OrdinalIgnoreCase))
                     state.Sink!.AddFile(gamePath, file);
             }
 

@@ -63,6 +63,17 @@ public static class WorldModelFitter
     /// <summary>Quake 3 holds weapons at their origin with the barrel along +x and the top along +z.</summary>
     public static readonly GunFrame Quake3Source = new(Vector3.UnitX, Vector3.UnitZ, null, "Quake 3's convention");
 
+    /// <summary>GoldSrc's p_ models' grip bone, Bip01 R Hand, as GoldSrcWeaponConverter names it.</summary>
+    public const string GoldSrcGripBone = "bip01_r_hand";
+
+    /// <summary>
+    /// GoldSrc's p_ models (CS 1.6's and Half-Life's) hold weapons on Bip01 R Hand with the barrel along +x and the top
+    /// along +z; knives and crowbars point along +z. Few have landmarks to measure this from, and their grip and
+    /// magazine are too small to tell up from down. The bone is at the wrist, so the trigger is about 4.5 units ahead
+    /// of it and 1 above (measured on CS 1.6's USP, AK-47 and M249 and Half-Life's 357, 9mm handgun, MP5 and shotgun).
+    /// </summary>
+    public static readonly GunFrame GoldSrcSource = new(Vector3.UnitX, Vector3.UnitZ, new Vector3(4.5f, 0, 1), "GoldSrc's Bip01 R Hand");
+
     /// <summary>
     /// The most a measured barrel tilt is trusted; more means the measurement found something other than the barrel.
     /// </summary>
@@ -76,6 +87,7 @@ public static class WorldModelFitter
         "ValveBiped.weapon_bone",  // CS:S, HL2
         "weapon_bone",             // TF2
         "ValveBiped.Bip01_R_Hand",
+        GoldSrcGripBone,
     ];
 
     /// <summary>The bone the model is held by and the transform from model space into its frame.</summary>

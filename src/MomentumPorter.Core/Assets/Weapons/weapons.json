@@ -201,7 +201,7 @@
         "GoldSrc models are converted with studiomdl; view model sequences get Source activities from their names (idle, shoot, reload, draw...)",
         "Animation sound events play the converted waves and muzzle flash events draw the script's muzzle flash particle (with the view model muzzle flash engine patch); shell events are dropped",
         "GoldSrc view models are drawn at the world's FOV; in Momentum they use viewmodel_fov, so they may sit differently",
-        "The p_ (held in third person) models aren't used: Momentum's player rig differs, so the world model is the w_ (dropped) one",
+        "The world model is the p_ (held in third person) one, fitted to Momentum's player's hand by its Bip01 R Hand; weapon spawners show it too, not the w_ pickup",
         "Textures are converted at their GoldSrc size and keep GoldSrc's texture gamma"
       ],
       "loadout": { "pistol": "usp", "machinegun": "ak47", "sniper": "awp", "concgrenade": "flashbang" },

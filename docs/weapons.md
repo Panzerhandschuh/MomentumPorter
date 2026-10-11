@@ -101,8 +101,10 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   recompiles them onto Momentum's `weapon_bone.R` (`models/porter/<game>/`), placed like the Momentum model they replace.
   Momentum's world models are all laid out level in model space (barrel -y, top +z), which gives the target; the source
   model's barrel, top and tilt come from its muzzle, shell ejection, slide and top line, and the two triggers are lined
-  up when both models have one. CS:GO, CS:S, TF2, HL2 and Quake 3 world models are fitted; GoldSrc's are ground pickups
-  with nothing marking where they're held and stay as they are. `--no-world-fit` turns this off.
+  up when both models have one. CS:GO, CS:S, TF2, HL2 and Quake 3 world models are fitted. GoldSrc's w_ models are
+  ground pickups with nothing marking where they're held, so its p_ (held) models are fitted instead: only what their
+  `Bip01 R Hand` holds, which holds every GoldSrc weapon the same way (barrel +x, top +z, trigger just ahead of the
+  wrist). `--no-world-fit` turns this off (and GoldSrc keeps the w_ model).
 - **Sounds**: Momentum only loads the soundscripts in its `game_sounds_manifest.txt`, and the first definition of a
   name wins. Bullet weapons (pistol, machine gun, shotgun, sniper) play their shot from the player, where a weapon
   script's `Overrides` don't apply, so for those the pack also redefines the shot's entry (e.g. `Weapon_Pistol.Single`):

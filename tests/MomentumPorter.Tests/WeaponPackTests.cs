@@ -540,10 +540,13 @@ public class WeaponPackTests
         try
         {
             Assert.True(result.Succeeded, result.Error + Report(result));
-            foreach (string file in new[] { "v_ak47.mdl", "v_ak47.vvd", "v_ak47.dx90.vtx", "w_ak47.mdl" })
+            foreach (string file in new[] { "v_ak47.mdl", "v_ak47.vvd", "v_ak47.dx90.vtx", "p_ak47.mdl" })
                 Assert.True(File.Exists(Path.Combine(pack, "models", "porter", "cs16", file)), file);
 
             Assert.NotEmpty(Directory.GetFiles(Path.Combine(pack, "materials", "models", "porter", "cs16", "v_ak47"), "*.vtf"));
+            // The world model is the held p_ one, on Momentum's grip bone, with its own textures
+            Assert.NotEmpty(Directory.GetFiles(Path.Combine(pack, "materials", "models", "porter", "cs16", "p_ak47"), "*.vtf"));
+            Assert.Equal(WorldModelFitter.MomentumGripBone, Assert.Single(StudioModelHeader.Read(Path.Combine(pack, "models", "porter", "cs16", "p_ak47.mdl")).Bones).Name);
             Assert.True(File.Exists(Path.Combine(pack, "sound", "porter", "cs16", "weapons", "ak47-1.wav")));
             // The reload sounds its animation events play
             Assert.True(File.Exists(Path.Combine(pack, "sound", "porter", "cs16", "weapons", "ak47_clipout.wav")));
@@ -555,6 +558,44 @@ public class WeaponPackTests
             Assert.Contains(StudioModelHeader.Read(Path.Combine(pack, "models", "porter", "cs16", "v_ak47.mdl")).Attachments, x => x.Name == "muzzle");
             Assert.Equal("weapon_muzzle_flash_assaultrifle", script.GetParticle("MuzzleFlashEffect"));
             Assert.Equal("Porter_cs16.ak47.single_shot", script.SoundOverrides["Weapon_SMG1.Single"]);
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(pack)!, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// CS 1.6's dual Berettas' p_ model, fitted to Momentum's pistol (slow): the right pistol only, upright, and held
+    /// by its grip like Momentum's.
+    /// </summary>
+    [Fact]
+    public async Task Cs16PistolWorldModelIsHeldUprightInTheRightHand()
+    {
+        if (!CanBuild("cs16") || !File.Exists(WeaponTestGames.Momentum!.StudioMdlPath))
+            return;
+
+        (PortJobResult result, string pack, _) = await BuildAsync("cs16", "elite");
+        try
+        {
+            Assert.True(result.Succeeded, result.Error + Report(result));
+            WeaponScript script = WeaponScript.Parse(File.ReadAllText(Path.Combine(pack, "scripts", "weapon_momentum_pistol.txt")));
+            Assert.Equal("models/porter/cs16/p_elite.mdl", script.GetModel("world"));
+
+            string model = Path.Combine(pack, "models", "porter", "cs16", "p_elite");
+            SourceModelMesh mesh = SourceModelMesh.Read(File.ReadAllBytes(model + ".mdl"), File.ReadAllBytes(model + ".vvd"), File.ReadAllBytes(model + ".dx90.vtx"));
+            var grip = mesh.Header.GetBoneToModel(0).Translation;
+            var points = mesh.Triangles.SelectMany(x => new[] { x.A, x.B, x.C }).Select(x => x.Position - grip).ToList();
+
+            // Laid out like Momentum's pistol (barrel -y, top +z): one pistol, its barrel ahead of the hand and its grip
+            // hanging below it
+            float front = -points.Min(x => x.Y);
+            float back = points.Max(x => x.Y);
+            Assert.True(front + back < 15, $"{front + back} units long: the left pistol came along");
+            Assert.True(front > 2 * back, $"front {front}, back {back}");
+            float top = points.Max(x => x.Z);
+            float bottom = -points.Min(x => x.Z);
+            Assert.True(bottom > top, $"top {top}, bottom {bottom}");
         }
         finally
         {

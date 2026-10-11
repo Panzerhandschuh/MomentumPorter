@@ -344,11 +344,14 @@ public sealed class ConvertModelsStep : IPortStep
 
         if (!string.IsNullOrEmpty(weapon.World))
         {
+            // GoldSrc's w_ models are pickups lying on the ground; its p_ models are what the player holds, rigged to
+            // the player's skeleton with the gun on Bip01 R Hand, which is what fitting needs
+            string? held = info.Engine == ContentEngine.GoldSrc && state.Options.FitWorldModel ? GoldSrcHeldModel(state.Content!, weapon.World) : null;
             try
             {
-                ConvertedModel world = await convert(weapon.World, null, false).ConfigureAwait(false);
+                ConvertedModel world = await convert(held ?? weapon.World, null, false).ConfigureAwait(false);
                 state.WorldModel = world.GamePath;
-                if (info.Engine == ContentEngine.Quake3)
+                if (info.Engine == ContentEngine.Quake3 || held is not null)
                 {
                     // FitWorldModelStep adds it, recompiled to sit in Momentum's player's hand
                     state.ConvertedWorldModel = world;
@@ -378,6 +381,18 @@ public sealed class ConvertModelsStep : IPortStep
                 context.Report.Warn($"The projectile model wasn't converted, Momentum's is kept: {ex.Message}");
             }
         }
+    }
+
+    /// <summary>The p_ model next to a GoldSrc w_ model (<c>models/w_ak47.mdl</c> -> <c>models/p_ak47.mdl</c>), if the game has one.</summary>
+    internal static string? GoldSrcHeldModel(GameContent content, string worldModel)
+    {
+        string path = ContentPath.Normalize(worldModel);
+        string name = Path.GetFileName(path);
+        if (!name.StartsWith("w_", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        string held = path[..^name.Length] + "p_" + name[2..];
+        return content.Exists(held) ? held : null;
     }
 
     private static void Add(PortJobContext context, WeaponPackState state, ConvertedModel model)

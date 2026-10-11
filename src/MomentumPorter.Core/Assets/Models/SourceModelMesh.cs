@@ -28,6 +28,23 @@ public sealed class SourceModelMesh
 
     public IReadOnlyList<SourceTriangle> Triangles { get; }
 
+    /// <summary>The triangles a bone or the bones below it hold.</summary>
+    public SourceModelMesh OnBranch(int bone)
+    {
+        bool Below(int b)
+        {
+            for (; b >= 0 && b < Header.Bones.Count; b = Header.Bones[b].Parent)
+            {
+                if (b == bone)
+                    return true;
+            }
+
+            return false;
+        }
+
+        return new SourceModelMesh(Header, Triangles.Where(x => Below(x.A.Bone) && Below(x.B.Bone) && Below(x.C.Bone)).ToList());
+    }
+
     /// <exception cref="InvalidDataException">The files aren't a model's mdl, vvd and vtx</exception>
     public static SourceModelMesh Read(byte[] mdl, byte[] vvd, byte[] vtx)
     {
