@@ -4,3 +4,4 @@ obj/
 *.user
 Directory.Build.local.props
 .claude/
+artifacts/

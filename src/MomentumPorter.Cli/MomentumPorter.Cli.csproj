@@ -3,8 +3,9 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>MomentumPorter.Cli</RootNamespace>
-    <!-- Keep the executable's name, scripts such as pack_for_momentum.bat call MomentumPorter.exe -->
-    <AssemblyName>MomentumPorter</AssemblyName>
+    <!-- The -CLI suffix tells it from MomentumPorter-UI.exe next to it in a release (scripts such as
+         pack_for_momentum.bat that called MomentumPorter.exe need updating) -->
+    <AssemblyName>MomentumPorter-CLI</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

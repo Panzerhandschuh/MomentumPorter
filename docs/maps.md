@@ -7,8 +7,8 @@ Porting maps made for other games: Source maps (Kreedz Climbing Mod, CS:GO with 
 The verbs `sounds` and `weapon` build asset packs (see [weapons.md](weapons.md) and [player-sounds.md](player-sounds.md)), and `review` checks a map against Momentum's entity tools (see [Entity review](#entity-review-and-next-steps)). Without a verb, the arguments are a map to port:
 
 ```
-MomentumPorter <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--game-dir <folder>]
-MomentumPorter review <map.bsp> [--steps]
+MomentumPorter-CLI <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--game-dir <folder>]
+MomentumPorter-CLI review <map.bsp> [--steps]
 ```
 
 `--game-dir` is the source game's folder (the one with `gameinfo.txt`), for game files the map relies on, such as
@@ -22,7 +22,7 @@ or rename it with Lumper afterwards.
 
 ## Desktop app
 
-`src/MomentumPorter.UI` (`MomentumPorterUI.exe`) does what `pack_for_momentum.bat` did, with a window: drop maps on it
+`src/MomentumPorter.UI` (`MomentumPorter-UI.exe`) does what `pack_for_momentum.bat` did, with a window: drop maps on it
 (or pass them on the command line), pick options, Run. Each queued Source map is ported, packed with bspPack
 (`-M -C`) if it's a Kreedz Climbing map (always, since Momentum doesn't mount KZ; the games it mounts, CS:S, CS:GO,
 TF2 and Portal 2, need no packing) and copied into Momentum's `momentum/maps` folder, one map at a time. Everything happens in a temp work folder
@@ -80,9 +80,9 @@ takes BSPConvert's options under the
 same names (`--wads`, `--subdiv`, `--scale`, `--nopak`, `--prefix`, `--maps`...; see `--help` or BSPConvert's README):
 
 ```
-MomentumPorter <map.pk3|map.bsp|maps.zip> <outputGameDir> [BSPConvert options]
-MomentumPorter "...aseq3\pak0.pk3" "...\Momentum Mod Playtest\momentum" --maps q3dm1
-MomentumPorter "...\Half-Life\cstrike\maps\kz_persia.bsp" "...\Momentum Mod Playtest\momentum"
+MomentumPorter-CLI <map.pk3|map.bsp|maps.zip> <outputGameDir> [BSPConvert options]
+MomentumPorter-CLI "...aseq3\pak0.pk3" "...\Momentum Mod Playtest\momentum" --maps q3dm1
+MomentumPorter-CLI "...\Half-Life\cstrike\maps\kz_persia.bsp" "...\Momentum Mod Playtest\momentum"
 ```
 
 The output is a game folder: the map goes into `maps/<prefix><name>.bsp`, Quake 3 timer zones into
@@ -260,7 +260,7 @@ entity changes in game: 3 boost triggers, ...") and into the **Next steps** tab:
 Review items are judgement calls the tools can't make for you, so a map that went through the tools still shows the
 boosts and gravity triggers the reviewer decided to leave alone; the verdict line says so ("every required fix is in;
 still to confirm in game, since the tools left them unchanged: ..."). Required items decide the exit code of
-`MomentumPorter review <map.bsp>` (1 when one is missing), which is the way to validate a map saved from Lumper after
+`MomentumPorter-CLI review <map.bsp>` (1 when one is missing), which is the way to validate a map saved from Lumper after
 the in-game review, as is the clipboard button on a Source map in the app's queue (it reviews the file as it is).
 
 `SubmissionSteps.For` turns the review into the **Next steps** list (only there, so the log stays the tools' output;

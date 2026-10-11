@@ -3,13 +3,13 @@
 Packs that put weapons from other games into Momentum's weapon slots. See the [README](../README.md) for an overview.
 
 ```
-MomentumPorter weapon --game css --weapon ak47 [--slot machinegun] [--modes kzt,kz16] --output <folder> [--name <pack>]
+MomentumPorter-CLI weapon --game css --weapon ak47 [--slot machinegun] [--modes kzt,kz16] --output <folder> [--name <pack>]
                       [--no-sounds] [--arms auto|momentum|none] [--no-projectile] [--no-particles]
                       [--no-world-fit] [--gun-fov <degrees>] [--no-defrag-configs]
                       [--momentum-dir <install>] [--game-dir <content folder>] [--studiomdl <exe>]
-MomentumPorter weapon --game q3 --all [--modes ...] --output <folder> [options as above]
-MomentumPorter weapon --restore --slot knife [--modes surf] --output <folder> [--name <pack>] [--momentum-dir <install>]
-MomentumPorter weapon --list [--game css]
+MomentumPorter-CLI weapon --game q3 --all [--modes ...] --output <folder> [options as above]
+MomentumPorter-CLI weapon --restore --slot knife [--modes surf] --output <folder> [--name <pack>] [--momentum-dir <install>]
+MomentumPorter-CLI weapon --list [--game css]
 ```
 
 Ports a weapon from another game into one of Momentum's weapons as a pack folder (`<output>/momentumporter` by

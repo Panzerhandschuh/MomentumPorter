@@ -5,7 +5,7 @@ Packs that give the player another game's jump, landing, footstep and sprint sou
 Builds a pack for Momentum's `custom` folder that gives the player another game's movement sounds:
 
 ```
-MomentumPorter sounds [--game q3|css|csgo|tf2|hl2|cs16|hl1] [--character <name>] [--jump game|default|none]
+MomentumPorter-CLI sounds [--game q3|css|csgo|tf2|hl2|cs16|hl1] [--character <name>] [--jump game|default|none]
                       [--land game|default|none] [--footsteps game|default|silent] [--sprint game|default|hl2|none] [--pure]
                       [--modes <mode>[,<mode>...]] [--output <folder>|auto] [--vpk|--folder] [--name <pack>] [--list]
 ```

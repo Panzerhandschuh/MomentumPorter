@@ -9,8 +9,8 @@ Momentum Porter brings maps and assets from other games into Momentum Mod. It
 converts maps, and builds packs that give Momentum another game's weapons and
 player sounds, reading everything straight from your installed games.
 
-It comes as a desktop app (`MomentumPorterUI`) and a command line
-(`MomentumPorter`). Packs go into Momentum's `custom` folder and never touch the
+It comes as a desktop app (`MomentumPorter-UI`) and a command line
+(`MomentumPorter-CLI`). Packs go into Momentum's `custom` folder and never touch the
 game's own files, so deleting a pack brings Momentum's assets back.
 
 ## Features
