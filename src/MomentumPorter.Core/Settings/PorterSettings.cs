@@ -58,6 +58,9 @@ public sealed class PorterSettings
     /// <summary>Where finished maps go when they aren't installed into Momentum. Null for <see cref="DefaultOutputDirectory"/>.</summary>
     public string? OutputDirectory { get; set; }
 
+    /// <summary>The desktop app looks for a newer GitHub release when it starts.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
     public static string DefaultOutputDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MomentumPorter", "maps");
 

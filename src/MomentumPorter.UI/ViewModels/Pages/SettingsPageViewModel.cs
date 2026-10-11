@@ -7,6 +7,7 @@ using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 using MomentumPorter.UI.Services;
+using MomentumPorter.Updates;
 using ReactiveUI;
 
 /// <summary>
@@ -244,6 +245,16 @@ public sealed class SettingsPageViewModel : PageViewModel
     }
 
     public string DefaultOutputDirectory => PorterSettings.DefaultOutputDirectory;
+
+    public bool CheckForUpdates
+    {
+        get => Settings.CheckForUpdates;
+        set => Update(() => Settings.CheckForUpdates = value, nameof(CheckForUpdates));
+    }
+
+    public string VersionText => AppUpdater.IsDevelopmentBuild(AppUpdater.CurrentVersion)
+        ? "This is a development build, which doesn't check for updates."
+        : $"This is version {AppUpdater.CurrentVersion}.";
 
     public ObservableCollection<DetectedGameViewModel> Games { get; } = [];
 

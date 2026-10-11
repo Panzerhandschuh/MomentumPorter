@@ -113,6 +113,17 @@
       </Border>
 
       <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="16">
+          <TextBlock Text="Updates" Classes="h2" />
+          <StackPanel Classes="setting">
+            <CheckBox IsChecked="{Binding CheckForUpdates}" Content="Check for updates when the porter starts" />
+            <TextBlock Classes="hint" Text="{Binding VersionText}" />
+            <TextBlock Classes="hint" Text="When a new release is out on GitHub, the porter asks whether to download it, then installs it and restarts." />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="panel" Padding="16">
         <StackPanel Spacing="10">
           <DockPanel>
             <Button DockPanel.Dock="Right" Command="{Binding RescanCommand}" ToolTip.Tip="Look for the games again">

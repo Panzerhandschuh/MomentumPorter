@@ -3,7 +3,7 @@ namespace MomentumPorter.UI.Services;
 using System.Diagnostics;
 
 /// <summary>
-/// Opens folders and files in the system's file manager.
+/// Opens folders and files in the system's file manager, and web pages in the browser.
 /// </summary>
 public static class ShellService
 {
@@ -11,6 +11,13 @@ public static class ShellService
     {
         Directory.CreateDirectory(folder);
         Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+    }
+
+    /// <summary>Opens a web page in the default browser.</summary>
+    public static void OpenUrl(string url)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp))
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
     }
 
     /// <summary>

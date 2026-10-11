@@ -45,6 +45,16 @@ public sealed class MainWindowViewModel : ViewModel
 
     public WeaponsPageViewModel Weapons { get; }
 
+    /// <summary>A map, weapon pack or sound pack job is running.</summary>
+    public bool IsBusy => Maps.Runner.IsRunning || Weapons.Runner.IsRunning || PlayerSounds.Runner.IsRunning;
+
+    public void CancelJobs()
+    {
+        Maps.Runner.Cancel();
+        Weapons.Runner.Cancel();
+        PlayerSounds.Runner.Cancel();
+    }
+
     public PageViewModel SelectedPage
     {
         get => _selectedPage;
