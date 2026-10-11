@@ -85,16 +85,16 @@ play Momentum's animations; it isn't in the app yet. See
 
 ## Supported Games
 
-| Game                     | Maps | Weapons | Player sounds |
-|--------------------------|:----:|:-------:|:-------------:|
-| Counter-Strike: Source   |  ✓   |    ✓    |       ✓       |
-| Counter-Strike: GO       | ✓ ¹  |    ✓    |       ✓       |
-| Team Fortress 2          |      |    ✓    |       ✓       |
-| Half-Life 2              |      |    ✓    |       ✓       |
-| Counter-Strike 1.6       |  ✓   |    ✓    |       ✓       |
-| Half-Life                |  ✓   |    ✓    |       ✓       |
-| Quake III Arena          |  ✓   |    ✓    |       ✓       |
-| Kreedz Climbing Mod      |  ✓   |         |               |
+| Game                             | Maps | Weapons | Player sounds |
+|----------------------------------|:----:|:-------:|:-------------:|
+| Counter-Strike: Source           |  ✓   |    ✓    |       ✓       |
+| Counter-Strike: Global Offensive | ✓ ¹  |    ✓    |       ✓       |
+| Team Fortress 2                  |      |    ✓    |       ✓       |
+| Half-Life 2                      |      |    ✓    |       ✓       |
+| Counter-Strike 1.6               |  ✓   |    ✓    |       ✓       |
+| Half-Life                        |  ✓   |    ✓    |       ✓       |
+| Quake III Arena                  |  ✓   |    ✓    |       ✓       |
+| Kreedz Climbing Mod              |  ✓   |         |               |
 
 ¹ Maps made with GOKZ's [mapping API](https://github.com/KZGlobalTeam/gokz/wiki/Mapping-API).
 
