@@ -50,7 +50,7 @@
         <StackPanel DockPanel.Dock="Top" Margin="12 4 12 8" Spacing="4">
           <TextBlock Text="Game mode" FontWeight="SemiBold" />
           <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" HorizontalAlignment="Stretch"
-                    ToolTip.Tip="Every mode replaces Momentum's sounds everywhere. One mode's pack is only used in that mode (scripts/&lt;mode&gt;/, which needs the engine change in docs/engine-changes.md) and wins over an every-mode pack there">
+                    ToolTip.Tip="Every mode replaces Momentum's sounds everywhere. One mode's pack is only used in that mode (scripts/&lt;mode&gt;/) and wins over an every-mode pack there">
             <ComboBox.ItemTemplate>
               <DataTemplate DataType="weapons:GameModeGroup">
                 <TextBlock Text="{Binding Name}" />

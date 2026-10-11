@@ -21,7 +21,7 @@ internal sealed class WeaponCliOptions
     [Option('s', "slot", HelpText = "Momentum weapon it replaces (pistol, machinegun, shotgun, sniper, knife, grenade, rocketlauncher, stickylauncher, concgrenade, df_*). Defaults to the weapon's best fit.")]
     public string? Slot { get; set; }
 
-    [Option('m', "modes", HelpText = "Game modes the weapon is used in (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop, conc, df_cpm, df_vq3, df_vtg), comma separated. Every mode by default. Needs the gamemode-weapon-scripts engine change (docs/engine-changes.md).")]
+    [Option('m', "modes", HelpText = "Game modes the weapon is used in (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop, conc, df_cpm, df_vq3, df_vtg), comma separated. Every mode by default.")]
     public string? Modes { get; set; }
 
     [Option('o', "output", HelpText = "Folder to write the pack folder into")]

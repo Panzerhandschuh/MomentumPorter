@@ -34,8 +34,7 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
     public const string Sprint = "MomPlayer.SprintStart";
 
     /// <summary>
-    /// A mode's overrides of <see cref="SoundscriptPath"/>, which the engine loads at level init in that mode (the
-    /// gamemode-weapon-scripts engine change, docs/engine-changes.md).
+    /// A mode's overrides of <see cref="SoundscriptPath"/>, which the engine loads at level init in that mode.
     /// </summary>
     public static string ModeSoundscriptPath(GameMode mode) => $"scripts/{mode.Id}/game_sounds_momentum_player.txt";
 
@@ -149,8 +148,7 @@ public sealed class PlayerSoundPackBuilder(PlayerSoundSource source, IPortLog lo
             string overrides = soundscript.ToChangedText(
             [
                 $"Made by MomentumPorter: {source.Game.Name}'s player sounds for {GameModes.Describe(modes)}.",
-                $"Loaded over {SoundscriptPath} in this mode only, by Momentum builds with the",
-                "gamemode-weapon-scripts engine change (other builds ignore it). Each entry replaces Momentum's whole entry.",
+                $"Loaded over {SoundscriptPath} in this mode only. Each entry replaces Momentum's whole entry.",
             ]);
             foreach (GameMode mode in modes)
                 pack.AddText(ModeSoundscriptPath(mode), overrides);

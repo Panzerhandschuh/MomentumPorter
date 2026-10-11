@@ -38,7 +38,7 @@ internal sealed class SoundsCliOptions
     [Option("pure", HelpText = "Also mute the sounds the game doesn't have: air jump, power slide, wall run, and the jump and sprint sounds for games without them")]
     public bool Pure { get; set; }
 
-    [Option('m', "modes", HelpText = "Game modes the sounds are used in (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop, conc, df_cpm, df_vq3, df_vtg), comma separated. Every mode by default. Needs the gamemode-weapon-scripts engine change (docs/engine-changes.md).")]
+    [Option('m', "modes", HelpText = "Game modes the sounds are used in (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop, conc, df_cpm, df_vq3, df_vtg), comma separated. Every mode by default.")]
     public string? Modes { get; set; }
 
     [Option("volume", HelpText = "Volume of the game's jump and land sounds, 0 to 1", Default = 0.35f)]

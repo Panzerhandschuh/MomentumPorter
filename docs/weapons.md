@@ -65,18 +65,18 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
 
 - **Game modes**: `--modes` (the game mode picked in the app) limits a weapon to some modes (`surf`, `bhop`, `bhophl`,
   `kz`, `kzt`, `kz16`, `rj`, `sj`, `ahop`, `conc`, `df_cpm`, `df_vq3`, `df_vtg`: the modes' cfg names). Its script is
-  then written as `scripts/<mode>/weapon_momentum_<slot>.txt`, which the engine reads in that mode with
-  the `gamemode-weapon-scripts` engine change in [engine-changes.md](engine-changes.md) (falling back to the shared script, or Momentum's), so the Climb
+  then written as `scripts/<mode>/weapon_momentum_<slot>.txt`, which the engine reads in that mode (falling back to the
+  shared script, or Momentum's), so the Climb
   (1.6) pistol can be CS 1.6's USP and the Climb (KZT) one CS:GO's Desert Eagle. A weapon for every mode (the command
   line without `--modes`) keeps the plain path and leaves the modes' own scripts in place. Bullet weapons' shots play
   from the player, where the script's `Overrides` don't apply, so a per-mode weapon's shot is redefined in
-  `scripts/<mode>/game_sounds_momentum_weapons.txt`, which the same engine change loads over Momentum's soundscript in
+  `scripts/<mode>/game_sounds_momentum_weapons.txt`, which the engine loads over Momentum's soundscript in
   that mode (see Sounds below).
 
 - **Mounted games**: every model is checked in the VPKs Momentum's `gameinfo.txt` mounts (not loose files of the game).
   The game's own view model paths are used. `attach_to_hands` is 0 (the view models have arms), except CS:GO, whose view
-  models have none: the script names CS:GO's `ct_arms.mdl` as `ModelData` `arms`, which needs the engine change in
-  [engine-changes.md](engine-changes.md) (without it Momentum's arms are attached, and they share no bones with CS:GO's view models). CS:S
+  models have none: the script names CS:GO's `ct_arms.mdl` as `ModelData` `arms`, which Momentum attaches instead of its
+  own arms (they share no bones with CS:GO's view models). CS:S
   and CS 1.6 models are left handed (`BuiltRightHanded 0`). Momentum mounts these games together, and a path two of
   them ship (CS:S's and CS:GO's `models/weapons/v_pist_deagle.mdl`) is one game's file for every script that names it,
   so a model another mounted game ships too is copied into the pack as `models/porter/<game>/...` (reported). The same
@@ -89,10 +89,8 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
 - **Muzzle flashes**: a gun whose catalog entry names no `MuzzleFlashEffect` (CS:S, HL2, CS 1.6, HL1) gets CS:GO's
   flash for its slot when CS:GO is mounted (pistol, assault rifle, auto shotgun or AWP, with CS:GO's particle file added
   to the manifest), else the assault rifle flash Momentum ships in `particles/weapons.pcf`. Momentum's view models have
-  no muzzle flash events, and the ones on other games' models (`CL_EVENT_MUZZLEFLASH0`, which CS:GO, CS:S and HL2 models
-  all carry) are drawn by the base engine on the player entity rather than the view model, so nothing shows. With the
-  `viewmodel-muzzle-flash` engine change in [engine-changes.md](engine-changes.md) the engine draws the weapon script's
-  `ParticleData MuzzleFlashEffect` on the view model, at the attachment the event names (CS:GO's `"1"`) or implies
+  no muzzle flash events. For the ones on other games' models (`CL_EVENT_MUZZLEFLASH0`, which CS:GO, CS:S and HL2 models
+  all carry), the engine draws the weapon script's `ParticleData MuzzleFlashEffect` on the view model, at the attachment the event names (CS:GO's `"1"`) or implies
   (CS:S, HL2); a weapon without one (launchers, `--no-particles`) draws no flash. The catalog gives each CS:GO weapon its
   muzzle flash from CS:GO's `items_game.txt`, and the pack ships Momentum's particle manifest with
   `particles/weapons/cs_weapon_fx.pcf` added.
@@ -110,7 +108,7 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   script's `Overrides` don't apply, so for those the pack also redefines the shot's entry (e.g. `Weapon_Pistol.Single`):
   in its copy of Momentum's soundscript for a weapon used in every mode, or in each mode's
   `scripts/<mode>/game_sounds_momentum_weapons.txt` (only the redefined entries) for a weapon for some modes, which the
-  `gamemode-weapon-scripts` engine change in [engine-changes.md](engine-changes.md) loads over Momentum's in that mode.
+  engine loads over Momentum's in that mode.
   Overrides point at the game's entries where Momentum loads them (CS:S, TF2, HL2). Entries Momentum doesn't
   load (CS:GO), or that a Momentum entry of the same name hides (Momentum's `Weapon_Pistol.Single`, `Weapon_Scout.Single`,
   `Weapon_Shotgun.Single`, `Weapon_Knife.*`), are copied (wave, channel, volume, pitch, level; no operator stacks), hidden
@@ -123,9 +121,8 @@ spawner and the projectile), `attach_to_hands`, `BuiltRightHanded`, `SoundData/O
   events, which play the waves copied to `sound/porter/<game>/`. Unsilenced sequences are used for the M4A1 and USP.
   Chrome textures get GoldSrc's sphere-map coordinates from the vertex normals (fixed against the model, so no
   shimmer). The model's attachments come along and its muzzle flash events (5001 + 10 per attachment) stay, drawing
-  the script's `MuzzleFlashEffect` at the attachment GoldSrc drew its flash at, with the `viewmodel-muzzle-flash`
-  engine change in [engine-changes.md](engine-changes.md). `p_` models aren't used (Momentum's player rig differs) and
-  the view model FOV differs.
+  the script's `MuzzleFlashEffect` at the attachment GoldSrc drew its flash at. `p_` models aren't used (Momentum's
+  player rig differs) and the view model FOV differs.
 - **Quake 3**: the weapon and its barrel become one model. The view model hangs it from the hand model's
   `tag_weapon`, and the hand's frames give it idle, fire (recoil) and draw sequences; the barrel rides its own bone,
   which the fire sequence spins a full turn (Quake 3 spins it while firing), and `<weapon>_flash.md3` is a body group

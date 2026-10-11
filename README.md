@@ -58,9 +58,7 @@ weapons** fills every weapon of a mode from one game in one go (Quake 3's whole
 arsenal into Defrag).
 
 Weapons from games Momentum mounts are used as they are; GoldSrc and Quake 3
-models, textures, sounds and effects are converted. A few features need engine
-changes that aren't in Momentum yet, see
-[docs/engine-changes.md](docs/engine-changes.md).
+models, textures, sounds and effects are converted.
 
 <p>
   <img src="docs/images/csgo-deagle.webp" alt="CS:GO's Desert Eagle in Momentum" width="49%">

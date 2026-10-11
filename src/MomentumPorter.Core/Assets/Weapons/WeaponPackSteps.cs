@@ -511,9 +511,9 @@ public sealed class ResolveWeaponSoundsStep : IPortStep
     /// <summary>
     /// Bullet weapons' shots are played with the player as the source (FX_FireBullets), where a weapon's SoundData
     /// Overrides don't apply, so the pack also redefines Momentum's shot entry (e.g. Weapon_Pistol.Single) as the
-    /// replacement sound: in its copy of Momentum's weapon soundscript for a weapon used in every mode, which works on
-    /// any build, or in each mode's scripts/&lt;mode&gt;/game_sounds_momentum_weapons.txt for a weapon for some modes
-    /// (the gamemode-weapon-scripts engine change, docs/engine-changes.md). See <see cref="MergedSoundscript"/>.
+    /// replacement sound: in its copy of Momentum's weapon soundscript for a weapon used in every mode, or in each
+    /// mode's scripts/&lt;mode&gt;/game_sounds_momentum_weapons.txt for a weapon for some modes. See
+    /// <see cref="MergedSoundscript"/>.
     /// </summary>
     private static void RedefinePlayerShot(PortJobContext context, WeaponPackState state, WeaponSoundResolver resolver, SoundscriptLibrary momentumSounds, SoundscriptLibrary sourceGame)
     {
@@ -584,7 +584,7 @@ public sealed class WriteWeaponPackStep : IPortStep
 
     /// <summary>
     /// A mode's redefinitions of Momentum's weapon sounds (a per-mode weapon's shot), which the engine loads over
-    /// <see cref="SoundscriptPath"/> in that mode (the gamemode-weapon-scripts engine change, docs/engine-changes.md).
+    /// <see cref="SoundscriptPath"/> in that mode.
     /// </summary>
     public static string ModeSoundscriptPath(GameMode mode) => $"scripts/{mode.Id}/game_sounds_momentum_weapons.txt";
 
@@ -651,10 +651,7 @@ public sealed class WriteWeaponPackStep : IPortStep
         script.BuiltRightHanded = game.BuiltRightHanded;
 
         if (script.AttachToHands == 1 && state.ArmsModel is not null)
-        {
             script.SetModel("arms", state.ArmsModel);
-            context.Report.Warn($"ModelData arms ({state.ArmsModel}) only takes effect on Momentum builds with the weapon-arms engine change in docs/engine-changes.md; until then Momentum attaches its own arms, which {game.Name}'s view models have no bones for, so no arms show");
-        }
 
         foreach ((string entry, string replacement) in state.SoundOverrides)
             script.SetSoundOverride(entry, replacement);
@@ -707,7 +704,7 @@ public sealed class WriteWeaponPackStep : IPortStep
             foreach (GameMode mode in modes)
                 sink.AddFile(slot.ScriptPathFor(mode), scriptText);
 
-            context.Report.Warn($"The {weapon.Name} is only the {slot.Name} in {GameModes.Describe(modes)}, which needs a Momentum build with the gamemode-weapon-scripts engine change in docs/engine-changes.md (other builds ignore scripts/<mode>/). "
+            context.Log.Info($"The {weapon.Name} is only the {slot.Name} in {GameModes.Describe(modes)}. "
                 + (sink.ReadFile(slot.ScriptPath) is not null ? $"Other modes keep the pack's {slot.ScriptPath}." : $"Other modes keep Momentum's {slot.Name}."));
         }
 
@@ -993,8 +990,7 @@ file static class MergedSoundscript
 
             var text = new StringBuilder();
             text.Append($"// Momentum's weapon sounds redefined for {mode.Name} only, merged by MomentumPorter from {WriteWeaponPackStep.SoundEntriesFolder}/.\n");
-            text.Append($"// Loaded over {WriteWeaponPackStep.SoundscriptPath} in this mode by Momentum builds with the gamemode-weapon-scripts\n");
-            text.Append("// engine change (other builds ignore it). Each entry replaces Momentum's whole entry.\n\n");
+            text.Append($"// Loaded over {WriteWeaponPackStep.SoundscriptPath} in this mode. Each entry replaces Momentum's whole entry.\n\n");
             foreach (KeyValuesNode entry in entries)
                 text.Append(entry.Write()).Append('\n');
 

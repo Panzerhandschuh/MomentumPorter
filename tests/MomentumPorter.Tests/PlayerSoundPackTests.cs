@@ -330,7 +330,6 @@ public sealed class PlayerSoundPackTests : IDisposable
         Assert.Null(overrides.Find("MomPlayer.AirJump"));
 
         string report = Print(result);
-        Assert.Contains("gamemode-weapon-scripts", report);
         Assert.Contains("scripts/kz16/game_sounds_momentum_player.txt", report);
     }
 

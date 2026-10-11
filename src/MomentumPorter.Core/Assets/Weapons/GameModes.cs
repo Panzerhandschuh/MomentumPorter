@@ -3,7 +3,7 @@ namespace MomentumPorter.Assets.Weapons;
 /// <summary>
 /// A Momentum game mode (engine/momentum/mom_system_gamemode.h). <see cref="Id"/> is the mode's config name without
 /// its extension (<c>kz16</c> for <c>cfg/kz16.cfg</c>), which is also the folder the engine looks in for the mode's
-/// own weapon scripts (<c>scripts/kz16/weapon_momentum_pistol.txt</c>, see docs/engine-changes.md).
+/// own weapon scripts (<c>scripts/kz16/weapon_momentum_pistol.txt</c>).
 /// </summary>
 /// <param name="SlotIds">The Momentum weapons the mode lets the player have (CGameMode_*::WeaponDesirability).</param>
 public sealed record GameMode(string Id, string Name, IReadOnlyList<string> SlotIds)

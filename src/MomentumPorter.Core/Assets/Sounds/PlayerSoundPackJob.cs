@@ -168,11 +168,6 @@ public sealed class FindPlayerSoundInputsStep : IPortStep
 
         context.Log.Info($"{state.Game.Name} sounds: {state.GamePath}");
         context.Log.Info($"Momentum: {content}");
-        if (state.GameModes.Count > 0)
-        {
-            context.Report.Warn($"The sounds are only for {GameModes.Describe(state.GameModes)}, which needs a Momentum build with the gamemode-weapon-scripts engine change in docs/engine-changes.md (other builds ignore scripts/<mode>/ and keep Momentum's sounds)");
-        }
-
         WarnAboutShadowingOverrides(context, state);
         return Task.CompletedTask;
     }

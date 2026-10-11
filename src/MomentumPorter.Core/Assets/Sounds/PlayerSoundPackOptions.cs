@@ -134,8 +134,8 @@ public sealed class PlayerSoundPackOptions
     /// <summary>
     /// The game modes the pack is for, as mode ids separated by commas (<see cref="Weapons.GameModes.All"/>: kz16, df_cpm, ...),
     /// or null for every mode. For some modes the pack only holds the changed sounds, in
-    /// <c>scripts/&lt;mode&gt;/game_sounds_momentum_player.txt</c>, which needs the gamemode-weapon-scripts engine change
-    /// (docs/engine-changes.md); for every mode it replaces Momentum's soundscript, which any build loads.
+    /// <c>scripts/&lt;mode&gt;/game_sounds_momentum_player.txt</c>, which the engine loads over Momentum's in that mode;
+    /// for every mode it replaces Momentum's soundscript.
     /// </summary>
     public string? GameModes { get; set; }
 

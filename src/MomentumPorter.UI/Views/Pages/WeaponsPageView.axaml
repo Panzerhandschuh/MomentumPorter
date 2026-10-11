@@ -63,7 +63,7 @@
         <StackPanel DockPanel.Dock="Top" Margin="12 8 12 6" Spacing="4">
           <TextBlock Text="Game mode" Classes="h2" />
           <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" HorizontalAlignment="Stretch"
-                    ToolTip.Tip="The pack's weapon is only used in this mode (scripts/&lt;mode&gt;/, which needs the engine change in docs/engine-changes.md); other modes keep what they have">
+                    ToolTip.Tip="The pack's weapon is only used in this mode (scripts/&lt;mode&gt;/); other modes keep what they have">
             <ComboBox.ItemTemplate>
               <DataTemplate DataType="weapons:GameModeGroup">
                 <TextBlock Text="{Binding Name}" />

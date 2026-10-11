@@ -76,12 +76,11 @@ public sealed class PlayerSoundsPageViewModel : PageViewModel
     /// <summary>The options the next build uses: the game and character picked here, everything else game accurate.</summary>
     public PlayerSoundPackOptions Options => _options;
 
-    /// <summary>The choice for a pack that replaces Momentum's sounds in every mode, which any Momentum build loads.</summary>
+    /// <summary>The choice for a pack that replaces Momentum's sounds in every mode.</summary>
     public static readonly GameModeGroup EveryMode = new("Every mode", []);
 
     /// <summary>
-    /// The modes a pack can be for: every mode, or one mode as the Weapons page offers them (the Defrag modes as one),
-    /// which needs the gamemode-weapon-scripts engine change.
+    /// The modes a pack can be for: every mode, or one mode as the Weapons page offers them (the Defrag modes as one).
     /// </summary>
     public IReadOnlyList<GameModeGroup> Modes { get; }
 

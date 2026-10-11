@@ -74,7 +74,7 @@ public sealed class GoldSrcWeaponConverter
     /// <param name="kind">For view models, what activities its sequences get; null for world models</param>
     /// <param name="muzzleFlashes">
     /// Keep the model's muzzle flash events, which draw the weapon script's MuzzleFlashEffect at the attachment GoldSrc
-    /// drew its own flash at (with the viewmodel-muzzle-flash engine change); false drops them.
+    /// drew its own flash at; false drops them.
     /// </param>
     public async Task<ConvertedModel> ConvertAsync(string modelPath, ViewModelKind? kind, IPortLog log, CancellationToken cancellation, bool muzzleFlashes = false)
     {

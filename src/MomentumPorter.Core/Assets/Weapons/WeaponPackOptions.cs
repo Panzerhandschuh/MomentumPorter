@@ -30,9 +30,8 @@ public sealed class WeaponPackOptions
     /// <summary>
     /// The game modes the weapon is used in, as a list of their ids (surf, bhop, bhophl, kz, kzt, kz16, rj, sj, ahop,
     /// conc, df_cpm, df_vq3, df_vtg). Null or empty means every mode. A weapon for some modes is written as
-    /// scripts/&lt;mode&gt;/weapon_momentum_&lt;slot&gt;.txt, which Momentum builds with the gamemode-weapon-scripts
-    /// engine change (docs/engine-changes.md) use in that mode, so e.g. Climb (1.6) can have a CS 1.6 pistol and
-    /// Climb (KZT) a CS:GO one.
+    /// scripts/&lt;mode&gt;/weapon_momentum_&lt;slot&gt;.txt, which Momentum uses in that mode, so e.g. Climb (1.6) can
+    /// have a CS 1.6 pistol and Climb (KZT) a CS:GO one.
     /// </summary>
     public string? GameModes { get; set; }
 

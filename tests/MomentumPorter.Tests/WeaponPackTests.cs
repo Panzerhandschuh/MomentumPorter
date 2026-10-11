@@ -321,7 +321,6 @@ public class WeaponPackTests
             Assert.NotNull(entries.Find("Porter_csgo.Weapon_DEagle.Single"));
             Assert.NotNull(entries.Find("Porter_csgo.Weapon_Glock.Single"));
             Assert.Equal(["pistol.kz16.txt", "pistol.kzt.txt"], Directory.GetFiles(Path.Combine(pack, "scripts", "porter_weapons")).Select(Path.GetFileName).Order().ToArray());
-            Assert.Contains("gamemode-weapon-scripts engine change", Report(kz16));
             Assert.Contains("Weapon_Pistol.Single redefined for Climb (1.6) only", Report(kz16));
 
             KeyValuesNode kztSounds = KeyValuesNode.ParseDocument(File.ReadAllText(Path.Combine(pack, "scripts", "kzt", "game_sounds_momentum_weapons.txt")));

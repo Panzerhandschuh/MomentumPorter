@@ -40,9 +40,7 @@ MomentumPorter-CLI sounds [--game q3|css|csgo|tf2|hl2|cs16|hl1] [--character <na
 - **`--modes`**: only use the sounds in these game modes (`surf`, `bhop`, `bhophl`, `kz`, `kzt`, `kz16`, `rj`, `sj`,
   `ahop`, `conc`, `df_cpm`, `df_vq3`, `df_vtg`), e.g. CS 1.6's in Climb (1.6) and Quake 3's in Defrag. Instead of
   replacing Momentum's soundscript, the pack has `scripts/<mode>/game_sounds_momentum_player.txt` for each mode with only
-  the entries it changes, which the engine loads over Momentum's in that mode. That needs the
-  `gamemode-weapon-scripts` engine change ([engine-changes.md](engine-changes.md)); other builds ignore it. The pack is
-  named after the modes (`kz16_sounds`, `defrag_sounds` for all three Defrag modes), so building a mode's sounds again
+  the entries it changes, which the engine loads over Momentum's in that mode. The pack is named after the modes (`kz16_sounds`, `defrag_sounds` for all three Defrag modes), so building a mode's sounds again
   from another game replaces it. `--footsteps silent` writes no cfg for some modes, since `snd_volume_footsteps` is
   saved in your config and would mute every mode; the soundscript mutes them on its own.
 
