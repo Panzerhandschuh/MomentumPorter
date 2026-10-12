@@ -179,7 +179,7 @@ public sealed class BspConvertHelpersTests : IDisposable
         CreateFile(Path.Combine("Q3Content", "instructions.txt"), "Extract pak0.pk3 here");
         Assert.True(Quake3Content.IsEmpty(content));
 
-        await Quake3Content.EnsureAsync(content, baseq3, NullLog.Instance, CancellationToken.None);
+        await Quake3Content.EnsureAsync(content, Path.Combine(_root, "Q3Mods"), baseq3, NullLog.Instance, CancellationToken.None);
 
         Assert.False(Quake3Content.IsEmpty(content));
         Assert.Equal("pak1", File.ReadAllText(Path.Combine(content, "scripts", "base.shader")));
@@ -191,7 +191,7 @@ public sealed class BspConvertHelpersTests : IDisposable
 
         // The same paks again: nothing to do
         File.WriteAllText(Path.Combine(content, "scripts", "base.shader"), "unchanged");
-        await Quake3Content.EnsureAsync(content, baseq3, NullLog.Instance, CancellationToken.None);
+        await Quake3Content.EnsureAsync(content, Path.Combine(_root, "Q3Mods"), baseq3, NullLog.Instance, CancellationToken.None);
         Assert.Equal("unchanged", File.ReadAllText(Path.Combine(content, "scripts", "base.shader")));
 
         // A different Quake 3 folder (the Settings page's) replaces what came from the first
@@ -202,7 +202,7 @@ public sealed class BspConvertHelpersTests : IDisposable
         settings.SetGameDirectory("q3", Path.GetDirectoryName(other));
         Assert.Equal(other, Quake3Content.FindContentDirectory(steam, settings));
 
-        await Quake3Content.EnsureAsync(content, other, NullLog.Instance, CancellationToken.None);
+        await Quake3Content.EnsureAsync(content, Path.Combine(_root, "Q3Mods"), other, NullLog.Instance, CancellationToken.None);
         Assert.Equal("ql", File.ReadAllText(Path.Combine(content, "scripts", "other.shader")));
         Assert.False(Directory.Exists(Path.Combine(content, "textures")));
         Assert.True(File.Exists(Path.Combine(content, "instructions.txt")));
@@ -219,9 +219,45 @@ public sealed class BspConvertHelpersTests : IDisposable
         CreateFile(Path.Combine("Q3Content", "instructions.txt"), "Extract pak0.pk3 here");
         CreateFile(Path.Combine("Q3Content", "scripts", "base.shader"), "mine");
 
-        await Quake3Content.EnsureAsync(content, baseq3, NullLog.Instance, CancellationToken.None);
+        await Quake3Content.EnsureAsync(content, Path.Combine(_root, "Q3Mods"), baseq3, NullLog.Instance, CancellationToken.None);
         Assert.Equal("mine", File.ReadAllText(Path.Combine(content, "scripts", "base.shader")));
         Assert.Equal(2, Directory.GetFiles(content, "*", SearchOption.AllDirectories).Length);
+    }
+
+    [Fact]
+    public async Task SetsUpModsNextToQuake3()
+    {
+        string install = Path.Combine(_root, "Quake 3 Arena");
+        string baseq3 = Path.Combine(install, "baseq3");
+        foreach (string folder in new[] { "baseq3", "missionpack", "defrag", "pb" })
+            Directory.CreateDirectory(Path.Combine(install, folder));
+        File.Move(CreateZip("pak0.pk3", ("textures/base/a.tga", [1])), Path.Combine(baseq3, "pak0.pk3"));
+        File.Move(CreateZip("ta.pk3", ("textures/ctf2/redteam01.tga", [1]), ("scripts/ctf2.shader", "ta"u8.ToArray())), Path.Combine(install, "missionpack", "pak0.pk3"));
+        File.Move(CreateZip("df.pk3", ("gfx/2d/crosshair.tga", [1])), Path.Combine(install, "defrag", "zz-defrag.pk3"));
+
+        // Defrag's pk3s change its HUD, not what maps use; pb has none
+        Assert.Equal([Path.Combine(install, "missionpack")], Quake3Content.FindMods(baseq3));
+        Assert.Equal([null, "baseq3", "missionpack"], BspConvertOptions.Quake3ModChoices(["missionpack"]).Select(x => x.Value));
+        Assert.Equal("Team Arena", BspConvertOptions.Quake3ModChoices(["missionpack"])[2].Label);
+
+        string content = Path.Combine(_root, "Q3Content");
+        string mods = Path.Combine(_root, "Q3Mods");
+        await Quake3Content.EnsureAsync(content, mods, baseq3, NullLog.Instance, CancellationToken.None);
+
+        Assert.True(File.Exists(Path.Combine(content, "textures", "base", "a.tga")));
+        Assert.True(File.Exists(Path.Combine(mods, "missionpack", "textures", "ctf2", "redteam01.tga")));
+        Assert.Equal("ta", File.ReadAllText(Path.Combine(mods, "missionpack", "scripts", "ctf2.shader")));
+        Assert.False(Directory.Exists(Path.Combine(mods, "defrag")));
+        Assert.Equal(["missionpack"], BSPConvert.Lib.Q3Mods.List(mods));
+
+        // A new version of the mod's pk3 is extracted again
+        File.WriteAllText(Path.Combine(mods, "missionpack", "scripts", "ctf2.shader"), "changed");
+        await Quake3Content.EnsureAsync(content, mods, baseq3, NullLog.Instance, CancellationToken.None);
+        Assert.Equal("changed", File.ReadAllText(Path.Combine(mods, "missionpack", "scripts", "ctf2.shader")));
+        File.Delete(Path.Combine(install, "missionpack", "pak0.pk3"));
+        File.Move(CreateZip("ta2.pk3", ("scripts/ctf2.shader", "ta2"u8.ToArray())), Path.Combine(install, "missionpack", "pak0.pk3"));
+        await Quake3Content.EnsureAsync(content, mods, baseq3, NullLog.Instance, CancellationToken.None);
+        Assert.Equal("ta2", File.ReadAllText(Path.Combine(mods, "missionpack", "scripts", "ctf2.shader")));
     }
 
     [Fact]

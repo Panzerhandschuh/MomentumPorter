@@ -112,6 +112,7 @@ internal static class BspConvertCommand
             NoFogOverlay = cli.NoFogOverlay,
             ClampOverbright = cli.ClampOverbright,
             SetUpQuake3Content = !cli.NoQ3Content,
+            Quake3Mod = cli.Q3Mod,
             NoAnim = cli.NoAnim,
             Wads = cli.Wads,
             Studiomdl = cli.Studiomdl,

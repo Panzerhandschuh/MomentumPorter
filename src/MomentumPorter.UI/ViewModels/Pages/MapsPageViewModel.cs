@@ -43,6 +43,7 @@ public sealed class MapsPageViewModel : PageViewModel
     private bool _showAdvanced;
     private int _bottomTab;
     private bool _nextStepsUnread;
+    private int _modSearch;
 
     /// <summary>Index of the Next steps tab in the bottom panel (Log, Report, Next steps).</summary>
     public const int NextStepsTab = 2;
@@ -73,6 +74,49 @@ public sealed class MapsPageViewModel : PageViewModel
 
         // Looking at the Next steps tab reads the selected map's steps
         this.WhenAnyValue(x => x.SelectedItem, x => x.BottomTab).Subscribe(_ => UpdateNextStepsUnread());
+
+        settings.Saved += (_, _) => _ = FindQuake3ModsAsync();
+        _ = FindQuake3ModsAsync();
+    }
+
+    /// <summary>
+    /// Lists the mods installed next to Quake 3 (the Settings page's, else Steam's) in the Quake 3 game dropdown, after
+    /// detecting from the map and Quake 3 alone.
+    /// </summary>
+    public async Task FindQuake3ModsAsync()
+    {
+        if (BspConvertOptionsForm.Find(nameof(BspConvertOptions.Quake3Mod)) is not ChoiceOptionViewModel field)
+            return;
+
+        int search = ++_modSearch;
+        if (field.Choices.Count <= 1)
+            SetQuake3ModChoices(field, []);
+
+        PorterSettings settings = _settings.Settings.Clone();
+        List<string> mods = await Task.Run(() =>
+        {
+            try
+            {
+                string? baseq3 = Quake3Content.FindContentDirectory(new SteamLocator(), settings);
+                return Quake3Content.FindMods(baseq3).Select(Path.GetFileName).OfType<string>().ToList();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return [];
+            }
+        });
+
+        _post(() =>
+        {
+            // A newer search (the settings changed again meanwhile) wins
+            if (search == _modSearch)
+                SetQuake3ModChoices(field, mods);
+        });
+    }
+
+    private static void SetQuake3ModChoices(ChoiceOptionViewModel field, IEnumerable<string> mods)
+    {
+        field.SetChoices(BspConvertOptions.Quake3ModChoices(mods).Select(x => new OptionChoice(x.Value, x.Label)));
     }
 
     /// <summary>The bottom panel's selected tab (Log, Report, Next steps).</summary>

@@ -36,6 +36,7 @@ public class BspConvertOptionsTests
         Assert.False(q3.noFogOverlay);
         Assert.Equal("cpm", q3.offModeEntityFallback);
         Assert.False(q3.clampOverbright);
+        Assert.Null(q3.mod);
 
         FlipbookOptions flipbook = q3.flipbook;
         Assert.True(flipbook.enabled);
@@ -175,5 +176,10 @@ public class BspConvertOptionsTests
 
         var options = new BspConvertOptions { Subdiv = 2, NoPak = true, OffModeEntities = OffModeEntities.VQ3, Scale = 1.5f, Maps = "a,b" };
         Assert.Equal(["--nopak", "--maps", "a,b", "--subdiv", "2", "--offmodeents", "vq3", "--scale", "1.5"], options.ToCommandLine());
+
+        var mod = new BspConvertOptions { Quake3Mod = "missionpack" };
+        Assert.Equal(["--q3mod", "missionpack"], mod.ToCommandLine());
+        Assert.Equal("missionpack", mod.ToConverterOptions("in.pk3", "out").q3.mod);
+        Assert.Null(new BspConvertOptions { Quake3Mod = " " }.ToConverterOptions("in.pk3", "out").q3.mod);
     }
 }

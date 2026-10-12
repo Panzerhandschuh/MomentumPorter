@@ -27,6 +27,12 @@ public sealed class PortOptionAttribute(string label, string help) : Attribute
 
     /// <summary>For strings: the kind of path, so the UI can show a browse button.</summary>
     public PathKind Path { get; init; } = PathKind.None;
+
+    /// <summary>
+    /// For strings: picked from a list the page fills in when it knows what's available (e.g. the installed games),
+    /// rather than typed. The CLI takes the value as text.
+    /// </summary>
+    public bool Choices { get; init; }
 }
 
 public enum PathKind

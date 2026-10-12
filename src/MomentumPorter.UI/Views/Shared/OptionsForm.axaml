@@ -34,6 +34,13 @@
       </StackPanel>
     </DataTemplate>
 
+    <DataTemplate DataType="vm:ChoiceOptionViewModel">
+      <StackPanel Spacing="4" ToolTip.Tip="{Binding Help}" Background="Transparent">
+        <TextBlock Text="{Binding Label}" />
+        <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch" />
+      </StackPanel>
+    </DataTemplate>
+
     <DataTemplate DataType="vm:EnumOptionViewModel">
       <StackPanel Spacing="4" ToolTip.Tip="{Binding Help}" Background="Transparent">
         <TextBlock Text="{Binding Label}" />

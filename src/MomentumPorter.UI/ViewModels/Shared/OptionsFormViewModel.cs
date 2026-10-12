@@ -155,7 +155,7 @@ public abstract class OptionFieldViewModel(PortOptionInfo info, object target) :
             return new NumberOptionViewModel(info, target);
 
         if (type == typeof(string))
-            return new TextOptionViewModel(info, target);
+            return info.Attribute.Choices ? new ChoiceOptionViewModel(info, target) : new TextOptionViewModel(info, target);
 
         return null;
     }
@@ -294,5 +294,64 @@ public sealed class EnumOptionViewModel : OptionFieldViewModel
     {
         _value = Read();
         this.RaisePropertyChanged(nameof(Value));
+    }
+}
+
+/// <summary>A value a <see cref="ChoiceOptionViewModel"/> offers, shown as its label.</summary>
+public sealed record OptionChoice(string? Value, string Label)
+{
+    public override string ToString() => Label;
+}
+
+/// <summary>
+/// A string option picked from a list (<see cref="PortOptionAttribute.Choices"/>), which the page fills in with
+/// <see cref="SetChoices"/>. A value the list doesn't have, e.g. from a preset made on another machine, is added to it
+/// as it is, so it's kept.
+/// </summary>
+public sealed class ChoiceOptionViewModel : OptionFieldViewModel
+{
+    private IReadOnlyList<OptionChoice> _choices = [];
+    private OptionChoice? _selected;
+
+    public ChoiceOptionViewModel(PortOptionInfo info, object target) : base(info, target) => Load();
+
+    public IReadOnlyList<OptionChoice> Choices
+    {
+        get => _choices;
+        private set => this.RaiseAndSetIfChanged(ref _choices, value);
+    }
+
+    public OptionChoice? Selected
+    {
+        get => _selected;
+        set
+        {
+            // The ComboBox clears its selection while its items are replaced
+            if (value is null)
+                return;
+
+            this.RaiseAndSetIfChanged(ref _selected, value);
+            Write(value.Value);
+        }
+    }
+
+    public void SetChoices(IEnumerable<OptionChoice> choices)
+    {
+        Choices = choices.ToList();
+        Load();
+    }
+
+    public override void Load()
+    {
+        string? value = Read() as string;
+        OptionChoice? match = Choices.FirstOrDefault(x => string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase));
+        if (match is null)
+        {
+            match = new OptionChoice(value, value ?? "");
+            Choices = [.. Choices, match];
+        }
+
+        _selected = match;
+        this.RaisePropertyChanged(nameof(Selected));
     }
 }

@@ -97,11 +97,20 @@ What BSPConvert would otherwise need to be told is filled in from Steam:
 - `--studiomdl`: Momentum Mod's `bin/win64/studiomdl.exe`, which compiles the models GoldSrc entities use. The app
   takes the Settings page's studiomdl instead when one is set there.
 - Quake 3's base content: BSPConvert reads the textures, shaders and sounds maps share with the base game from a
-  `Q3Content` folder next to the program, and packs what a map uses from it into the map. The porter extracts Quake
-  3's `baseq3/pak*.pk3` into it first (about 650 MB, once), from the Quake 3 folder set on the Settings page or else
-  the Steam install, and again when those pak files change. A `Q3Content` folder filled by hand is left as it is.
-  `--noq3content` turns that off. Third-party map dependencies go in `CustomContent` as
-  described in its `readme.txt`.
+  `Q3Content` folder next to the program, and mods' and expansions' from `Q3Mods/<mod folder>`, and packs what a map
+  uses from them into the map. The porter extracts Quake 3's `baseq3/pak*.pk3` into `Q3Content` first (about 700 MB,
+  once), and the pk3s of every mod folder next to `baseq3` into `Q3Mods` (Team Arena's `missionpack` is about 600 MB;
+  `defrag` is skipped, since maps don't use its content). The install is the Quake 3 folder set on the Settings page,
+  or else Steam's, and the folders are extracted again when the pk3s change. Folders filled by hand are left as they
+  are. `--noq3content` turns that off.
+- The Quake 3 game (`--q3mod`, **Game content** in the app's Quake 3 options): BSPConvert picks the mod a map needs
+  from the textures it uses that neither it nor Quake 3 has, and logs which one ("Using Team Arena's content..."). The
+  dropdown (or `--q3mod missionpack`, `--q3mod baseq3`) overrides that. Files are looked up in the order Defrag's
+  engine (oDFe) searches them: the mod's before Quake 3's, and the map's pk3 before or after Quake 3's paks depending
+  on how its name sorts against `pak0.pk3`; where two shader scripts define a shader, the one searched first wins.
+- Textures a map draws that none of that has come from other maps' pk3s. BSPConvert lists them in a warning; download
+  the map's dependencies from [ws.q3df.org](https://ws.q3df.org/) and extract them into `CustomContent` as described
+  in its `readme.txt`.
 - In the app, the output folder defaults to Momentum's `momentum` folder.
 
 GoldSrc bhop maps make their blocks touch-activated `func_door`s (or `func_button`s) that drop the player into a

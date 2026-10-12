@@ -68,6 +68,10 @@ public sealed class BspConvertOptions
     [PortOption("Scale", BspConvertHelp.Scale, Group = Quake3Group, Order = 40, Min = 0.01, Max = 100)]
     public float Scale { get; set; } = 1f;
 
+    // --q3mod; null detects it
+    [PortOption("Game content", BspConvertHelp.Q3Mod, Group = Quake3Group, Order = 50, Choices = true)]
+    public string? Quake3Mod { get; set; }
+
     // Not a BSPConvert option, see Quake3Content
     [PortOption("Set up Quake 3 content", BspConvertHelp.Q3Content, Group = Quake3Group, Order = 60)]
     public bool SetUpQuake3Content { get; set; } = true;
@@ -201,6 +205,7 @@ public sealed class BspConvertOptions
                 noFogOverlay = NoFogOverlay,
                 offModeEntityFallback = OffModeEntities.ToString().ToLowerInvariant(),
                 clampOverbright = ClampOverbright,
+                mod = string.IsNullOrWhiteSpace(Quake3Mod) ? null : Quake3Mod.Trim(),
                 flipbook = new FlipbookOptions
                 {
                     enabled = !NoAnim,
@@ -264,6 +269,7 @@ public sealed class BspConvertOptions
         Value(FogMinHeight, defaults.FogMinHeight, "--fogminheight");
         Flag(NoFogOverlay, "--nofogoverlay");
         Flag(ClampOverbright, "--clampoverbright");
+        Text(Quake3Mod, "--q3mod");
         Flag(NoAnim, "--noanim");
         Value(AnimBudget, defaults.AnimBudget, "--animbudget");
         Value(AnimMaxRes, defaults.AnimMaxRes, "--animmaxres");
@@ -277,6 +283,17 @@ public sealed class BspConvertOptions
     }
 
     public BspConvertOptions Clone() => (BspConvertOptions)MemberwiseClone();
+
+    /// <summary>
+    /// What <see cref="Quake3Mod"/> can be, for a dropdown: detecting it from the map, Quake 3's content alone, then
+    /// each of the mods (their folders in the Quake 3 install, see <see cref="Quake3Content.FindMods"/>).
+    /// </summary>
+    public static IReadOnlyList<(string? Value, string Label)> Quake3ModChoices(IEnumerable<string> mods)
+    {
+        var choices = new List<(string?, string)> { (null, "Detect from the map"), (Q3Mods.BaseGame, Q3Mods.GetDisplayName(Q3Mods.BaseGame)) };
+        choices.AddRange(mods.Select(mod => ((string?)mod, Q3Mods.GetDisplayName(mod))));
+        return choices;
+    }
 
     private static string[]? SplitList(string? value)
     {

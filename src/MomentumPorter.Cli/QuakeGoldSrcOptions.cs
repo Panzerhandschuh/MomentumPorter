@@ -54,7 +54,10 @@ internal sealed partial class CliOptions
     [Option("clampoverbright", HelpText = BspConvertHelp.ClampOverbright)]
     public bool ClampOverbright { get; set; }
 
-    [Option("noq3content", HelpText = "Don't set up the Q3Content folder from Quake 3's install. " + BspConvertHelp.Q3Content)]
+    [Option("q3mod", HelpText = BspConvertHelp.Q3Mod + " Takes the mod's folder name (missionpack...) or baseq3.")]
+    public string? Q3Mod { get; set; }
+
+    [Option("noq3content", HelpText = "Don't set up the Q3Content and Q3Mods folders from Quake 3's install. " + BspConvertHelp.Q3Content)]
     public bool NoQ3Content { get; set; }
 
     [Option("noanim", HelpText = BspConvertHelp.NoAnim)]
