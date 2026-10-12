@@ -160,6 +160,56 @@ public sealed class BhopBlockTests(ConvertedGoldSrcMap map) : IClassFixture<Conv
     }
 
     [Theory]
+    [InlineData(0.05f, 1)] // level with the teleport's top, give or take float noise (cnd_flasherhop)
+    [InlineData(1f, 0)] // a unit above it
+    public void CountsAFloorLevelWithTheTeleportAsReachingIt(float aboveTeleport, int converted)
+    {
+        if (CreateScene() is not Scene scene)
+            return;
+
+        // A floor the teleport is sunk into, its top this far above the teleport's
+        Add(scene.Bsp, "func_wall", scene.Model, Spot - new Vector3(0, 0, 1000 - aboveTeleport));
+        Assert.Equal(converted, Convert(scene));
+    }
+
+    [Fact]
+    public void MeasuresSlopedBrushesWhereTheColumnCrossesThem()
+    {
+        if (map.MapPath is null)
+            return;
+
+        var bsp = new BSP(new FileInfo(map.MapPath));
+        bool lowerThanBounds = false;
+        foreach ((int brush, _) in BrushGeometry.GetBrushes(bsp, 0))
+        {
+            Brush data = bsp.Brushes[brush];
+            bool sloped = Enumerable.Range(data.FirstSideIndex, data.NumSides)
+                .Select(x => bsp.Planes[bsp.BrushSides[x].PlaneIndex].Normal.Z)
+                .Any(z => z > 0.1f && z < 0.99f);
+            if (!sloped || BrushGeometry.GetBrushBounds(bsp, brush) is not (Vector3 mins, Vector3 maxs))
+                continue;
+
+            for (int i = 1; i < 4; i++)
+            {
+                for (int j = 1; j < 4; j++)
+                {
+                    float x = mins.X + i * (maxs.X - mins.X) / 4;
+                    float y = mins.Y + j * (maxs.Y - mins.Y) / 4;
+                    if (BrushGeometry.GetColumnSpan(bsp, brush, x, y) is not (float bottom, float top) || top - bottom < 2)
+                        continue;
+
+                    Assert.True(BrushGeometry.Contains(bsp, brush, new Vector3(x, y, top - 0.5f)));
+                    Assert.False(BrushGeometry.Contains(bsp, brush, new Vector3(x, y, top + 0.5f)));
+                    Assert.True(BrushGeometry.Contains(bsp, brush, new Vector3(x, y, bottom + 0.5f)));
+                    lowerThanBounds |= top < maxs.Z - 1;
+                }
+            }
+        }
+
+        Assert.True(lowerThanBounds);
+    }
+
+    [Theory]
     [InlineData("spawnflags", "0")] // opened by something else, not by touching it
     [InlineData("spawnflags", "3072")] // locked
     [InlineData("movedir", "0 90 0")] // slides sideways

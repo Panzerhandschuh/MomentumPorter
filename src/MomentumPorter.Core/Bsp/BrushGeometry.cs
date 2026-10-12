@@ -85,6 +85,41 @@ public static class BrushGeometry
         return planes.Count > 0 && planes.All(x => Vector3.Dot(x.Normal, point) - x.Distance <= CornerEpsilon);
     }
 
+    /// <summary>
+    /// Where the vertical line through (x, y) (in the model's own space) passes through a brush: the heights it enters
+    /// and leaves it at, which on a sloped brush depend on where the line is. Null if the line misses the brush.
+    /// </summary>
+    public static (float Bottom, float Top)? GetColumnSpan(BSP bsp, int brush, float x, float y)
+    {
+        List<PlaneBSP> planes = GetBrushPlanes(bsp, brush);
+        if (planes.Count == 0)
+            return null;
+
+        float bottom = float.MinValue;
+        float top = float.MaxValue;
+        foreach (PlaneBSP plane in planes)
+        {
+            // Inside is normal . (x, y, z) <= distance
+            Vector3 normal = plane.Normal;
+            float rest = plane.Distance - normal.X * x - normal.Y * y;
+            if (MathF.Abs(normal.Z) < 1e-6f)
+            {
+                if (rest < -CornerEpsilon)
+                    return null;
+            }
+            else if (normal.Z > 0)
+            {
+                top = MathF.Min(top, rest / normal.Z);
+            }
+            else
+            {
+                bottom = MathF.Max(bottom, rest / normal.Z);
+            }
+        }
+
+        return bottom <= top ? (bottom, top) : null;
+    }
+
     private static List<PlaneBSP> GetBrushPlanes(BSP bsp, int brush)
     {
         Brush brushData = bsp.Brushes[brush];

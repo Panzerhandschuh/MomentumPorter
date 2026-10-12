@@ -46,6 +46,11 @@ public static class BhopBlocks
     private const float SampleSpacing = 8f;
     private const int MaxSamples = 16;
 
+    // A floor level with a teleport's top doesn't catch the player above it: they touch the teleport as they land.
+    // Converted brush bounds are only float-accurate (a GoldSrc floor flush with its teleport can end up at
+    // -127.99999 over one at -128), so level is within this.
+    private const float LevelTolerance = 0.1f;
+
     // Keys a block keeps as a func_bhop: what it is and how it's drawn
     private static readonly HashSet<string> KeptKeys = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -65,6 +70,9 @@ public static class BhopBlocks
 
     private sealed record Teleport(Entity Entity, List<Box> Brushes);
 
+    // A solid brush, in the model it belongs to placed at its entity's origin
+    private readonly record struct Solid(Box Bounds, int Brush, Vector3 Origin);
+
     /// <summary>A dropping block and the teleport the player falls into from it.</summary>
     public sealed record Block(Entity Entity, Entity Teleport);
 
@@ -79,14 +87,14 @@ public static class BhopBlocks
 
         List<Teleport> teleports = entities
             .Where(x => x.ClassName is "trigger_teleport" or "trigger_momentum_teleport" && !string.IsNullOrEmpty(x["target"]) && x.ModelNumber > 0)
-            .Select(x => new Teleport(x, GetBrushBoxes(bsp, x.ModelNumber, x.Origin, contents: null)))
+            .Select(x => new Teleport(x, GetBrushes(bsp, x.ModelNumber, x.Origin, contents: null).Select(b => b.Bounds).ToList()))
             .Where(x => x.Brushes.Count > 0)
             .ToList();
 
         if (teleports.Count == 0)
             return blocks;
 
-        List<Box>? solids = null;
+        List<Solid>? solids = null;
         foreach (Entity entity in entities)
         {
             if (GetDroppingBlock(bsp, entity) is not Box block)
@@ -94,12 +102,12 @@ public static class BhopBlocks
 
             if (solids is null)
             {
-                solids = GetBrushBoxes(bsp, 0, Vector3.Zero, PlayerSolidContents);
+                solids = GetBrushes(bsp, 0, Vector3.Zero, PlayerSolidContents);
                 foreach (Entity solid in entities.Where(x => SolidClasses.Contains(x.ClassName) && x.ModelNumber > 0))
-                    solids.AddRange(GetBrushBoxes(bsp, solid.ModelNumber, solid.Origin, PlayerSolidContents));
+                    solids.AddRange(GetBrushes(bsp, solid.ModelNumber, solid.Origin, PlayerSolidContents));
             }
 
-            if (FindTeleportBelow(block, teleports, solids) is Entity teleport)
+            if (FindTeleportBelow(bsp, block, teleports, solids) is Entity teleport)
                 blocks.Add(new Block(entity, teleport));
         }
 
@@ -172,7 +180,7 @@ public static class BhopBlocks
 
     // Drops the player from columns all over the top of the block. In each, the first teleport they fall into
     // before anything solid catches them. The teleport most of the block leads to wins, then the higher one.
-    private static Entity? FindTeleportBelow(Box block, List<Teleport> teleports, List<Box> solids)
+    private static Entity? FindTeleportBelow(BSP bsp, Box block, List<Teleport> teleports, List<Solid> solids)
     {
         float top = block.Maxs.Z;
         List<(Teleport Teleport, List<Box> Brushes)> nearTeleports = teleports
@@ -183,7 +191,7 @@ public static class BhopBlocks
         if (nearTeleports.Count == 0)
             return null;
 
-        List<Box> nearSolids = solids.Where(x => x.OverlapsColumn(block) && x.Maxs.Z < top).ToList();
+        List<Solid> nearSolids = solids.Where(x => x.Bounds.OverlapsColumn(block) && x.Bounds.Maxs.Z < top).ToList();
         var columns = new Dictionary<Teleport, (int Count, float Top)>();
 
         Vector3 size = block.Maxs - block.Mins;
@@ -212,7 +220,7 @@ public static class BhopBlocks
                 }
 
                 // The block is out of the way once it's dropped, but anything solid between it and the teleport isn't
-                if (reached is null || nearSolids.Any(s => s.Contains(x, y) && s.Maxs.Z > teleportTop))
+                if (reached is null || nearSolids.Any(s => CatchesAbove(bsp, s, x, y, teleportTop)))
                     continue;
 
                 (int count, float best) = columns.GetValueOrDefault(reached);
@@ -225,6 +233,17 @@ public static class BhopBlocks
             .ThenByDescending(x => x.Value.Top)
             .Select(x => x.Key.Entity)
             .FirstOrDefault();
+    }
+
+    // Whether the player falling down the column at (x, y) lands on a solid before they're down to a teleport's top.
+    // Sloped brushes are checked at their height in the column, not their bounds' top.
+    private static bool CatchesAbove(BSP bsp, Solid solid, float x, float y, float teleportTop)
+    {
+        if (!solid.Bounds.Contains(x, y) || solid.Bounds.Maxs.Z <= teleportTop + LevelTolerance)
+            return false;
+
+        return BrushGeometry.GetColumnSpan(bsp, solid.Brush, x - solid.Origin.X, y - solid.Origin.Y) is (_, float top)
+            && top + solid.Origin.Z > teleportTop + LevelTolerance;
     }
 
     // What the engine's block fix gave the func_bhop (CMomentumBhopBlockFixSystem::FindTeleportAndConvert)
@@ -248,11 +267,11 @@ public static class BhopBlocks
         entity.Set("LandingLimit", -1);
     }
 
-    private static List<Box> GetBrushBoxes(BSP bsp, int model, Vector3 origin, int? contents)
+    private static List<Solid> GetBrushes(BSP bsp, int model, Vector3 origin, int? contents)
     {
-        var boxes = new List<Box>();
+        var brushes = new List<Solid>();
         if (model < 0 || model >= bsp.Models.Count)
-            return boxes;
+            return brushes;
 
         foreach ((int brush, _) in BrushGeometry.GetBrushes(bsp, model))
         {
@@ -260,9 +279,9 @@ public static class BhopBlocks
                 continue;
 
             if (BrushGeometry.GetBrushBounds(bsp, brush) is (Vector3 mins, Vector3 maxs))
-                boxes.Add(new Box(mins, maxs).Offset(origin));
+                brushes.Add(new Solid(new Box(mins, maxs).Offset(origin), brush, origin));
         }
 
-        return boxes;
+        return brushes;
     }
 }
