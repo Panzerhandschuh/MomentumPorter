@@ -48,6 +48,18 @@ public class BspPackTests
         Assert.Equal(4, job.Steps.Count);
     }
 
+    // bspPack decompresses a compressed map with Momentum's bspzip, which drops every lump, so it gets it uncompressed
+    [Theory]
+    [InlineData("kzmod", true, true)]
+    [InlineData("kzmod", false, false)]
+    [InlineData("css", true, false)]
+    [InlineData("gokz", true, false)]
+    public void OnlyMapsBspPackPacksAreWrittenUncompressedForIt(string game, bool pack, bool packedAfterWriting)
+    {
+        var state = new MapPortState("in.bsp", "out.bsp", new MapPortOptions { Pack = pack, Compress = true }) { Profile = GameProfiles.Find(game) };
+        Assert.Equal(packedAfterWriting, state.PackedAfterWriting);
+    }
+
     /// <summary>
     /// Ports and packs a real KZ map with the bundled bspPack, set up by the porter, when KZ and Momentum are installed.
     /// Packs in the job's work folder, then optionally installs it into a fake Momentum folder that borrows the real
@@ -90,8 +102,26 @@ public class BspPackTests
         Assert.Equal(install ? installed : null, context.TryGet<InstallResult>()?.InstalledPath);
         Assert.Equal(install, File.Exists(installed));
 
-        // Packed maps carry a pakfile with the KZ assets the map uses
-        var packed = new BSP(new FileInfo(install ? installed : output));
+        // Packed maps carry a pakfile with the KZ assets the map uses, and keep the rest of the map, compressed
+        string packedPath = install ? installed : output;
+        var packed = new BSP(new FileInfo(packedPath));
         Assert.True(packed.PakFile?.Data.Length > 0);
+        Assert.Equal(state.Bsp!.Entities.Count, packed.Entities.Count);
+        Assert.NotEmpty(packed.TextureInfo);
+        Assert.NotEmpty(packed.Faces);
+        Assert.Subset(BspPackStep.ReadLumpsWithData(packedPath).ToHashSet(), BspPackStep.ReadLumpsWithData(input).ToHashSet());
+        Assert.True(EntityLumpIsCompressed(packedPath));
+    }
+
+    // Compressed lumps have their uncompressed size in the header and start with "LZMA"
+    private static bool EntityLumpIsCompressed(string bspPath)
+    {
+        using var reader = new BinaryReader(File.OpenRead(bspPath));
+        reader.BaseStream.Position = 8;
+        int offset = reader.ReadInt32();
+        reader.ReadInt64();
+        int uncompressedSize = reader.ReadInt32();
+        reader.BaseStream.Position = offset;
+        return uncompressedSize > 0 && reader.ReadBytes(4).SequenceEqual("LZMA"u8.ToArray());
     }
 }

@@ -25,6 +25,12 @@ public sealed class MapPortState(string inputPath, string outputPath, MapPortOpt
 
     public IGameProfile? Profile { get; set; }
 
+    /// <summary>
+    /// Whether bspPack runs on the map after it's written (see <see cref="BspPackStep"/>). It compresses the map
+    /// itself, and can't take a compressed one: Momentum's bspzip, which it decompresses with, drops every lump.
+    /// </summary>
+    public bool PackedAfterWriting => Options.Pack && Profile?.PacksAssets == true;
+
     public PortContext? PortContext { get; set; }
 }
 

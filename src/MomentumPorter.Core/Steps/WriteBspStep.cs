@@ -21,7 +21,8 @@ public sealed class WriteBspStep : IPortStep
         if (directory is not null)
             Directory.CreateDirectory(directory);
 
-        new BSPWriter(bsp).WriteBSP(state.OutputPath, state.Options.Compress);
+        // A map bspPack packs next is left for bspPack to compress
+        new BSPWriter(bsp).WriteBSP(state.OutputPath, state.Options.Compress && !state.PackedAfterWriting);
         context.Log.Info($"Ported {Path.GetFileName(state.InputPath)} from {state.Profile?.Description} to {state.OutputPath}");
 
         foreach (ExtraOutput extra in state.PortContext?.ExtraOutputs ?? [])

@@ -59,9 +59,11 @@ public sealed class BspPackTool(string executablePath)
     }
 
     /// <summary>
-    /// Packs the map's assets into it in place (<c>-M -C</c>: apply ResourceConfig.ini, compress afterwards).
+    /// Packs the map's assets into it in place (<c>-M</c>: apply ResourceConfig.ini), then compresses it if
+    /// <paramref name="compress"/> (<c>-C</c>). The map mustn't be compressed already: bspPack decompresses it with
+    /// <c>bspzip -repack</c>, which in Momentum's bspzip fails on every lump and still reports success.
     /// </summary>
-    public async Task PackAsync(string bspPath, IPortLog log, CancellationToken cancellation = default)
+    public async Task PackAsync(string bspPath, bool compress, IPortLog log, CancellationToken cancellation = default)
     {
         if (!Exists)
             throw new PortStepException($"bspPack wasn't found at {ExecutablePath}; it comes with the porter, so the install is incomplete");
@@ -71,7 +73,7 @@ public sealed class BspPackTool(string executablePath)
 
         ExternalToolResult result = await ExternalTool.RunAsync(
             ExecutablePath,
-            ["-M", "-C", Path.GetFullPath(bspPath)],
+            compress ? ["-M", "-C", Path.GetFullPath(bspPath)] : ["-M", Path.GetFullPath(bspPath)],
             log,
             workingDirectory: Path.GetDirectoryName(Path.GetFullPath(bspPath)),
             cancellation).ConfigureAwait(false);
