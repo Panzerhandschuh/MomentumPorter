@@ -205,6 +205,9 @@ public class EntityReviewTests(ITestOutputHelper output)
         Assert.True(filteredTeleports > 0);
 
         new CounterStrikeSourceProfile().Apply(context);
+        // The job's Fix entities step follows the profile
+        MomentumPorter.Fixes.DeadEntities.Remove(context);
+        MomentumPorter.Fixes.GlobalStates.Remove(context);
 
         Assert.Empty(BhopTriggers.Find(context));
         Assert.True(BhopTriggers.IsFixed(context.Entities));

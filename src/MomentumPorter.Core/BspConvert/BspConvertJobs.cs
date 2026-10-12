@@ -22,6 +22,7 @@ public static class BspConvertJobs
         var steps = new List<IPortStep> { new BspConvertStep(steam) };
         if (options.FixBhopBlocks)
             steps.Add(new BhopBlockFixStep());
+        steps.Add(new GoldSrcEntityFixStep());
         if (copyToOutput)
             steps.Add(new CopyConvertedFilesStep());
 

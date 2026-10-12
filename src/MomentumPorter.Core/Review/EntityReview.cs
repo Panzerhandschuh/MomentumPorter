@@ -183,6 +183,8 @@ public sealed class EntityReview
         List<Entity> entities = context.Entities;
         var items = new List<ReviewItem>();
 
+        items.AddRange(ReviewDeadEntities(entities));
+        items.Add(ReviewGlobalStates(entities));
         items.Add(ReviewBhopTriggers(entities));
         items.Add(ReviewBhopBlocks(context));
         items.Add(ReviewModelScales(context));
@@ -198,6 +200,49 @@ public sealed class EntityReview
 
         int tagged = entities.Count(x => EntityTools.IsTagged(x) || EntityTools.IsToolsEntity(x));
         return new EntityReview(context.MapName, items, tagged);
+    }
+
+    // Entities the porter removes itself (Fixes.DeadEntities): the ones Lumper's Entity Review tab marks invalid, and
+    // the Counter-Strike ones it doesn't know, which reviewers leave in since they only fail to spawn
+    private static IEnumerable<ReviewItem> ReviewDeadEntities(List<Entity> entities)
+    {
+        (List<Entity> denied, List<Entity> unknown) = Fixes.DeadEntities.Sort(entities);
+        static string Classes(List<Entity> list) => string.Join(", ", list.Select(x => x.ClassName.ToLowerInvariant()).Distinct().Order());
+
+        yield return new ReviewItem(
+            "Invalid entities",
+            ReviewSeverity.Required,
+            "entities Lumper marks invalid",
+            denied.Count,
+            0,
+            $"delete them in Lumper's Entity Review tab, they do nothing in Momentum ({Classes(denied)})",
+            DocsLinks.FixEntitiesInLumper,
+            Singular: "entity Lumper marks invalid");
+
+        yield return new ReviewItem(
+            "Unknown entities",
+            ReviewSeverity.Note,
+            "Counter-Strike entities Momentum doesn't have",
+            unknown.Count,
+            0,
+            $"they fail to spawn, which is harmless; delete them in Lumper to quiet the console ({Classes(unknown)})",
+            DocsLinks.FixEntitiesInLumper,
+            Singular: "Counter-Strike entity Momentum doesn't have");
+    }
+
+    private static ReviewItem ReviewGlobalStates(List<Entity> entities)
+    {
+        (List<Entity> removable, List<Entity> kept) = Fixes.GlobalStates.Sort(entities);
+        return new ReviewItem(
+            "env_global",
+            ReviewSeverity.Required,
+            "env_globals",
+            removable.Count + kept.Count,
+            0,
+            kept.Count > 0
+                ? "delete them in Lumper; the ones a logic_auto reads through its globalstate need that logic_auto changed to fire on its own first"
+                : "delete them in Lumper, nothing reads their state (it was only for level transitions)",
+            DocsLinks.FixEntitiesInLumper);
     }
 
     private static ReviewItem ReviewBhopTriggers(List<Entity> entities)
@@ -369,7 +414,7 @@ public sealed class EntityReview
             "gravity triggers",
             gravity.Count,
             gravity.Count(x => x.ContainsKey("persist")),
-            "tick Persist on the ones meant to change gravity for good (CS:S maps' usually are; leave ones that only change it inside the trigger)",
+            "tick Persist on the ones meant to change gravity for good: every game before CS:GO kept the change after the trigger, so ports from those need it (the porter sets it for them)",
             DocsLinks.GravityTriggers);
     }
 

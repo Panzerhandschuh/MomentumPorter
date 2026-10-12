@@ -234,6 +234,41 @@ tools do:
 
 Everything else the tools do for CS:S maps needs someone in game and is left to the entity review below.
 
+## Automatic fixes
+
+After the game profile, `FixEntitiesStep` and `RemoveMountedAssetsStep` (`src/MomentumPorter.Core/Fixes/`) apply what
+Lumper's Entity Review tab and the entity tools would otherwise ask for by hand, where the answer is the same for every
+map. GoldSrc maps converted with BSPConvert get the entity fixes too (`GoldSrcEntityFixStep`).
+
+- **Dead entities** (`DeadEntities`): entities Lumper's rules (`resources/EntityRules_Momentum.json`) deny because
+  they do nothing in Momentum, and whose removal can't change gameplay: level transitions (`trigger_changelevel`,
+  `trigger_transition`; not `info_landmark`, which landmark teleports use), `point_servercommand` (CS:S surf maps set `sv_airaccelerate` with it;
+  Momentum's cvars are per mode and the max velocity comes from the zones), `game_ui`, `logic_console`, `logic_convar`,
+  the event listeners, achievements, commentary, gamestats and test entities, `weapon_cubemap`, the flashbang and smoke
+  grenade, and the Counter-Strike round entities Momentum's server doesn't link (`func_buyzone`, `func_bomb_target`,
+  `func_hostage_rescue`, `func_vip_safetyzone`, `hostage_entity`, `info_map_parameters`). Denied entities that need
+  *replacing* (the deprecated Momentum triggers, `env_surface_teleport`) and the Warn list (weapons, jails, timers)
+  are left to the review.
+- **env_global** (`GlobalStates`): carries a state across level transitions, so Lumper denies it. Within a map it can
+  still gate a `logic_auto` (which only fires while its `globalstate` is on), so those are kept with a warning and the
+  rest removed. BSPConvert's GoldSrc ports are the usual source: it turns the states multisources read into
+  `logic_branch`es (`__goldsrc_global_<state>`) and leaves the `env_global`s as spare targets.
+- **Gravity triggers** (`GravityPersistence`): every Source game before CS:GO, and GoldSrc, kept a `trigger_gravity`'s
+  change after leaving the trigger; Momentum reverts it unless the trigger says `persist 1`. Lumper's rule and the
+  review checklist say ports from those games need it, so profiles whose `GravityPersists` is true (all but GOKZ) set
+  it on triggers that don't say either way and tag them `_ported_by_tools`.
+- **Mounted assets** (`MountedAssets`): Lumper's Remove Game Assets job. A packed file that Counter-Strike: Source,
+  CS:GO, Team Fortress 2, Portal 2 or Half-Life 2 (Momentum's own copy) has at the same path with the same bytes is
+  removed; one that differs is a deliberate replacement and is kept with a warning. Only installed games are checked
+  (found through Steam or the Settings page), the others are logged. `materials/maps/`, `maps/` and
+  `resource/overviews/` are the map's own and skipped.
+
+Not automated, because each needs a look at the map: teleport velocity modes (Reset, Keep Negative Z), boost trigger
+fixes (which scenario a boost is), landmark teleport angles, jail `logic_timer`s, weapons and `game_player_equip` in
+jails, slow `func_button`s (spawnflag 1), music into `sound/music`, textures to shrink or remove, and the cubemap
+folder of a renamed map (its materials' names live in the BSP's texture data as well as the pak file, which Lumper's
+Update filename-specific Content rewrites). The review below lists them.
+
 ## Entity review and next steps
 
 After the profile, `ReviewEntitiesStep` goes through the map the way Momentum's
@@ -246,6 +281,8 @@ entity changes in game: 3 boost triggers, ...") and into the **Next steps** tab:
 
 | Tool | Severity | Found | Done when |
 |---|---|---|---|
+| Invalid entities | required | entities Lumper denies for doing nothing (`DeadEntities`) | removed |
+| env_global | required | `env_global`s | removed (ones a `logic_auto` reads need that `logic_auto` changed first) |
 | Bhop Trigger Fix | required | `trigger_multiple`s matching `IsBhopTrigger` | the renames are on `OnLand` |
 | Bhop Block Fix | required for `bhop_`/`kz_` maps | dropping blocks over a teleport (`BhopBlocks.Find`) | `func_bhop` |
 | Model Scale Fix | required | scaled dynamic props without a collision model | `ScaleType 1` |
@@ -254,7 +291,7 @@ entity changes in game: 3 boost triggers, ...") and into the **Next steps** tab:
 | Teleport Velocity Mode | note | every other destination | same |
 | Landmark Teleports | review | `trigger_teleport`s with a `landmark` | tagged |
 | Boost Triggers | review | horizontal `trigger_push`es, `trigger_setspeed`s, `trigger_multiple`s adding basevelocity, lowering gravity for a moment or renaming the player for a filtered push (`BoostTriggers.Find`) | tagged |
-| Gravity Triggers | review | `trigger_gravity` | has a `persist` key |
+| Gravity Triggers | review | `trigger_gravity` | has a `persist` key (set by `GravityPersistence` for games before CS:GO) |
 | Weapon strip | review | `player_weaponstrip`, `game_player_equip` | never |
 | logic_timer | note | `logic_timer` | never |
 | func_button | note | `func_button` | spawnflag 1 |

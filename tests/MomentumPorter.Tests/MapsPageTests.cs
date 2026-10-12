@@ -149,7 +149,7 @@ public class MapsPageTests
         job.Configure(context);
 
         Assert.StartsWith(temp.Combine("work"), job.WorkDirectory);
-        Assert.Equal(["Load map", "Convert entities", "Check entities", "Write map", "Pack assets"], job.Job.Steps.Select(x => x.Name));
+        Assert.Equal(["Load map", "Convert entities", "Fix entities", "Remove mounted assets", "Check entities", "Write map", "Pack assets"], job.Job.Steps.Select(x => x.Name));
         MapPortState state = context.Get<MapPortState>();
         Assert.Equal(Path.Combine(job.WorkDirectory, "kz_x.bsp"), state.OutputPath);
         Assert.NotSame(maps.Options, state.Options);

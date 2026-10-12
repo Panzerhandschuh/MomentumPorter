@@ -29,13 +29,27 @@ and the map installed into Momentum.
   [bspPack](https://github.com/Natanxp2/bspPack) (bundled) packs the assets
   a Kreedz Climbing map needs from KZ (Momentum mounts the other games, so
   their maps aren't packed).
-- **Entity review**: each ported map is checked the way Momentum's
+- **Automatic fixes**: the parts of Momentum's
   [entity tools](https://docs.momentum-mod.org/guide/map_submission/fixing_entities/)
-  and [review checklist](https://docs.momentum-mod.org/guide/map_submission/review_checklist/)
-  would check it. Maps with entities that still need changing by hand in game
-  (boost triggers, gravity triggers, teleports into clip brushes...) are
-  flagged in the queue, and a **Next steps** tab lists what's left to submit
-  the map to Momentum Mod's website (entity tools, Lumper, zoning,
+  and Lumper's review that are mechanical are applied on every port: the bhop
+  trigger and model scale fixes on CS:S maps, bhop blocks on `bhop_`/`kz_`
+  maps, the cascaded shadow light on CS:GO maps, `persist` on gravity
+  triggers from games that kept gravity changes (everything before CS:GO),
+  removal of entities that do nothing in Momentum (level transitions,
+  `point_servercommand`, `env_global`s nothing reads, Counter-Strike round
+  entities and the rest of Lumper's deny list), and removal of packed files
+  Momentum mounts anyway from CS:S, CS:GO, TF2, Portal 2 or HL2 (Lumper's
+  Remove Game Assets), when those games are installed.
+- **Entity review**: what can't be decided for you is listed instead. Each
+  ported map is checked the way the entity tools and the
+  [review checklist](https://docs.momentum-mod.org/guide/map_submission/review_checklist/)
+  would check it, and maps with entities that still need a decision in game
+  are flagged in the queue: teleport velocity modes (reset, keep negative Z),
+  boost trigger fixes, landmark teleport angles, `logic_timer` jails, weapons
+  and `game_player_equip` in jails, slow `func_button`s, music to move into
+  `sound/music`, and cubemap folders of renamed maps (Lumper's Update
+  filename-specific Content). A **Next steps** tab lists what's left to
+  submit the map to Momentum Mod's website (entity tools, Lumper, zoning,
   screenshots, the form), each step linked to its docs section. The same
   check validates a map that has been through the tools (`review` on the
   command line).

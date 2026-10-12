@@ -56,9 +56,9 @@ public static class SubmissionSteps
         steps.Add(new NextStep(
             "Check the packed assets",
             (mountedGame is null
-                ? "Run the Remove Game Assets job to take out assets Momentum mounts from other games. "
-                : $"Momentum mounts {mountedGame}, so the porter packed nothing and the map keeps what its author packed; run the Remove Game Assets job to take out any {mountedGame} (or other Valve) assets in it. ")
-            + "Delete copyrighted music and move the rest into sound/music, remove explicit or copyrighted textures, and if the map was renamed, rename materials/maps/<old name> for its cubemaps.",
+                ? "The porter removed packed files Momentum mounts from the games installed here (see the report); run the Remove Game Assets job for the rest. "
+                : $"Momentum mounts {mountedGame}, so the porter packed nothing and removed the packed files the installed mounted games have (see the report); run the Remove Game Assets job to catch assets from games that aren't installed here. ")
+            + "Delete copyrighted music and move the rest into sound/music, remove explicit or copyrighted textures, and if the map was renamed, use Update filename-specific Content when saving so its cubemaps follow.",
             DocsLinks.RemoveValveAssets));
 
         steps.Add(new NextStep(

@@ -72,7 +72,7 @@ public sealed class ApplyProfileStep : IPortStep
         portContext.CheckLimits();
 
         if (!Path.GetFileNameWithoutExtension(state.InputPath).Equals(state.MapName, StringComparison.OrdinalIgnoreCase))
-            context.Report.Warn("packed files named after the map (e.g. its cubemap materials) keep the old map name");
+            context.Report.Warn("packed files named after the map (e.g. its cubemap materials) keep the old map name; save from Lumper with Update filename-specific Content to rename them");
 
         state.Profile = profile;
         state.PortContext = portContext;

@@ -24,6 +24,9 @@ public sealed partial class GokzProfile : IGameProfile
 
     public string? MountedGame => "Counter-Strike: Global Offensive";
 
+    // CS:GO already reverts gravity on leaving the trigger, like Momentum
+    public bool GravityPersists => false;
+
     public void Apply(PortContext context)
     {
         CheckMappingApiVersion(context);

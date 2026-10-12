@@ -98,26 +98,70 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
     }
 
     /// <summary>
+    /// Reads a file packed in the map, or returns null if it isn't packed.
+    /// </summary>
+    public byte[]? ReadPakFileBytes(string path)
+    {
+        if (Bsp.PakFile is not { Data.Length: > 0 } pak)
+            return null;
+
+        using ZipArchive zip = ZipArchive.Open(new MemoryStream(pak.Data));
+        return FindEntry(zip, path) is { } entry ? ReadEntry(entry) : null;
+    }
+
+    /// <summary>
+    /// The paths of every file packed in the map, with forward slashes.
+    /// </summary>
+    public IReadOnlyList<string> ListPakFiles()
+    {
+        if (Bsp.PakFile is not { Data.Length: > 0 } pak)
+            return [];
+
+        using ZipArchive zip = ZipArchive.Open(new MemoryStream(pak.Data));
+        return zip.Entries.Where(x => !x.IsDirectory && x.Key is not null).Select(x => x.Key!.Replace('\\', '/')).ToList();
+    }
+
+    /// <summary>
     /// Packs a text file into the map, replacing any packed file with the same path.
     /// </summary>
     public void WritePakFile(string path, string text)
     {
+        EditPakFiles(zip =>
+        {
+            if (FindEntry(zip, path) is { } existing)
+                zip.RemoveEntry(existing);
+
+            zip.AddEntry(path, new MemoryStream(Entity.TextEncoding.GetBytes(text)), closeStream: true);
+        });
+    }
+
+    /// <summary>
+    /// Changes the map's packed files in one go (see <see cref="FindEntry"/>, <see cref="ReadEntry"/>). Read an entry's
+    /// bytes before removing it. The files stay compressed the way they were; the writer re-zips them if the output
+    /// is compressed.
+    /// </summary>
+    public void EditPakFiles(Action<ZipArchive> edit)
+    {
         PakFile pak = Bsp.PakFile ?? throw new InvalidDataException("BSP has no pak file lump");
         using ZipArchive zip = pak.Data.Length > 0 ? ZipArchive.Open(new MemoryStream(pak.Data)) : ZipArchive.Create();
-
-        // Keep the files compressed the way they were. The writer re-zips them if the output is compressed.
         bool compress = zip.Entries.Any(x => x.CompressionType == SharpCompress.Common.CompressionType.LZMA);
 
-        if (FindEntry(zip, path) is { } existing)
-            zip.RemoveEntry(existing);
-
-        zip.AddEntry(path, new MemoryStream(Entity.TextEncoding.GetBytes(text)), closeStream: true);
+        edit(zip);
         pak.SetZipArchive(zip, compress);
     }
 
-    private static ZipArchiveEntry? FindEntry(ZipArchive zip, string path)
+    /// <summary>The packed file at a path (matched case-insensitively), or null.</summary>
+    public static ZipArchiveEntry? FindEntry(ZipArchive zip, string path)
     {
         return zip.Entries.FirstOrDefault(x => !x.IsDirectory && string.Equals(x.Key?.Replace('\\', '/'), path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static byte[] ReadEntry(ZipArchiveEntry entry)
+    {
+        using Stream stream = entry.OpenEntryStream();
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        return buffer.ToArray();
     }
 
     public IEnumerable<Entity> OfClass(string className)

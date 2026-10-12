@@ -25,6 +25,13 @@ public interface IGameProfile
     /// </summary>
     string? MountedGame => null;
 
+    /// <summary>
+    /// In the game the map came from, a trigger_gravity's change stayed with the player after leaving the trigger, as
+    /// in every Source game before CS:GO (and GoldSrc). Momentum reverts it unless the trigger has <c>persist 1</c>,
+    /// so ports from those games get it (Lumper's entity rules and the review checklist say the same).
+    /// </summary>
+    bool GravityPersists => true;
+
     void Apply(PortContext context);
 }
 

@@ -204,8 +204,8 @@ public sealed class BhopBlockTests(ConvertedGoldSrcMap map) : IClassFixture<Conv
     public void MapJobsFixGoldSrcBhopBlocksUnlessTurnedOff()
     {
         string input = Path.Combine(Path.GetTempPath(), "map.bsp");
-        Assert.Equal(["Convert map", "Fix bhop blocks", "Copy to game folder"], BspConvertJobs.Create(input, new BspConvertOptions()).Job.Steps.Select(x => x.Name));
-        Assert.Equal(["Convert map", "Copy to game folder"], BspConvertJobs.Create(input, new BspConvertOptions { FixBhopBlocks = false }).Job.Steps.Select(x => x.Name));
+        Assert.Equal(["Convert map", "Fix bhop blocks", "Fix entities", "Copy to game folder"], BspConvertJobs.Create(input, new BspConvertOptions()).Job.Steps.Select(x => x.Name));
+        Assert.Equal(["Convert map", "Fix entities", "Copy to game folder"], BspConvertJobs.Create(input, new BspConvertOptions { FixBhopBlocks = false }).Job.Steps.Select(x => x.Name));
     }
 
     // The teleport's origin that puts its top this far below the block's bottom

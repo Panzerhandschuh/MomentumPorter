@@ -18,6 +18,8 @@ public sealed record KnownGame(string Id, string Name, int AppId, string Install
     public static readonly KnownGame TeamFortress2 = new("tf2", "Team Fortress 2", 440, "Team Fortress 2", "tf");
     // Momentum mounts the legacy (Source 1) csgo folder, which the CS2 install keeps next to game/csgo
     public static readonly KnownGame CounterStrikeGlobalOffensive = new("csgo", "Counter-Strike: Global Offensive", 730, "Counter-Strike Global Offensive", "csgo");
+    // Momentum mounts Portal 2 too; ported maps drop the assets they packed from it
+    public static readonly KnownGame Portal2 = new("portal2", "Portal 2", 620, "Portal 2", "portal2");
     public static readonly KnownGame Quake3 = new("q3", "Quake III Arena", 2200, "Quake 3 Arena", "baseq3");
     public static readonly KnownGame QuakeLive = new("ql", "Quake Live", 282440, "Quake Live", "baseq3");
     public static readonly KnownGame KreedzClimbing = new("kzmod", "Kreedz Climbing", 0, "KreedzClimbing", "kz");
@@ -27,7 +29,7 @@ public sealed record KnownGame(string Id, string Name, int AppId, string Install
     public static readonly IReadOnlyList<KnownGame> All =
     [
         HalfLife, CounterStrike16, TeamFortressClassic, HalfLife2, CounterStrikeSource, TeamFortress2,
-        CounterStrikeGlobalOffensive, Quake3, QuakeLive, KreedzClimbing, Momentum, MomentumPlaytest,
+        CounterStrikeGlobalOffensive, Portal2, Quake3, QuakeLive, KreedzClimbing, Momentum, MomentumPlaytest,
     ];
 }
 
