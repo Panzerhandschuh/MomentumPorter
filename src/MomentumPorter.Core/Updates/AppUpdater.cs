@@ -6,7 +6,6 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using SharpCompress.Archives;
 using SharpCompress.Common;
-using SharpCompress.Readers;
 
 /// <summary>A published release newer than the running porter, and the archive of it to download.</summary>
 /// <param name="Sha256">The archive's SHA-256 as GitHub reports it (lowercase hex), or null if it doesn't</param>
@@ -183,12 +182,9 @@ public static class AppUpdater
             Directory.Delete(folder, recursive: true);
 
         Directory.CreateDirectory(folder);
-        using (IArchive archive = ArchiveFactory.Open(archivePath))
-        {
-            // Reading the entries in order is much faster for solid 7z archives than extracting them one by one
-            using IReader reader = archive.ExtractAllEntries();
-            reader.WriteAllToDirectory(folder, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
-        }
+        // Reads solid 7z archives' entries in order, which is much faster than extracting them one by one
+        using (IArchive archive = ArchiveFactory.OpenArchive(archivePath))
+            archive.WriteToDirectory(folder, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
 
         string? executable = Directory.EnumerateFiles(folder, UiExecutableName, SearchOption.AllDirectories)
             .OrderBy(x => x.Length)

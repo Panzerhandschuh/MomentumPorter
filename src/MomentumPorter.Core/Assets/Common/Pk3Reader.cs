@@ -27,7 +27,7 @@ public sealed class Pk3Reader : IDisposable
         {
             foreach (string path in pk3Paths)
             {
-                ZipArchive archive = ZipArchive.Open(path);
+                ZipArchive archive = (ZipArchive)ZipArchive.OpenArchive(path);
                 reader._archives.Add(archive);
                 archives.Add(path);
                 foreach (ZipArchiveEntry entry in archive.Entries)

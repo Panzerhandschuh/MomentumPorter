@@ -76,7 +76,7 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
         if (Bsp.PakFile is not { Data.Length: > 0 } pak)
             return false;
 
-        using ZipArchive zip = ZipArchive.Open(new MemoryStream(pak.Data));
+        using ZipArchive zip = (ZipArchive)ZipArchive.OpenArchive(new MemoryStream(pak.Data));
         return FindEntry(zip, path) is not null;
     }
 
@@ -88,7 +88,7 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
         if (Bsp.PakFile is not { Data.Length: > 0 } pak)
             return null;
 
-        using ZipArchive zip = ZipArchive.Open(new MemoryStream(pak.Data));
+        using ZipArchive zip = (ZipArchive)ZipArchive.OpenArchive(new MemoryStream(pak.Data));
         ZipArchiveEntry? entry = FindEntry(zip, path);
         if (entry is null)
             return null;
@@ -105,7 +105,7 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
         if (Bsp.PakFile is not { Data.Length: > 0 } pak)
             return null;
 
-        using ZipArchive zip = ZipArchive.Open(new MemoryStream(pak.Data));
+        using ZipArchive zip = (ZipArchive)ZipArchive.OpenArchive(new MemoryStream(pak.Data));
         return FindEntry(zip, path) is { } entry ? ReadEntry(entry) : null;
     }
 
@@ -117,7 +117,7 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
         if (Bsp.PakFile is not { Data.Length: > 0 } pak)
             return [];
 
-        using ZipArchive zip = ZipArchive.Open(new MemoryStream(pak.Data));
+        using ZipArchive zip = (ZipArchive)ZipArchive.OpenArchive(new MemoryStream(pak.Data));
         return zip.Entries.Where(x => !x.IsDirectory && x.Key is not null).Select(x => x.Key!.Replace('\\', '/')).ToList();
     }
 
@@ -143,7 +143,7 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
     public void EditPakFiles(Action<ZipArchive> edit)
     {
         PakFile pak = Bsp.PakFile ?? throw new InvalidDataException("BSP has no pak file lump");
-        using ZipArchive zip = pak.Data.Length > 0 ? ZipArchive.Open(new MemoryStream(pak.Data)) : ZipArchive.Create();
+        using ZipArchive zip = pak.Data.Length > 0 ? (ZipArchive)ZipArchive.OpenArchive(new MemoryStream(pak.Data)) : (ZipArchive)ZipArchive.CreateArchive();
         bool compress = zip.Entries.Any(x => x.CompressionType == SharpCompress.Common.CompressionType.LZMA);
 
         edit(zip);

@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <!-- LibBSP's own dependency, for compressed lumps and the pakfile. Keep in step with BSPConvert.Lib's version. -->
-    <PackageReference Include="SharpCompress" Version="0.39.0" />
+    <PackageReference Include="SharpCompress" Version="0.50.5" />
     <!-- Reads the VPKs of the games Momentum mounts (weapon packs check the paths they reference exist) -->
     <PackageReference Include="ValvePak" Version="6.0.0.182" />
   </ItemGroup>
