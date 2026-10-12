@@ -54,7 +54,7 @@ internal sealed partial class CliOptions
     [Option("clampoverbright", HelpText = BspConvertHelp.ClampOverbright)]
     public bool ClampOverbright { get; set; }
 
-    [Option("noq3content", HelpText = "Don't set up the Q3Content folder from Steam's Quake 3 install when it's empty. " + BspConvertHelp.Q3Content)]
+    [Option("noq3content", HelpText = "Don't set up the Q3Content folder from Quake 3's install. " + BspConvertHelp.Q3Content)]
     public bool NoQ3Content { get; set; }
 
     [Option("noanim", HelpText = BspConvertHelp.NoAnim)]

@@ -97,8 +97,10 @@ What BSPConvert would otherwise need to be told is filled in from Steam:
 - `--studiomdl`: Momentum Mod's `bin/win64/studiomdl.exe`, which compiles the models GoldSrc entities use. The app
   takes the Settings page's studiomdl instead when one is set there.
 - Quake 3's base content: BSPConvert reads the textures, shaders and sounds maps share with the base game from a
-  `Q3Content` folder next to the program. When it's empty, the porter extracts Quake 3's `baseq3/pak*.pk3` into it
-  first (about 650 MB, once). `--noq3content` turns that off. Third-party map dependencies go in `CustomContent` as
+  `Q3Content` folder next to the program, and packs what a map uses from it into the map. The porter extracts Quake
+  3's `baseq3/pak*.pk3` into it first (about 650 MB, once), from the Quake 3 folder set on the Settings page or else
+  the Steam install, and again when those pak files change. A `Q3Content` folder filled by hand is left as it is.
+  `--noq3content` turns that off. Third-party map dependencies go in `CustomContent` as
   described in its `readme.txt`.
 - In the app, the output folder defaults to Momentum's `momentum` folder.
 

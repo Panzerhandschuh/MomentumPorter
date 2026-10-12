@@ -27,7 +27,7 @@ public static class BspConvertHelp
     public const string FogMinHeight = "Minimum vertical height (units) for converted fog volumes. Only used with --fogobb.";
     public const string NoFogOverlay = "Don't draw fog shader visible stages (e.g. scrolling clouds) as an overlay face; fog brush faces are just dropped.";
     public const string ClampOverbright = "Apply Quake 3's hue-preserving overbright clamp to lightmaps, flattening over-bright highlights toward white.";
-    public const string Q3Content = "When the Q3Content folder next to Momentum Porter is empty, extract the Quake 3 install's baseq3 pak files into it first (found through Steam, about 650 MB, once), so the textures, shaders and sounds maps share with the base game convert.";
+    public const string Q3Content = "Extract the Quake 3 install's baseq3 pak files into the Q3Content folder next to Momentum Porter (the Settings page's Quake 3 folder, else Steam's; about 650 MB, once, and again when they change), so the textures, shaders and sounds maps share with the base game are packed into them. A Q3Content folder filled by hand is left as it is.";
 
     // Animated textures
     public const string NoAnim = "Disable baking multi-pass / animated shaders (scrolling liquids, layered effects, animMaps) into animated flipbook textures.";

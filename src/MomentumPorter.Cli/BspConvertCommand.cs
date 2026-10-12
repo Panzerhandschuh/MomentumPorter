@@ -1,8 +1,10 @@
 namespace MomentumPorter.Cli;
 
+using System.Text.Json;
 using MomentumPorter.BspConvert;
 using MomentumPorter.Detection;
 using MomentumPorter.Pipeline;
+using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 
 /// <summary>
@@ -54,6 +56,8 @@ internal static class BspConvertCommand
         {
             var context = new PortJobContext { Log = log, WorkDirectory = workDirectory, Cancellation = cancellation.Token };
             context.Set(state);
+            if (LoadSettings(log) is { } settings)
+                context.Set(settings);
 
             PortJobResult result = await job.RunAsync(context);
             result.Report.Print(Console.Out);
@@ -72,6 +76,20 @@ internal static class BspConvertCommand
             {
                 // Leave it for the OS to clean up
             }
+        }
+    }
+
+    // The app's settings, for the Quake 3 folder set on its Settings page
+    private static PorterSettings? LoadSettings(IPortLog log)
+    {
+        try
+        {
+            return PorterSettings.Load(PorterSettings.DefaultPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            log.Warn($"Couldn't read {PorterSettings.DefaultPath}, so the folders set in the app aren't used: {ex.Message}");
+            return null;
         }
     }
 

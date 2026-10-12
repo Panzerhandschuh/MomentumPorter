@@ -7,6 +7,7 @@ using MomentumPorter.BspConvert;
 using MomentumPorter.Detection;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
+using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 using Xunit;
 
@@ -170,20 +171,57 @@ public sealed class BspConvertHelpersTests : IDisposable
         File.Move(CreateZip("pak1.pk3", ("scripts/base.shader", "pak1"u8.ToArray()), ("../escape.txt", [1])), Path.Combine(baseq3, "pak1.pk3"));
         var steam = new SteamLocator(_root);
 
-        IReadOnlyList<string> paks = Quake3Content.FindPakFiles(steam);
+        Assert.Equal(baseq3, Quake3Content.FindContentDirectory(steam));
+        IReadOnlyList<string> paks = Quake3Content.FindPakFiles(baseq3);
         Assert.Equal(["pak0.pk3", "pak1.pk3"], paks.Select(Path.GetFileName));
 
         string content = Path.Combine(_root, "Q3Content");
         CreateFile(Path.Combine("Q3Content", "instructions.txt"), "Extract pak0.pk3 here");
         Assert.True(Quake3Content.IsEmpty(content));
 
-        await Quake3Content.ExtractAsync(paks, content, NullLog.Instance, CancellationToken.None);
+        await Quake3Content.EnsureAsync(content, baseq3, NullLog.Instance, CancellationToken.None);
 
         Assert.False(Quake3Content.IsEmpty(content));
         Assert.Equal("pak1", File.ReadAllText(Path.Combine(content, "scripts", "base.shader")));
         Assert.True(File.Exists(Path.Combine(content, "textures", "base", "a.tga")));
+        Assert.True(File.Exists(Path.Combine(content, "instructions.txt")));
         Assert.False(File.Exists(Path.Combine(_root, "escape.txt")));
-        Assert.Equal(3, Directory.GetFiles(content, "*", SearchOption.AllDirectories).Length);
+        // Q3 files, BSPConvert's instructions and the stamp
+        Assert.Equal(4, Directory.GetFiles(content, "*", SearchOption.AllDirectories).Length);
+
+        // The same paks again: nothing to do
+        File.WriteAllText(Path.Combine(content, "scripts", "base.shader"), "unchanged");
+        await Quake3Content.EnsureAsync(content, baseq3, NullLog.Instance, CancellationToken.None);
+        Assert.Equal("unchanged", File.ReadAllText(Path.Combine(content, "scripts", "base.shader")));
+
+        // A different Quake 3 folder (the Settings page's) replaces what came from the first
+        string other = Path.Combine(_root, "Quake Live", "baseq3");
+        Directory.CreateDirectory(other);
+        File.Move(CreateZip("pak00.pk3", ("scripts/other.shader", "ql"u8.ToArray())), Path.Combine(other, "pak00.pk3"));
+        var settings = new PorterSettings();
+        settings.SetGameDirectory("q3", Path.GetDirectoryName(other));
+        Assert.Equal(other, Quake3Content.FindContentDirectory(steam, settings));
+
+        await Quake3Content.EnsureAsync(content, other, NullLog.Instance, CancellationToken.None);
+        Assert.Equal("ql", File.ReadAllText(Path.Combine(content, "scripts", "other.shader")));
+        Assert.False(Directory.Exists(Path.Combine(content, "textures")));
+        Assert.True(File.Exists(Path.Combine(content, "instructions.txt")));
+    }
+
+    [Fact]
+    public async Task LeavesAQuake3ContentFolderFilledByHand()
+    {
+        string baseq3 = Path.Combine(_root, "baseq3");
+        Directory.CreateDirectory(baseq3);
+        File.Move(CreateZip("pak0.pk3", ("scripts/base.shader", "pak0"u8.ToArray())), Path.Combine(baseq3, "pak0.pk3"));
+
+        string content = Path.Combine(_root, "Q3Content");
+        CreateFile(Path.Combine("Q3Content", "instructions.txt"), "Extract pak0.pk3 here");
+        CreateFile(Path.Combine("Q3Content", "scripts", "base.shader"), "mine");
+
+        await Quake3Content.EnsureAsync(content, baseq3, NullLog.Instance, CancellationToken.None);
+        Assert.Equal("mine", File.ReadAllText(Path.Combine(content, "scripts", "base.shader")));
+        Assert.Equal(2, Directory.GetFiles(content, "*", SearchOption.AllDirectories).Length);
     }
 
     [Fact]

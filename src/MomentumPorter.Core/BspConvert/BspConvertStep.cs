@@ -3,6 +3,7 @@ namespace MomentumPorter.BspConvert;
 using BSPConvert.Lib;
 using MomentumPorter.Detection;
 using MomentumPorter.Pipeline;
+using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 
 /// <summary>
@@ -46,7 +47,7 @@ public sealed class BspConvertStep(SteamLocator? steam = null) : IPortStep
         {
             IReadOnlyList<ArchiveMap> maps = SelectMaps(input, options, context.Log);
             if (options.SetUpQuake3Content && maps.Any(x => x.Kind == InputKind.Quake3Bsp))
-                await Quake3Content.EnsureAsync(steam ?? new SteamLocator(), context.Log, context.Cancellation).ConfigureAwait(false);
+                await Quake3Content.EnsureAsync(steam ?? new SteamLocator(), context.TryGet<PorterSettings>(), context.Log, context.Cancellation).ConfigureAwait(false);
         }
 
         string staging = Path.Combine(context.WorkDirectory, "bspconvert");
