@@ -40,7 +40,7 @@ public class WeaponsPageTests
         Assert.Equal("pistol", page.SelectedSlot!.Slot.Id);
         Assert.Equal("css", page.SelectedGame!.Id);
         Assert.All(page.Weapons, x => Assert.Contains("pistol", x.Slots));
-        Assert.Equal("usp", page.SelectedWeapon!.Id);
+        Assert.Equal("glock", page.SelectedWeapon!.Id);
 
         // Another Momentum weapon: only the weapons that fit it, best fit first
         page.SelectedSlot = page.Slots.Single(x => x.Slot.Id == "sniper");
@@ -75,11 +75,11 @@ public class WeaponsPageTests
     [InlineData("Ahop", "hl2", "pistol:pistol,machinegun:smg1,shotgun:shotgun,sniper:crossbow,knife:crowbar,grenade:grenade")]
     [InlineData("Conc", "hl1", "concgrenade:grenade")]
     [InlineData("Defrag", "q3", "df_bfg:bfg,df_railgun:railgun,df_knife:gauntlet")]
-    [InlineData("Surf", "css", "pistol:usp,sniper:awp")]
-    [InlineData("Bhop", "css", "pistol:usp,machinegun:ak47")]
+    [InlineData("Surf", "css", "pistol:glock,sniper:awp")]
+    [InlineData("Bhop", "css", "pistol:glock,machinegun:ak47")]
     [InlineData("Bhop (HL1)", "hl1", "pistol:glock,knife:crowbar")]
-    [InlineData("Climb (KZT)", "csgo", "pistol:usp_silencer,knife:knife")]
-    [InlineData("Climb (1.6)", "cs16", "pistol:usp,knife:knife")]
+    [InlineData("Climb (KZT)", "csgo", "pistol:glock,knife:knife")]
+    [InlineData("Climb (1.6)", "cs16", "pistol:glock18,knife:knife")]
     public void EachModeStartsOnTheGameItComesFrom(string mode, string game, string picks)
     {
         WeaponsPageViewModel page = CreatePage();

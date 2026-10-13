@@ -22,7 +22,7 @@
         "View model FOV and bob differ from CS:S (viewmodel_fov)",
         "Third person and ghosts show the CS:S world model at Momentum's hand position, which may be off"
       ],
-      "loadout": { "pistol": "usp", "machinegun": "ak47", "sniper": "awp", "concgrenade": "flashbang" },
+      "loadout": { "pistol": "glock", "machinegun": "ak47", "sniper": "awp", "concgrenade": "flashbang" },
       "weapons": [
         { "id": "glock", "name": "Glock-18", "slots": [ "pistol" ], "view": "models/weapons/v_pist_glock18.mdl", "world": "models/weapons/w_pist_glock18.mdl", "sounds": { "single_shot": "Weapon_Glock.Single" }, "soundPrefixes": [ "Weapon_Glock." ] },
         { "id": "usp", "name": "USP .45", "slots": [ "pistol" ], "view": "models/weapons/v_pist_usp.mdl", "world": "models/weapons/w_pist_usp.mdl", "sounds": { "single_shot": "Weapon_USP.Single" }, "soundPrefixes": [ "Weapon_USP." ], "notes": [ "The USP is drawn without its silencer; the silencer animations aren't used" ] },
@@ -69,7 +69,7 @@
         "View model FOV differs from CS:GO's (viewmodel_fov 68, viewmodel_offset_*)",
         "Inspect and other CS:GO-only animations aren't used"
       ],
-      "loadout": { "pistol": "usp_silencer", "machinegun": "ak47", "sniper": "awp", "concgrenade": "flashbang" },
+      "loadout": { "pistol": "glock", "machinegun": "ak47", "sniper": "awp", "concgrenade": "flashbang" },
       "weapons": [
         { "id": "glock", "name": "Glock-18", "slots": [ "pistol" ], "particles": { "MuzzleFlashEffect": "weapon_muzzle_flash_pistol" }, "view": "models/weapons/v_pist_glock18.mdl", "world": "models/weapons/w_pist_glock18.mdl", "sounds": { "single_shot": "Weapon_Glock.Single" }, "soundPrefixes": [ "Weapon_Glock." ] },
         { "id": "hkp2000", "name": "P2000", "slots": [ "pistol" ], "particles": { "MuzzleFlashEffect": "weapon_muzzle_flash_pistol" }, "view": "models/weapons/v_pist_hkp2000.mdl", "world": "models/weapons/w_pist_hkp2000.mdl", "sounds": { "single_shot": "Weapon_hkp2000.Single" }, "soundPrefixes": [ "Weapon_hkp2000." ] },
@@ -204,7 +204,7 @@
         "The world model is the p_ (held in third person) one, fitted to Momentum's player's hand by its Bip01 R Hand; weapon spawners show it too, not the w_ pickup",
         "Textures are converted at their GoldSrc size and keep GoldSrc's texture gamma"
       ],
-      "loadout": { "pistol": "usp", "machinegun": "ak47", "sniper": "awp", "concgrenade": "flashbang" },
+      "loadout": { "pistol": "glock18", "machinegun": "ak47", "sniper": "awp", "concgrenade": "flashbang" },
       "weapons": [
         { "id": "glock18", "name": "Glock-18", "slots": [ "pistol" ], "view": "models/v_glock18.mdl", "world": "models/w_glock18.mdl", "waves": { "single_shot": [ "sound/weapons/glock18-1.wav", "sound/weapons/glock18-2.wav" ] } },
         { "id": "usp", "name": "USP .45", "slots": [ "pistol" ], "view": "models/v_usp.mdl", "world": "models/w_usp.mdl", "waves": { "single_shot": [ "sound/weapons/usp_unsil-1.wav" ] }, "notes": [ "Drawn without the silencer" ] },

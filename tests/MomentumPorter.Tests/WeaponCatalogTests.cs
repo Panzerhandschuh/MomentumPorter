@@ -47,7 +47,7 @@ public class WeaponCatalogTests
         // unless the loadout says so
         var css = catalog.FindGame("css")!.FullLoadout().ToDictionary(x => x.Slot.Id, x => x.Weapon.Id);
         Assert.Equal(["pistol", "machinegun", "shotgun", "sniper", "knife", "grenade", "concgrenade"], css.Keys);
-        Assert.Equal("usp", css["pistol"]);
+        Assert.Equal("glock", css["pistol"]);
         Assert.Equal("ak47", css["machinegun"]);
         Assert.Equal("m3", css["shotgun"]);
         Assert.Equal("hegrenade", css["grenade"]);
@@ -74,7 +74,7 @@ public class WeaponCatalogTests
         // CS:S in Surf is the catalog's loadout; in Defrag its guns fill the Defrag weapons they fit second best
         var cssSurf = catalog.FindGame("css")!.LoadoutFor(surf.Slots).ToDictionary(x => x.Slot.Id, x => x.Weapon.Id);
         Assert.Equal(["pistol", "machinegun", "shotgun", "sniper", "knife", "grenade"], cssSurf.Keys);
-        Assert.Equal("usp", cssSurf["pistol"]);
+        Assert.Equal("glock", cssSurf["pistol"]);
         Assert.Equal("awp", cssSurf["sniper"]);
         var cssDefrag = catalog.FindGame("css")!.LoadoutFor(defrag.Slots).ToDictionary(x => x.Slot.Id, x => x.Weapon.Id);
         Assert.Equal(["df_knife", "df_machinegun", "df_railgun", "df_shotgun"], cssDefrag.Keys);

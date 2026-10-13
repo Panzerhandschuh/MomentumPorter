@@ -30,8 +30,8 @@ weapon's models, the Momentum weapons it fits (best first) and its sounds keyed 
 `--all` ports every weapon of a game, one after another into the same pack, each into the Momentum weapon it fits
 best: all of Quake 3's go into the `df_*` weapons, so one run gives the Defrag modes Quake 3's whole arsenal. Where
 several weapons fit a Momentum weapon best (CS:S has six pistols), the game's `loadout` in `weapons.json` picks one
-(USP, AK-47, AWP for the CS games), else the first listed wins; the loadout can also fill a weapon none fits best (the
-flashbang as the concussion grenade). `--list` shows what `--all` builds for each game.
+(Glock-18, AK-47, AWP for the CS games; Momentum's pistol is the CS:S Glock with its burst fire), else the first
+listed wins; the loadout can also fill a weapon none fits best (the flashbang as the concussion grenade). `--list` shows what `--all` builds for each game.
 
 The app works game mode first: pick a Momentum game mode (the three Defrag modes count as one, since they share their
 weapons) and one of the weapons that mode plays with, then the game and the weapon of it that replaces it (only the
