@@ -354,6 +354,32 @@ public class EntityReviewTests(ITestOutputHelper output)
         Assert.False(again.Items.Single(x => x.Tool == "Bhop Trigger Fix").IsPending);
     }
 
+    [Theory]
+    [InlineData("bhop_arcane_v1", BhopTriggerFix.Off, true, ReviewSeverity.Review)]
+    [InlineData("arcane_v1", BhopTriggerFix.BhopMapsOnly, true, ReviewSeverity.Note)]
+    [InlineData("kz_bhop_arcane", BhopTriggerFix.On, false, ReviewSeverity.Note)]
+    public async Task FixesBhopTriggersOnTheMapsTheOptionSays(string mapName, BhopTriggerFix fix, bool left, ReviewSeverity severity)
+    {
+        if (FindCssMap("bhop_arcane_v1") is not { } input)
+            return;
+
+        using var temp = new TempFolder();
+        string outputPath = temp.Combine(mapName + ".bsp");
+        var options = new MapPortOptions { Pack = false, Install = false, FixBhopTriggers = fix };
+        (PortJob job, MapPortState state) = PortJobFactory.CreateSourceMapJob(input, outputPath, options);
+        var context = new PortJobContext { Log = NullLog.Instance, WorkDirectory = temp.Path };
+        context.Set(state);
+
+        PortJobResult result = await job.RunAsync(context);
+
+        Assert.True(result.Succeeded, result.Error);
+        var ported = new BSP(new FileInfo(outputPath));
+        Assert.Equal(!left, ported.Entities.Any(x => x.Name == EntityTools.BhopFilterMultiName));
+        ReviewItem bhop = context.TryGet<EntityReview>()!.Items.Single(x => x.Tool == "Bhop Trigger Fix");
+        Assert.Equal(left, bhop.IsPending);
+        Assert.Equal(severity, bhop.Severity);
+    }
+
     // ---- Maps in Momentum's maps folder that went through the in-game entity tools ----
 
     private static string? FindMomentumMap(string name)

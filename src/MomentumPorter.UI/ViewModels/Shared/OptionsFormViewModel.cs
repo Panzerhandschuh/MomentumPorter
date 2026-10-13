@@ -265,17 +265,25 @@ public sealed class TextOptionViewModel : OptionFieldViewModel
     }
 }
 
+/// <summary>An enum value in a dropdown, labelled by its <see cref="System.ComponentModel.DescriptionAttribute"/> or else its name.</summary>
+public sealed record EnumChoice(object Value, string Label)
+{
+    public override string ToString() => Label;
+}
+
 public sealed class EnumOptionViewModel : OptionFieldViewModel
 {
     private object? _value;
 
     public EnumOptionViewModel(PortOptionInfo info, object target) : base(info, target)
     {
-        Choices = Enum.GetValues(info.Type).Cast<object>().ToList();
+        Choices = Enum.GetValues(info.Type).Cast<object>()
+            .Select(x => new EnumChoice(x, info.Type.GetField(x.ToString()!)?.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description ?? x.ToString()!))
+            .ToList();
         Load();
     }
 
-    public IReadOnlyList<object> Choices { get; }
+    public IReadOnlyList<EnumChoice> Choices { get; }
 
     public object? Value
     {
@@ -286,7 +294,19 @@ public sealed class EnumOptionViewModel : OptionFieldViewModel
                 return;
 
             this.RaiseAndSetIfChanged(ref _value, value);
+            this.RaisePropertyChanged(nameof(Selected));
             Write(value);
+        }
+    }
+
+    /// <summary>The dropdown's item for <see cref="Value"/>.</summary>
+    public EnumChoice? Selected
+    {
+        get => Choices.FirstOrDefault(x => Equals(x.Value, _value));
+        set
+        {
+            if (value is not null)
+                Value = value.Value;
         }
     }
 
@@ -294,6 +314,7 @@ public sealed class EnumOptionViewModel : OptionFieldViewModel
     {
         _value = Read();
         this.RaisePropertyChanged(nameof(Value));
+        this.RaisePropertyChanged(nameof(Selected));
     }
 }
 

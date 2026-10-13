@@ -2,6 +2,7 @@ namespace MomentumPorter.Review;
 
 using LibBSP;
 using MomentumPorter.Bsp;
+using MomentumPorter.Options;
 using MomentumPorter.Porting;
 
 /// <summary>
@@ -104,6 +105,23 @@ public static class BhopTriggers
             return null;
 
         return renames[0].Delay <= renames[1].Delay ? [renames[0], renames[1]] : [renames[1], renames[0]];
+    }
+
+    /// <summary>Whether a map is a bhop map by name, which gets the fix by default: it can break other maps using the pattern.</summary>
+    public static bool AppliesTo(string mapName) => mapName.StartsWith("bhop_", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether the porter applies the fix to a map of a game, as the options say.</summary>
+    public static bool ShouldFix(BhopTriggerFix option, string mapName, IGameProfile profile)
+    {
+        if (!profile.HasBhopTriggers)
+            return false;
+
+        return option switch
+        {
+            BhopTriggerFix.BhopMapsOnly => AppliesTo(mapName),
+            BhopTriggerFix.On => true,
+            _ => false,
+        };
     }
 
     /// <summary>

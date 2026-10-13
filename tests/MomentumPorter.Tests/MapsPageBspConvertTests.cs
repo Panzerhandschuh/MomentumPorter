@@ -3,6 +3,7 @@ namespace MomentumPorter.Tests;
 using MomentumPorter.BspConvert;
 using MomentumPorter.Detection;
 using MomentumPorter.Options;
+using MomentumPorter.Steam;
 using MomentumPorter.UI.Services;
 using MomentumPorter.UI.ViewModels.Pages;
 using Xunit;
@@ -20,6 +21,13 @@ public class MapsPageBspConvertTests
         public Task<string?> PickFolderAsync(string title) => Task.FromResult<string?>(null);
 
         public Task<string?> PickSaveFileAsync(string title, string suggestedName, params FileFilter[] filters) => Task.FromResult<string?>(null);
+    }
+
+    private static string? FindKzMap(string name)
+    {
+        GameLocation? kz = new SteamLocator().Find(KnownGame.KreedzClimbing);
+        string? path = kz?.ContentDirectory is null ? null : Path.Combine(kz.ContentDirectory, "maps", name + ".bsp");
+        return File.Exists(path) ? path : null;
     }
 
     [Fact]
@@ -55,7 +63,7 @@ public class MapsPageBspConvertTests
     }
 
     [Fact]
-    public void OptionsShowOnlyForTheQueuedKindsOfMap()
+    public async Task OptionsShowOnlyForTheQueuedKindsOfMap()
     {
         string root = Path.Combine(Path.GetTempPath(), "MomentumPorterTests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -63,6 +71,8 @@ public class MapsPageBspConvertTests
         File.WriteAllBytes(pk3, []);
         string goldSrc = Path.Combine(root, "gsmap.bsp");
         File.WriteAllBytes(goldSrc, [30, 0, 0, 0, 0, 0, 0, 0]);
+        string surf = Path.Combine(root, "surf_test.bsp");
+        File.WriteAllBytes(surf, [.. "VBSP"u8, 20, 0, 0, 0]);
         try
         {
             SettingsService settings = SettingsService.Load(Path.Combine(root, "settings.json"));
@@ -75,7 +85,7 @@ public class MapsPageBspConvertTests
             Assert.True(page.ShowBspConvertOptions);
             Assert.Contains(BspConvertOptions.GoldSrcGroup, Groups());
             Assert.Contains(BspConvertOptions.Quake3Group, Groups());
-            Assert.Equal([nameof(MapPortOptions.Compress)], MapFields());
+            Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.FixBhopTriggers)], MapFields());
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.Overwrite)));
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.OutputDirectory)));
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.Studiomdl)));
@@ -100,6 +110,19 @@ public class MapsPageBspConvertTests
 
             page.Remove(page.Queue[0]);
             Assert.Equal([BspConvertOptions.GeneralGroup, BspConvertOptions.GoldSrcGroup], Groups());
+
+            // The bhop trigger fix is for Source maps of any name, but not KZ Mod's
+            page.AddFiles([surf]);
+            Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.FixBhopTriggers)], MapFields());
+            if (FindKzMap("kz_bhop_arctic") is { } kz)
+            {
+                page.Remove(page.Queue.Single(x => x.InputPath == surf));
+                page.Remove(page.Queue[0]);
+                page.AddFiles([kz]);
+                await page.Queue[0].DetectGameAsync(a => a());
+                Assert.Equal("kzmod", page.Queue[0].DetectedProfile);
+                Assert.Equal([nameof(MapPortOptions.Compress)], MapFields());
+            }
         }
         finally
         {

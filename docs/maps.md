@@ -7,9 +7,15 @@ Porting maps made for other games: Source maps (Kreedz Climbing Mod, CS:GO with 
 The verbs `sounds` and `weapon` build asset packs (see [weapons.md](weapons.md) and [player-sounds.md](player-sounds.md)), and `review` checks a map against Momentum's entity tools (see [Entity review](#entity-review-and-next-steps)). Without a verb, the arguments are a map to port:
 
 ```
-MomentumPorter-CLI <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--game-dir <folder>]
+MomentumPorter-CLI <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--bhop-trigger-fix bhop|on|off] [--game-dir <folder>]
 MomentumPorter-CLI review <map.bsp> [--steps]
 ```
+
+`--bhop-trigger-fix` picks the maps that get the bhop trigger fix (see [Automatic fixes](#automatic-fixes)): `bhop`
+(the default) for maps named `bhop_*`, `on` for every map, e.g. bhop maps named otherwise (`kz_bhop_*` climb/bhop
+hybrids such as `kz_bhop_yonkoma`, or a map missing its prefix), `off` for maps the fix breaks. KZ Mod maps never get it, since their
+bhop blocks are their own entities. In the app it's the **Fix bhop triggers** dropdown (bhop_ maps only, On, Off),
+shown while the queue has a Source map that isn't a KZ Mod one.
 
 `--game-dir` is the source game's folder (the one with `gameinfo.txt`), for game files the map relies on, such as
 shared soundscapes. It defaults to the folder above the input's `maps` folder, or for KZ maps from elsewhere, Kreedz
@@ -146,7 +152,9 @@ Counter-Strike entities (spawns, buy zones...) in a version 19/20 BSP for CS:S o
 map without GOKZ entities goes through the GOKZ profile, which only adds the cascaded shadow light and zones nothing).
 Failing those, the game folder the map sits in, then its name (`kz_` KZ Mod, `bhop_`/`surf_` CS:S), with a warning.
 
-Whatever the game, a Source map named `bhop_*` or `kz_*` gets the bhop block fix baked in after the profile ran
+Whatever the game (but KZ Mod), a Source map named `bhop_*` gets the bhop trigger fix by default (see
+[Automatic fixes](#automatic-fixes)), and
+one named `bhop_*` or `kz_*` gets the bhop block fix baked in after the profile ran
 (dropping `func_door`/`func_button` blocks over a teleport become `func_bhop`s, see
 [Quake 3 and GoldSrc maps](#quake-3-and-goldsrc-maps)), since those are the maps Momentum's own runtime block fix
 would run on.
@@ -228,7 +236,7 @@ fix every CS:S map needs, tagging the props `_ported_by_tools 2`: older Source g
 the model's `.phy` in the map's pak file and then in CS:S's files (found through Steam or the Settings page). Without
 CS:S the fix is applied anyway, with a warning. CS:GO maps don't need it, since CS:GO doesn't square the scale.
 
-The bhop fixes and `persist` on gravity triggers apply to every Source map (see [Automatic fixes](#automatic-fixes)).
+The bhop fixes apply to Source maps by name and `persist` on gravity triggers by game (see [Automatic fixes](#automatic-fixes)).
 Everything else needs someone in game and is left to the entity review below.
 
 ## Automatic fixes
@@ -238,7 +246,8 @@ After the game profile, `ApplyProfileStep` applies the bhop fixes, and `FixEntit
 answer is the same for every map. GoldSrc maps converted with BSPConvert get the entity fixes too
 (`GoldSrcEntityFixStep`).
 
-- **Bhop triggers** (`BhopTriggers`, every Source map): a bhop block's `trigger_multiple` renames the player
+- **Bhop triggers** (`BhopTriggers`, Source maps named `bhop_*` by default, or every Source map or none as
+  **Fix bhop triggers** / `--bhop-trigger-fix` says, since the fix breaks some maps; never KZ Mod maps): a bhop block's `trigger_multiple` renames the player
   (`AddOutput targetname X`) a moment after touching and back to `default` a little later, and the `trigger_teleport`
   around the block only takes players with that name through a `filter_activator_name`, so jumping up a slope or onto
   a ledge that touches the trigger can teleport the player. The fix makes the renames happen `OnLand`, marks the
@@ -295,7 +304,7 @@ entity changes: 3 boost triggers, ...") and into the **Next steps** tab:
 |---|---|---|---|
 | Invalid entities | required | entities Lumper denies for doing nothing (`DeadEntities`) | removed |
 | env_global | required | `env_global`s | removed (ones a `logic_auto` reads need that `logic_auto` changed first) |
-| Bhop Trigger Fix | required | `trigger_multiple`s matching `IsBhopTrigger` | the renames are on `OnLand` |
+| Bhop Trigger Fix | review on `bhop_` maps, note otherwise | `trigger_multiple`s matching `IsBhopTrigger` | the renames are on `OnLand` |
 | Bhop Block Fix | required for `bhop_`/`kz_` maps | dropping blocks over a teleport (`BhopBlocks.Find`) | `func_bhop` |
 | Model Scale Fix | required, maps before version 21 | scaled dynamic props without a collision model | `ScaleType 1` |
 | CSM Fix | required for version 21 (CS:GO) maps | the map | it has an `env_cascade_light` |

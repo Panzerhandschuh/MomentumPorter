@@ -1,5 +1,22 @@
 namespace MomentumPorter.Options;
 
+using System.ComponentModel;
+
+/// <summary>Which maps get the bhop trigger fix (<see cref="Review.BhopTriggers"/>). The descriptions are the app's labels.</summary>
+public enum BhopTriggerFix
+{
+    /// <summary>Maps named bhop_*.</summary>
+    [Description("bhop_ maps only")]
+    BhopMapsOnly,
+
+    /// <summary>Every map (but KZ Mod's), e.g. kz_bhop_* hybrids or bhop maps missing their prefix.</summary>
+    [Description("On")]
+    On,
+
+    [Description("Off")]
+    Off,
+}
+
 /// <summary>
 /// Options for porting a Source engine map (KZ Mod, GOKZ) with a game profile.
 /// Quake 3 and GoldSrc maps have their own options, see the BSPConvert integration.
@@ -13,6 +30,9 @@ public sealed class MapPortOptions
 
     [PortOption("Compress output", "LZMA compress the ported map's lumps and packed files, like bspzip -repack -compress.", Order = 0)]
     public bool Compress { get; set; } = true;
+
+    [PortOption("Fix bhop triggers", "Make the triggers on bhop blocks that rename the player for a filtered teleport only do it once they land, so jumping up a slope or onto a ledge next to a block doesn't teleport them. By default only maps named bhop_* get it; pick On for bhop maps named otherwise (e.g. kz_bhop_*), or Off for maps it breaks. KZ Mod maps never need it.", Order = 1)]
+    public BhopTriggerFix FixBhopTriggers { get; set; } = BhopTriggerFix.BhopMapsOnly;
 
     /// <summary>
     /// The source game's folder holding gameinfo.txt, for game files the map relies on (e.g. shared soundscapes).

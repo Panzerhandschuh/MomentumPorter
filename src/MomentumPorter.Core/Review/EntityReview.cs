@@ -186,7 +186,7 @@ public sealed class EntityReview
 
         items.AddRange(ReviewDeadEntities(entities));
         items.Add(ReviewGlobalStates(entities));
-        items.Add(ReviewBhopTriggers(entities));
+        items.Add(ReviewBhopTriggers(context));
         items.Add(ReviewBhopBlocks(context));
         if (ReviewModelScales(context) is { } modelScales)
             items.Add(modelScales);
@@ -247,19 +247,24 @@ public sealed class EntityReview
             DocsLinks.FixEntitiesInLumper);
     }
 
-    private static ReviewItem ReviewBhopTriggers(List<Entity> entities)
+    // The porter fixes them on bhop_ maps unless told otherwise, since the fix breaks some maps; elsewhere only when asked
+    private static ReviewItem ReviewBhopTriggers(PortContext context)
     {
+        List<Entity> entities = context.Entities;
+        bool bhopMap = BhopTriggers.AppliesTo(context.MapName);
         int unfixed = BhopTriggers.Find(entities).Count;
         // A fixed trigger renames the player on landing instead
         int done = entities.Count(x => x.ClassName.Equals("trigger_multiple", StringComparison.OrdinalIgnoreCase)
             && x.connections.Any(c => c.name.Equals("OnLand", StringComparison.OrdinalIgnoreCase) && (c.param ?? "").StartsWith("targetname", StringComparison.OrdinalIgnoreCase)));
         return new ReviewItem(
             "Bhop Trigger Fix",
-            ReviewSeverity.Required,
+            bhopMap ? ReviewSeverity.Review : ReviewSeverity.Note,
             "bhop triggers",
             unfixed + done,
             done,
-            "these trigger_multiples still rename the player on touch, so jumping up slopes or onto ledges next to a block can teleport them; port the map with the porter, which moves the renames to landing",
+            bhopMap
+                ? "these trigger_multiples still rename the player on touch, so jumping up slopes or onto ledges next to a block can teleport them; port the map with Fix bhop triggers left on bhop_ maps only, which moves the renames to landing, unless the fix breaks the map"
+                : "these trigger_multiples rename the player on touch, so jumping up slopes or onto ledges next to them can teleport the player; the porter only fixes them on maps named bhop_* by default, so for a bhop map named otherwise (e.g. kz_bhop_*), port it with Fix bhop triggers On (--bhop-trigger-fix on)",
             DocsLinks.BhopTriggerFix);
     }
 

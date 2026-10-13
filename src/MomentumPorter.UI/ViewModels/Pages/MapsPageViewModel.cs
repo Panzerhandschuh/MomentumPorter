@@ -253,7 +253,7 @@ public sealed class MapsPageViewModel : PageViewModel
 
             var item = new MapQueueItemViewModel(full);
             item.WhenAnyValue(x => x.Status).Subscribe(_ => UpdateQueueState());
-            item.WhenAnyValue(x => x.MapKinds).Subscribe(_ => UpdateVisibleOptions());
+            item.WhenAnyValue(x => x.MapKinds, x => x.DetectedProfile).Subscribe(_ => UpdateVisibleOptions());
             item.WhenAnyValue(x => x.NextStepsUnread).Subscribe(_ => UpdateNextStepsUnread());
             Queue.Add(item);
             added.Add(item);
@@ -461,8 +461,13 @@ public sealed class MapsPageViewModel : PageViewModel
             : Queue.SelectMany(x => x.MapKinds).ToHashSet();
         bool quake3 = kinds.Contains(InputKind.Quake3Bsp);
         bool goldSrc = kinds.Contains(InputKind.GoldSrcBsp);
+        // KZ Mod's bhop blocks are its own entities, so only its maps have no use for the bhop trigger fix
+        bool bhopTriggers = Queue.Count == 0 || Queue.Any(x => x.MapKinds.Contains(InputKind.SourceBsp) && GameProfiles.Find(x.DetectedProfile ?? "")?.HasBhopTriggers != false);
 
-        // The map options (compress) apply to every kind of map; only BSPConvert's are per kind
+        // The map options apply to every kind of map (compress) or to Source maps (the bhop trigger fix)
+        OptionsForm.SetFilter(x => x.Name != nameof(MapPortOptions.FixBhopTriggers) || bhopTriggers);
+
+        // BSPConvert's are per kind
         BspConvertOptionsForm.SetFilter(x => x.Info.Attribute.Group switch
         {
             BspConvertOptions.Quake3Group or BspConvertOptions.ExperimentalGroup or BspConvertOptions.AnimatedTexturesGroup => quake3,

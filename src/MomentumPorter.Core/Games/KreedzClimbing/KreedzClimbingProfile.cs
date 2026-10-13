@@ -21,6 +21,9 @@ public sealed partial class KreedzClimbingProfile : IGameProfile
     // Momentum doesn't mount KZ, so its maps carry what they use from it
     public bool PacksAssets => true;
 
+    // KZ's bhop blocks are trigger_bhop_teleports, converted above
+    public bool HasBhopTriggers => false;
+
     public void Apply(PortContext context)
     {
         var allowList = new AllowList();

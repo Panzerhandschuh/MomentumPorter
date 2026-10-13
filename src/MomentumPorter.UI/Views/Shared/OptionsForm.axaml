@@ -44,7 +44,7 @@
     <DataTemplate DataType="vm:EnumOptionViewModel">
       <StackPanel Spacing="4" ToolTip.Tip="{Binding Help}" Background="Transparent">
         <TextBlock Text="{Binding Label}" />
-        <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Value}" HorizontalAlignment="Stretch" />
+        <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch" />
       </StackPanel>
     </DataTemplate>
   </UserControl.DataTemplates>

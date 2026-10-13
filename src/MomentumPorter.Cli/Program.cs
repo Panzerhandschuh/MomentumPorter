@@ -20,6 +20,9 @@ internal sealed partial class CliOptions
     [Option('c', "compress", HelpText = "LZMA compress the output")]
     public bool Compress { get; set; }
 
+    [Option("bhop-trigger-fix", HelpText = "(Default: bhop) Which maps get the bhop trigger fix, which makes the triggers on bhop blocks that rename the player for a filtered teleport only do it once they land, so jumping up a slope or onto a ledge next to a block doesn't teleport them: bhop (maps named bhop_*), on (every map, e.g. kz_bhop_* ones) or off (for maps it breaks). KZ Mod maps never get it.")]
+    public string? BhopTriggerFix { get; set; }
+
     [Option("game-dir", HelpText = "The game's folder holding gameinfo.txt, for game files the map uses (e.g. shared soundscapes). Defaults to the folder above the input's maps folder.")]
     public string? GameDirectory { get; set; }
 }
@@ -50,10 +53,24 @@ internal static class Program
             return 1;
         }
 
+        BhopTriggerFix? bhopTriggerFix = cli.BhopTriggerFix?.ToLowerInvariant() switch
+        {
+            null or "bhop" => BhopTriggerFix.BhopMapsOnly,
+            "on" => BhopTriggerFix.On,
+            "off" => BhopTriggerFix.Off,
+            _ => null,
+        };
+        if (bhopTriggerFix is null)
+        {
+            Console.Error.WriteLine($"Unknown --bhop-trigger-fix \"{cli.BhopTriggerFix}\". Pick bhop, on or off.");
+            return 1;
+        }
+
         var options = new MapPortOptions
         {
             Game = cli.Game,
             Compress = cli.Compress,
+            FixBhopTriggers = bhopTriggerFix.Value,
             GameDirectory = cli.GameDirectory,
             Pack = false,
             Install = false,

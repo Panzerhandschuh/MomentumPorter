@@ -95,7 +95,21 @@ public class OptionsFormTests
         OptionGroupViewModel general = Assert.Single(form.Groups);
         Assert.False(general.ShowHeader);
         Assert.False(form.HasAdvanced);
-        Assert.Equal([nameof(MapPortOptions.Compress)], general.Fields.Select(x => x.Name));
+        Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.FixBhopTriggers)], general.Fields.Select(x => x.Name));
+    }
+
+    [Fact]
+    public void EnumChoicesUseTheirDescriptions()
+    {
+        var options = new MapPortOptions();
+        var field = (EnumOptionViewModel)new OptionsFormViewModel(options).Find(nameof(MapPortOptions.FixBhopTriggers))!;
+
+        Assert.Equal(["bhop_ maps only", "On", "Off"], field.Choices.Select(x => x.Label));
+        Assert.Equal("bhop_ maps only", field.Selected?.Label);
+
+        field.Selected = field.Choices[1];
+        Assert.Equal(BhopTriggerFix.On, options.FixBhopTriggers);
+        Assert.Equal(BhopTriggerFix.On, field.Value);
     }
 
     [Fact]
