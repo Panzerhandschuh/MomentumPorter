@@ -4,7 +4,7 @@ using CommandLine;
 using MomentumPorter.Detection;
 using MomentumPorter.Review;
 
-[Verb("review", HelpText = "Check a Source map against Momentum's entity tools: which entities still need changing by hand in game, and whether a map that has been through the tools has anything left")]
+[Verb("review", HelpText = "Check a Source map against Momentum's entity tools: which entities still need changing by hand, and whether a map that has been through the tools has anything left")]
 internal sealed class ReviewCliOptions
 {
     [Value(0, Required = true, MetaName = "map", HelpText = "The map to check (.bsp), e.g. one ported into Momentum's maps folder and saved from Lumper")]

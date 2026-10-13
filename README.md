@@ -23,16 +23,16 @@ and the map installed into Momentum.
 - **Source maps** from Kreedz Climbing Mod, CS:GO (GOKZ) and Counter-Strike:
   Source (surf, bhop, kz): the game's own entities become Momentum's (bhop
   blocks, teleports, anti-bhop and checkpoint triggers), GOKZ's timer entities
-  become a Momentum zone file, the fixes Momentum's in-game entity tools apply
-  to every map of a game are baked in (CS:S bhop triggers, scaled props, bhop
-  blocks, CS:GO's cascaded shadow light), and
+  become a Momentum zone file, the fixes every map of a game needs are baked
+  in (bhop triggers, CS:S scaled props, bhop blocks, CS:GO's cascaded shadow
+  light), and
   [bspPack](https://github.com/Natanxp2/bspPack) (bundled) packs the assets
   a Kreedz Climbing map needs from KZ (Momentum mounts the other games, so
   their maps aren't packed).
 - **Automatic fixes**: the parts of Momentum's
   [entity tools](https://docs.momentum-mod.org/guide/map_submission/fixing_entities/)
   and Lumper's review that are mechanical are applied on every port: the bhop
-  trigger and model scale fixes on CS:S maps, bhop blocks on `bhop_`/`kz_`
+  trigger fix, the model scale fix on CS:S maps, bhop blocks on `bhop_`/`kz_`
   maps, the cascaded shadow light on CS:GO maps, `persist` on gravity
   triggers from games that kept gravity changes (everything before CS:GO),
   removal of entities that do nothing in Momentum (level transitions,

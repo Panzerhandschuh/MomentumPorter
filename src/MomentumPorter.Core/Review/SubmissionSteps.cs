@@ -12,7 +12,8 @@ public sealed record NextStep(string Title, string Text, string? Url)
 
 /// <summary>
 /// What's left to do by hand after the porter is done with a map, from Momentum's map submission guides: entity fixes
-/// the porter couldn't make, the Lumper checks, zoning, screenshots and the submission form.
+/// the porter couldn't make (in Lumper or the in-game entity tools), the Lumper checks, zoning, screenshots and the
+/// submission form.
 /// </summary>
 public static class SubmissionSteps
 {
@@ -26,7 +27,11 @@ public static class SubmissionSteps
 
         List<ReviewItem> pending = review?.Pending.Where(x => x.Severity != ReviewSeverity.Note).ToList() ?? [];
         List<ReviewItem> notes = review?.Pending.Where(x => x.Severity == ReviewSeverity.Note).ToList() ?? [];
-        if (pending.Count > 0)
+        // Fixes made by porting again or in Lumper come first, so the in-game pass sees the final entities
+        foreach (ReviewItem item in pending.Where(x => !x.InGame))
+            steps.Add(new NextStep($"{item.Tool}: {item.Count(item.Pending)}", Capitalize(item.Message), item.Url));
+
+        if (pending.Any(x => x.InGame))
         {
             steps.Add(new NextStep(
                 "Fix entities in game",
@@ -34,14 +39,14 @@ public static class SubmissionSteps
                 + "and open the entity tools with devui_show entitytools. Go through the tools below, then Export To Lumper, run the job it adds and save the BSP.",
                 DocsLinks.EntityToolsSetup));
 
-            foreach (ReviewItem item in pending)
+            foreach (ReviewItem item in pending.Where(x => x.InGame))
                 steps.Add(new NextStep($"{item.Tool}: {item.Count(item.Pending)}", Capitalize(item.Message), item.Url));
         }
         else if (review is not null)
         {
             steps.Add(new NextStep(
                 "Check the entities in game",
-                "Nothing the entity tools fix was found. Load the map in Momentum, open devui_show entitytools once to confirm, and play through it looking for teleports that should reset speed and boosts that can be exploited.",
+                "Nothing for the entity tools was found. Load the map in Momentum, open devui_show entitytools once to confirm, and play through it looking for teleports that should reset speed and boosts that can be exploited.",
                 DocsLinks.EntityToolsSetup));
         }
 

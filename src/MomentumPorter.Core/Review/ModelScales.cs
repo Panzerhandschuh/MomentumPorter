@@ -5,9 +5,9 @@ using MomentumPorter.Bsp;
 using MomentumPorter.Porting;
 
 /// <summary>
-/// The entity tools' "Model Scale Fix". Older Source games (CS:S) squared a prop's <c>ModelScale</c>, so a prop scaled
+/// The Model Scale Fix. Older Source games (CS:S) squared a prop's <c>ModelScale</c>, so a prop scaled
 /// for them comes out too small in Momentum unless its <c>ScaleType</c> is set to non-hierarchical (1), which brings the
-/// old behaviour back. Like the tool, only props without a collision model are touched: the ones with one never had
+/// old behaviour back. Only props without a collision model are touched: the ones with one never had
 /// the problem.
 /// </summary>
 public static class ModelScales

@@ -10,9 +10,9 @@ using MomentumPorter.Settings;
 using MomentumPorter.Steam;
 
 /// <summary>
-/// Runs the game profile's conversions on the loaded BSP, then the fixes every Source map gets: the bhop block fix
-/// for maps Momentum's own block fix would run on (named bhop_* or kz_*), baked in so the entity tools don't have to
-/// export it.
+/// Runs the game profile's conversions on the loaded BSP, then the fixes every Source map gets: the bhop trigger fix,
+/// and the bhop block fix for maps Momentum's own block fix would run on (named bhop_* or kz_*), baked in so the
+/// blocks are func_bhops in the BSP.
 /// </summary>
 public sealed class ApplyProfileStep : IPortStep
 {
@@ -55,6 +55,10 @@ public sealed class ApplyProfileStep : IPortStep
         {
             portContext.GameContent = gameContent;
             profile.Apply(portContext);
+
+            int bhopTriggers = BhopTriggers.Fix(portContext);
+            if (bhopTriggers > 0)
+                context.Log.Info($"Moved {bhopTriggers} bhop trigger{(bhopTriggers == 1 ? "'s" : "s'")} renames to landing");
 
             if (EntityReview.HasBlockFixPrefix(state.MapName))
             {

@@ -12,8 +12,7 @@ using MomentumPorter.Porting;
 /// they've stood on them too long.
 /// </summary>
 /// <remarks>
-/// Replaces the engine's block fix (mom_blockfix.cpp, and the entity tools exporting its blocks to Stripper configs),
-/// which only finds teleports the block itself dips into as it opens. GoldSrc blocks mostly drop their own height
+/// Replaces the engine's block fix (mom_blockfix.cpp), which only finds teleports the block itself dips into as it opens. GoldSrc blocks mostly drop their own height
 /// above a pit with the teleport at the bottom, so this follows the player down instead: a block converts when the
 /// player falls into a teleport from somewhere on it, without landing on something solid first.
 /// </remarks>

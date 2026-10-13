@@ -323,7 +323,7 @@ public sealed class MapsPageViewModel : PageViewModel
                 : new JobOutcome(QueueStatus.Failed, $"{result.FailedStep} failed: {result.Error}");
         }
 
-        // What's left to do by hand: entities the tools have to change in game, zoning, screenshots, the form.
+        // What's left to do by hand: entity fixes in Lumper or in game, zoning, screenshots, the form.
         // Shown in the Next steps tab only (the report has the pending entities), so the log stays the tools' output.
         EntityReview? review = context.TryGet<EntityReview>();
         bool zoned = state.PortContext?.ExtraOutputs.Any(x => x.RelativePath.StartsWith("zones/", StringComparison.OrdinalIgnoreCase)) == true;

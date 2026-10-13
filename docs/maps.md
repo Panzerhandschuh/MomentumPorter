@@ -118,8 +118,7 @@ teleport. After converting a GoldSrc map, the porter turns those into `func_bhop
 destination once they've stood on the block too long, keeping the teleport's angle and velocity settings (`Fix bhop
 blocks` in the app's GoldSrc options, `--noblockfix` to turn it off). A block counts when the player can fall from it
 into a `trigger_teleport` without landing on anything solid first, so this also finds blocks over a pit, which
-Momentum's runtime block fix (and the entity tools' Stripper export of it) misses because it only looks for teleports
-the block dips into as it drops. Named blocks lose their name and outputs, which the report warns about.
+Momentum's runtime block fix misses because it only looks for teleports the block dips into as it drops. Named blocks lose their name and outputs, which the report warns about.
 
 In code, `BspConvertOptions` (`src/MomentumPorter.Core/BspConvert/`) mirrors BSPConvert's options with the same defaults,
 with `[PortOption]` metadata grouped General / Quake 3 / GoldSrc / Animated textures for the generated options form, and
@@ -199,8 +198,7 @@ in-game entity tools ("Climb Trigger Converter"), so maps ported either way end 
   `climb_anti_bhop_time` (default 0.2) as `BhopCooldown`.
 - `climb_anti_pause`, `climb_anti_jumpstat` and `climb_bhop_reset` are removed, since Momentum has nothing like them.
 - The worldspawn's `climb_mapping_api_version` is removed.
-- An `env_cascade_light` is added when the map has none, as the in-game entity tools' "CSM Fix" does, so cascaded
-  shadow maps work. It follows the map's `light_environment`; a map without one is left alone, with a warning.
+- An `env_cascade_light` is added when the map has none (the CSM Fix), so cascaded shadow maps work. It follows the map's `light_environment`; a map without one is left alone, with a warning.
 
 Momentum's timer comes from a zone file rather than entities, so the timer entities become
 `zones/local/<map>.json` next to the ported BSP (Momentum reads local zones from `maps/zones/local/`):
@@ -223,31 +221,35 @@ Not reproducible, and listed as warnings:
 
 ### Counter-Strike: Source
 
-CS:S surf, bhop and kz maps use stock entities Momentum already runs, so the profile only bakes in the two fixes
-Momentum's in-game entity tools apply to every CS:S map of their kind, tagging the entities `_ported_by_tools 2` as the
-tools do:
+CS:S surf, bhop and kz maps use stock entities Momentum already runs, so the profile only bakes in the model scale
+fix every CS:S map needs, tagging the props `_ported_by_tools 2`: older Source games squared a prop's `ModelScale`, so
+`prop_dynamic`, `prop_dynamic_override` and `prop_dynamic_glow` with a scale other than 1 get `ScaleType 1`
+(non-hierarchical), which brings that behaviour back. Props with a collision model are skipped; the porter looks for
+the model's `.phy` in the map's pak file and then in CS:S's files (found through Steam or the Settings page). Without
+CS:S the fix is applied anyway, with a warning. CS:GO maps don't need it, since CS:GO doesn't square the scale.
 
-- **Bhop trigger fix** (bhop maps): a bhop block's `trigger_multiple` renames the player (`AddOutput targetname X`) a
-  moment after touching and back to `default` a little later, and the `trigger_teleport` around the block only takes
-  players with that name through a `filter_activator_name`. Momentum's fix (`Bhop Trigger Fix` in the tools) makes the
-  renames happen `OnLand`, marks the player as off the ground with a `_mom_leftground` context `OnJump`/`OnEndTouch`,
-  and points the teleports at a `filter_multi` (`momentum_tools__filter_bhop_multi`) of the name filter and a
-  `filter_activator_context` that rejects players with that context. Detection is the engine's `IsBhopTrigger`
-  (exactly two renames within a second on `OnStartTouch` or `OnTrigger`, the earlier one a name some teleport's filter
-  accepts) and the rewrite copies the tools' key lists. Triggers using a second filter are left for the tools.
-- **Model scale fix** (every CS:S map): older Source games squared a prop's `ModelScale`, so `prop_dynamic`,
-  `prop_dynamic_override` and `prop_dynamic_glow` with a scale other than 1 get `ScaleType 1` (non-hierarchical), which
-  brings that behaviour back. Like the tool, props with a collision model are skipped; the porter looks for the model's
-  `.phy` in the map's pak file and then in CS:S's files (found through Steam or the Settings page). Without CS:S the
-  fix is applied anyway, with a warning.
-
-Everything else the tools do for CS:S maps needs someone in game and is left to the entity review below.
+The bhop fixes and `persist` on gravity triggers apply to every Source map (see [Automatic fixes](#automatic-fixes)).
+Everything else needs someone in game and is left to the entity review below.
 
 ## Automatic fixes
 
-After the game profile, `FixEntitiesStep` and `RemoveMountedAssetsStep` (`src/MomentumPorter.Core/Fixes/`) apply what
-Lumper's Entity Review tab and the entity tools would otherwise ask for by hand, where the answer is the same for every
-map. GoldSrc maps converted with BSPConvert get the entity fixes too (`GoldSrcEntityFixStep`).
+After the game profile, `ApplyProfileStep` applies the bhop fixes, and `FixEntitiesStep` and `RemoveMountedAssetsStep`
+(`src/MomentumPorter.Core/Fixes/`) apply what Lumper's Entity Review tab would otherwise ask for by hand, where the
+answer is the same for every map. GoldSrc maps converted with BSPConvert get the entity fixes too
+(`GoldSrcEntityFixStep`).
+
+- **Bhop triggers** (`BhopTriggers`, every Source map): a bhop block's `trigger_multiple` renames the player
+  (`AddOutput targetname X`) a moment after touching and back to `default` a little later, and the `trigger_teleport`
+  around the block only takes players with that name through a `filter_activator_name`, so jumping up a slope or onto
+  a ledge that touches the trigger can teleport the player. The fix makes the renames happen `OnLand`, marks the
+  player as off the ground with a `_mom_leftground` context `OnJump`/`OnEndTouch`, and points the teleports at a
+  `filter_multi` (`momentum_tools__filter_bhop_multi`, then `_2`, `_3`... for any further name filter) of the name
+  filter and a `filter_activator_context` that rejects players with that context. Detection is the engine's
+  `IsBhopTrigger` (exactly two renames within a second on `OnStartTouch` or `OnTrigger`, the earlier one a name some
+  teleport's filter accepts). Fixed entities are tagged `_ported_by_tools 2`.
+- **Bhop blocks** (`BhopBlocks`, Source maps named `bhop_*` or `kz_*`, the ones Momentum's runtime block fix runs
+  on): touch-activated `func_door`s and `func_button`s that drop the player into a teleport become `func_bhop`s in the
+  BSP, as described for GoldSrc maps above.
 
 - **Dead entities** (`DeadEntities`): entities Lumper's rules (`resources/EntityRules_Momentum.json`) deny because
   they do nothing in Momentum, and whose removal can't change gameplay: level transitions (`trigger_changelevel`,
@@ -283,10 +285,11 @@ Update filename-specific Content rewrites). The review below lists them.
 After the profile, `ReviewEntitiesStep` goes through the map the way Momentum's
 [entity tools](https://docs.momentum-mod.org/guide/map_submission/fixing_entities/) and
 [review checklist](https://docs.momentum-mod.org/guide/map_submission/review_checklist/) would
-(`EntityReview.Analyze`, `src/MomentumPorter.Core/Review/`). Each tool becomes a `ReviewItem` with how many entities
-it would list, how many are already dealt with (tagged by the tools or the porter, or fine as they are) and a docs
+(`EntityReview.Analyze`, `src/MomentumPorter.Core/Review/`). Each fix or check becomes a `ReviewItem` with how many
+entities it applies to, how many are already dealt with (tagged by the tools or the porter, or fine as they are), where
+the rest are fixed (the in-game tools for teleports and boosts; Lumper or porting again for the others) and a docs
 link. Pending items that aren't notes go in the report as warnings, into the queue item's warning line ("Needs manual
-entity changes in game: 3 boost triggers, ...") and into the **Next steps** tab:
+entity changes: 3 boost triggers, ...") and into the **Next steps** tab:
 
 | Tool | Severity | Found | Done when |
 |---|---|---|---|
@@ -294,7 +297,7 @@ entity changes in game: 3 boost triggers, ...") and into the **Next steps** tab:
 | env_global | required | `env_global`s | removed (ones a `logic_auto` reads need that `logic_auto` changed first) |
 | Bhop Trigger Fix | required | `trigger_multiple`s matching `IsBhopTrigger` | the renames are on `OnLand` |
 | Bhop Block Fix | required for `bhop_`/`kz_` maps | dropping blocks over a teleport (`BhopBlocks.Find`) | `func_bhop` |
-| Model Scale Fix | required | scaled dynamic props without a collision model | `ScaleType 1` |
+| Model Scale Fix | required, maps before version 21 | scaled dynamic props without a collision model | `ScaleType 1` |
 | CSM Fix | required for version 21 (CS:GO) maps | the map | it has an `env_cascade_light` |
 | Teleport Velocity Mode | review on `surf_` maps, note otherwise | destinations inside `playerclip` brushes (surf cages, jails), which the docs say should keep only downward velocity; bhop maps box their fail destinations in clip too | every teleport to it has a `VelocityMode` |
 | Teleport Velocity Mode | note | every other destination | same |
@@ -307,13 +310,14 @@ entity changes in game: 3 boost triggers, ...") and into the **Next steps** tab:
 
 Review items are judgement calls the tools can't make for you, so a map that went through the tools still shows the
 boosts and gravity triggers the reviewer decided to leave alone; the verdict line says so ("every required fix is in;
-still to confirm in game, since the tools left them unchanged: ..."). Required items decide the exit code of
+still to confirm in game, since they were left unchanged: ..."). Required items decide the exit code of
 `MomentumPorter-CLI review <map.bsp>` (1 when one is missing), which is the way to validate a map saved from Lumper after
 the in-game review, as is the clipboard button on a Source map in the app's queue (it reviews the file as it is).
 
 `SubmissionSteps.For` turns the review into the **Next steps** list (only there, so the log stays the tools' output;
-the tab shows a dot until the selected map's steps have been looked at; the CLI prints them after the report): the entity tools setup
-and one step per pending tool, the Lumper review, the packed assets, compressing, zoning (noting the zone file the
+the tab shows a dot until the selected map's steps have been looked at; the CLI prints them after the report): one step
+per pending fix made in Lumper or by porting again, then the entity tools setup and one step per pending in-game tool
+(only when there is one), the Lumper review, the packed assets, compressing, zoning (noting the zone file the
 porter wrote for GOKZ and Quake 3 maps), screenshots with `mom_official_screenshot`, the submission form and the review
 checklist, each linked to its section of the docs (`DocsLinks`).
 

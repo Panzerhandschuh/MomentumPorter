@@ -19,16 +19,17 @@ public enum ReviewSeverity
 }
 
 /// <summary>
-/// What a map has for one of the entity tools (or a Lumper check) and how much of it has been dealt with.
+/// What a map has for one of the entity fixes or checks and how much of it has been dealt with.
 /// </summary>
-/// <param name="Tool">The tool's name as the in-game list shows it</param>
+/// <param name="Tool">The fix's name; for the ones done with the in-game entity tools, the tool's name as their list shows it</param>
 /// <param name="Noun">What's counted, plural ("boost triggers"), for summaries</param>
-/// <param name="Found">Entities the tool would list</param>
+/// <param name="Found">Entities the fix applies to</param>
 /// <param name="Done">Of those, the ones already changed (by the tools or the porter) or fine as they are</param>
 /// <param name="Message">What to do about the rest</param>
 /// <param name="Url">The docs section for it</param>
 /// <param name="Singular">The noun for one, when it isn't the plural minus its s</param>
-public sealed record ReviewItem(string Tool, ReviewSeverity Severity, string Noun, int Found, int Done, string Message, string Url, string? Singular = null)
+/// <param name="InGame">The rest are dealt with in the in-game entity tools, rather than in Lumper or by porting again</param>
+public sealed record ReviewItem(string Tool, ReviewSeverity Severity, string Noun, int Found, int Done, string Message, string Url, string? Singular = null, bool InGame = false)
 {
     public int Pending => Math.Max(Found - Done, 0);
 
@@ -80,7 +81,7 @@ public sealed class EntityReview
     public bool HasMissingRequiredFixes => Pending.Any(x => x.Severity == ReviewSeverity.Required);
 
     /// <summary>
-    /// One line for a queue item: "Needs manual entity changes in game: 3 boost triggers, 2 gravity triggers", or
+    /// One line for a queue item: "Needs manual entity changes: 3 boost triggers, 2 gravity triggers", or
     /// null when nothing but notes is pending.
     /// </summary>
     public string? Summary
@@ -91,7 +92,7 @@ public sealed class EntityReview
             if (pending.Count == 0)
                 return null;
 
-            return "Needs manual entity changes in game: " + string.Join(", ", pending.Select(x => x.Count(x.Pending)));
+            return "Needs manual entity changes: " + string.Join(", ", pending.Select(x => x.Count(x.Pending)));
         }
     }
 
@@ -134,7 +135,7 @@ public sealed class EntityReview
 
             if (review.Count > 0)
             {
-                return "Verdict: every required fix is in; still to confirm in game, since the tools left them unchanged: "
+                return "Verdict: every required fix is in; still to confirm in game, since they were left unchanged: "
                     + string.Join(", ", review.Select(x => x.Count(x.Pending)));
             }
 
@@ -156,7 +157,7 @@ public sealed class EntityReview
     public void Report(PortReport report)
     {
         foreach (ReviewItem item in Pending.Where(x => x.Severity != ReviewSeverity.Note))
-            report.Warn($"{item.Count(item.Pending)} need{(item.Pending == 1 ? "s" : "")} looking at in game ({item.Tool}): {item.Message}");
+            report.Warn($"{item.Count(item.Pending)} need{(item.Pending == 1 ? "s" : "")} changing by hand ({item.Tool}): {item.Message}");
     }
 
     /// <summary>
@@ -187,7 +188,8 @@ public sealed class EntityReview
         items.Add(ReviewGlobalStates(entities));
         items.Add(ReviewBhopTriggers(entities));
         items.Add(ReviewBhopBlocks(context));
-        items.Add(ReviewModelScales(context));
+        if (ReviewModelScales(context) is { } modelScales)
+            items.Add(modelScales);
         if (ReviewCascadeLight(context) is { } csm)
             items.Add(csm);
         items.AddRange(ReviewTeleportVelocity(context));
@@ -257,7 +259,7 @@ public sealed class EntityReview
             "bhop triggers",
             unfixed + done,
             done,
-            "these trigger_multiples still rename the player on touch; apply the Bhop Trigger Fix so they go by landing and jumping",
+            "these trigger_multiples still rename the player on touch, so jumping up slopes or onto ledges next to a block can teleport them; port the map with the porter, which moves the renames to landing",
             DocsLinks.BhopTriggerFix);
     }
 
@@ -273,13 +275,17 @@ public sealed class EntityReview
             pending + done,
             done,
             blockFixMap
-                ? "these func_doors/func_buttons drop the player into a teleport; export the Bhop Block Fix so they're func_bhops in the BSP"
-                : "these func_doors/func_buttons drop the player into a teleport, but Momentum's block fix only runs for maps named bhop_* or kz_*; rename the map or convert them in game",
+                ? "these func_doors/func_buttons drop the player into a teleport; port the map with the porter, which turns them into func_bhops in the BSP"
+                : "these func_doors/func_buttons drop the player into a teleport, but Momentum's block fix only runs for maps named bhop_* or kz_*; if they're bhop blocks, port the map again under a bhop_ or kz_ name so the porter turns them into func_bhops",
             DocsLinks.BhopBlockFix);
     }
 
-    private static ReviewItem ReviewModelScales(PortContext context)
+    // Only games before CS:GO (BSP version 21) squared the scale
+    private static ReviewItem? ReviewModelScales(PortContext context)
     {
+        if (context.Bsp.MapType == MapType.Source21)
+            return null;
+
         List<ModelScales.ScaledProp> props = ModelScales.Find(context).Where(x => x.NeedsFix).ToList();
         bool unknown = props.Any(x => x.HasCollision is null && !x.IsFixed);
         return new ReviewItem(
@@ -288,7 +294,7 @@ public sealed class EntityReview
             "scaled props",
             props.Count,
             props.Count(x => x.IsFixed),
-            "these prop_dynamics have a ModelScale that older Source games squared; set their ScaleType to non-hierarchical (Fix All Model Scales)"
+            "these prop_dynamics have a ModelScale that older Source games squared; port the map as a Counter-Strike: Source map, which sets their ScaleType to non-hierarchical (1), or set it in Lumper"
                 + (unknown ? ". Their collision models couldn't be checked, and props with one don't need the fix" : ""),
             DocsLinks.ModelScaleFix);
     }
@@ -306,7 +312,9 @@ public sealed class EntityReview
             "CS:GO maps without an env_cascade_light",
             1,
             hasLight ? 1 : 0,
-            "the map is a CS:GO one with no env_cascade_light; add one (CSM Fix) if its shadows look wrong next to CS:GO's",
+            context.OfClass("light_environment").Any()
+                ? "the map is a CS:GO one with no env_cascade_light; port the map with the porter, which adds one following its light_environment"
+                : "the map is a CS:GO one with no env_cascade_light or light_environment to take the sun from; if its shadows look wrong next to CS:GO's, add an env_cascade_light in Lumper and set its angles to the sun's",
             DocsLinks.CsmFix,
             Singular: "CS:GO map without an env_cascade_light");
     }
@@ -367,7 +375,8 @@ public sealed class EntityReview
             inClipsDone,
             "these destinations sit inside clip brushes (a surf cage, a jail): their teleports should keep only downward velocity (Keep Negative Z) if the player isn't meant to carry speed through",
             DocsLinks.KeepNegativeZ,
-            Singular: "teleport destination inside a clip brush");
+            Singular: "teleport destination inside a clip brush",
+            InGame: true);
 
         yield return new ReviewItem(
             "Teleport Velocity Mode",
@@ -376,7 +385,8 @@ public sealed class EntityReview
             others,
             othersDone,
             "their teleports keep the player's velocity, Momentum's default; check whether any should reset it (fail teleports that launch the player, RJ/SJ/conc/ahop fails) or keep only downward velocity",
-            DocsLinks.TeleportVelocityMode);
+            DocsLinks.TeleportVelocityMode,
+            InGame: true);
     }
 
     private static ReviewItem ReviewLandmarkTeleports(List<Entity> entities)
@@ -389,7 +399,8 @@ public sealed class EntityReview
             landmarks.Count,
             landmarks.Count(EntityTools.IsTagged),
             "these teleport relative to a landmark; check in game that the player comes out facing the right way (Fix Destination Angles)",
-            DocsLinks.EntityToolsList);
+            DocsLinks.EntityToolsList,
+            InGame: true);
     }
 
     private static ReviewItem ReviewBoostTriggers(List<Entity> entities)
@@ -402,7 +413,8 @@ public sealed class EntityReview
             boosts.Count,
             boosts.Count(x => EntityTools.IsTagged(x.Entity)),
             "walk into each boost in game and apply the fix for how it's used: a cooldown for boosts taken in the air, OnJump for ones jumped on, trigger_setspeed for ones walked into, a ground filter for ones stood on",
-            DocsLinks.BoostTriggers);
+            DocsLinks.BoostTriggers,
+            InGame: true);
     }
 
     private static ReviewItem ReviewGravityTriggers(List<Entity> entities)
@@ -414,7 +426,7 @@ public sealed class EntityReview
             "gravity triggers",
             gravity.Count,
             gravity.Count(x => x.ContainsKey("persist")),
-            "tick Persist on the ones meant to change gravity for good: every game before CS:GO kept the change after the trigger, so ports from those need it (the porter sets it for them)",
+            "set persist to 1 in Lumper on the ones meant to change gravity for good: every game before CS:GO kept the change after the trigger, so ports from those need it (the porter sets it for them)",
             DocsLinks.GravityTriggers);
     }
 

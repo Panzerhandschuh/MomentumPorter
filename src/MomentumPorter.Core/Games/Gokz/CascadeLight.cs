@@ -6,7 +6,7 @@ using MomentumPorter.Porting;
 
 public sealed partial class GokzProfile
 {
-    // env_cascade_light's own defaults, written out to match the engine's entity tools ("CSM Fix") Stripper export
+    // env_cascade_light's own defaults, written out
     private static readonly (string Key, string Value)[] CascadeLightKeys =
     [
         ("uselightenvangles", "1"),
@@ -16,7 +16,7 @@ public sealed partial class GokzProfile
     ];
 
     /// <summary>
-    /// Adds the env_cascade_light cascaded shadow maps need, as the in-game entity tools' "CSM Fix" does. CS:GO maps
+    /// Adds the env_cascade_light cascaded shadow maps need, (the CSM Fix). CS:GO maps
     /// mostly leave it out. With uselightenvangles the light takes its direction and colour from the map's
     /// light_environment; without one it would cast shadows from a built-in sun the lightmaps weren't baked for, so
     /// such maps are left alone.

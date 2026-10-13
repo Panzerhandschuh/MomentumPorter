@@ -5,15 +5,15 @@ using MomentumPorter.Bsp;
 using MomentumPorter.Porting;
 
 /// <summary>
-/// The "mpbhop" bhop triggers of CS:S bhop maps and the entity tools' "Bhop Trigger Fix" for them.
+/// The "mpbhop" bhop triggers of CS:S bhop maps (and CS:GO ones made the same way) and the Bhop Trigger Fix for them.
 /// </summary>
 /// <remarks>
 /// A bhop block has a <c>trigger_multiple</c> on top that renames the player (<c>AddOutput targetname X</c>) a moment
 /// after they touch it and back to default a little later, and the <c>trigger_teleport</c> around the block only
 /// accepts players with that name (<c>filter_activator_name</c>). Momentum's fix makes the rename happen on landing
 /// (<c>OnLand</c>) and stops the teleport while the player is off the ground, so jumping up slopes or onto ledges that
-/// touch the trigger doesn't teleport them. Detection is MomEntityUtils::IsBhopTrigger and the fix is the tools'
-/// TrySubstituteBhopTrigger*Change (mom_entity_tools.cpp), key for key.
+/// touch the trigger doesn't teleport them. Detection is MomEntityUtils::IsBhopTrigger (mom_entity_utils.cpp),
+/// which Momentum's KZ checkpoints use too.
 /// </remarks>
 public static class BhopTriggers
 {
@@ -22,7 +22,7 @@ public static class BhopTriggers
 
     private static readonly string[] TriggerOutputs = ["OnStartTouch", "OnTrigger"];
 
-    // What the fix keeps of a bhop trigger_multiple and of a filtered trigger_teleport (CopyEntityData lists)
+    // What the fix keeps of a bhop trigger_multiple and of a filtered trigger_teleport
     private static readonly HashSet<string> KeptTriggerKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         "model", "wait", "targetname", "StartDisabled", "spawnflags", "solid", "origin", "filtername", "classname", "hammerid",
@@ -107,8 +107,7 @@ public static class BhopTriggers
     }
 
     /// <summary>
-    /// Applies the Bhop Trigger Fix to every bhop trigger, like the tools' "Fix Bhop Triggers" button followed by an
-    /// export. Returns how many triggers were fixed.
+    /// Applies the Bhop Trigger Fix to every bhop trigger. Returns how many triggers were fixed.
     /// </summary>
     public static int Fix(PortContext context)
     {
@@ -116,27 +115,27 @@ public static class BhopTriggers
         if (triggers.Count == 0)
             return 0;
 
-        // The tools take the filter of the first trigger for all of them; maps use a single one
-        string filterName = triggers[0].FilterName;
-        List<BhopTrigger> others = triggers.Where(x => !x.FilterName.Equals(filterName, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (others.Count > 0)
-            context.Report.Warn($"{others.Count} bhop triggers use another teleport filter ({others[0].FilterName}) than the rest ({filterName}) and weren't fixed; fix them in game");
-
-        AddFilters(context, filterName);
-
+        // Maps use a single teleport filter; any other gets a filter_multi of its own, numbered after the first
+        List<string> filterNames = triggers.Select(x => x.FilterName).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         int teleports = 0;
-        foreach (Entity teleport in context.OfClass("trigger_teleport").Where(x => x["filtername"].Equals(filterName, StringComparison.OrdinalIgnoreCase)))
+        for (int i = 0; i < filterNames.Count; i++)
         {
-            foreach (string key in teleport.Keys.Where(x => !KeptTeleportKeys.Contains(x)).ToList())
-                teleport.Remove(key);
+            string multiName = i == 0 ? EntityTools.BhopFilterMultiName : $"{EntityTools.BhopFilterMultiName}_{i + 1}";
+            AddFilters(context, filterNames[i], multiName);
 
-            teleport["filtername"] = EntityTools.BhopFilterMultiName;
-            EntityTools.Tag(teleport);
-            teleports++;
+            foreach (Entity teleport in context.OfClass("trigger_teleport").Where(x => x["filtername"].Equals(filterNames[i], StringComparison.OrdinalIgnoreCase)))
+            {
+                foreach (string key in teleport.Keys.Where(x => !KeptTeleportKeys.Contains(x)).ToList())
+                    teleport.Remove(key);
+
+                teleport["filtername"] = multiName;
+                EntityTools.Tag(teleport);
+                teleports++;
+            }
         }
 
         int fixedTriggers = 0;
-        foreach (BhopTrigger trigger in triggers.Except(others))
+        foreach (BhopTrigger trigger in triggers)
         {
             Entity entity = trigger.Entity;
             foreach (string key in entity.Keys.Where(x => !KeptTriggerKeys.Contains(x)).ToList())
@@ -159,8 +158,9 @@ public static class BhopTriggers
         return fixedTriggers;
     }
 
-    // The filters the fix adds: "the player is on the ground" (no _mom_leftground context) and "has the bhop name"
-    private static void AddFilters(PortContext context, string filterName)
+    // The filters the fix adds: "the player is on the ground" (no _mom_leftground context), shared, and "has the bhop
+    // name" for each teleport filter
+    private static void AddFilters(PortContext context, string filterName, string multiName)
     {
         if (!context.Entities.Any(x => x.Name.Equals(EntityTools.BhopFilterContextName, StringComparison.OrdinalIgnoreCase)))
         {
@@ -171,9 +171,9 @@ public static class BhopTriggers
             context.AddEntity(contextFilter);
         }
 
-        if (!context.Entities.Any(x => x.Name.Equals(EntityTools.BhopFilterMultiName, StringComparison.OrdinalIgnoreCase)))
+        if (!context.Entities.Any(x => x.Name.Equals(multiName, StringComparison.OrdinalIgnoreCase)))
         {
-            var multi = new Entity("filter_multi", context.EntityLump) { Name = EntityTools.BhopFilterMultiName };
+            var multi = new Entity("filter_multi", context.EntityLump) { Name = multiName };
             multi["filter01"] = filterName;
             multi["filter02"] = EntityTools.BhopFilterContextName;
             multi["filtertype"] = "0";

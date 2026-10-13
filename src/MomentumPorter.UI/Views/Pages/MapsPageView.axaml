@@ -103,7 +103,7 @@
                     <TextBlock Text="{Binding StatusMessage}" FontSize="12" TextWrapping="Wrap"
                                Foreground="{Binding Status, Converter={x:Static conv:QueueStatusConverters.Brush}}"
                                IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                    <!-- Entities the in-game entity tools still have to change; the Next steps tab says how -->
+                    <!-- Entities that still have to be changed by hand; the Next steps tab says how -->
                     <Grid ColumnDefinitions="Auto, *" Margin="0 2 0 0"
                           IsVisible="{Binding Attention, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                           ToolTip.Tip="Something to do by hand before the map can be submitted. See the Next steps tab below.">
@@ -219,7 +219,7 @@
             </TabItem.Header>
             <ScrollViewer Background="#33000000">
               <StackPanel Margin="10 6" Spacing="2">
-                <TextBlock Text="Once a map is ported, the steps to get it onto Momentum Mod's website are listed here: the entities to change with the in-game entity tools, the Lumper checks, zoning, screenshots and the submission form, each linked to the docs."
+                <TextBlock Text="Once a map is ported, the steps to get it onto Momentum Mod's website are listed here: the entity fixes left to make in Lumper or with the in-game entity tools, the Lumper checks, zoning, screenshots and the submission form, each linked to the docs."
                            Classes="muted" TextWrapping="Wrap"
                            IsVisible="{Binding !SelectedItem.HasNextSteps, FallbackValue=True}" />
                 <ItemsControl ItemsSource="{Binding SelectedItem.NextSteps, FallbackValue={x:Null}}">

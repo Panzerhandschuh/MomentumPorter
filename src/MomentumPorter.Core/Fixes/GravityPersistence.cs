@@ -5,10 +5,10 @@ using MomentumPorter.Bsp;
 using MomentumPorter.Porting;
 
 /// <summary>
-/// The entity tools' "Gravity Triggers" fix as a rule: in every Source game before CS:GO, and in GoldSrc, a
+/// trigger_gravity persistence as a rule: in every Source game before CS:GO, and in GoldSrc, a
 /// trigger_gravity's change stayed with the player after leaving the trigger, while Momentum (like CS:GO) reverts it
 /// unless the trigger says <c>persist 1</c>. Lumper's entity rules and the review checklist both say ports from those
-/// games need it, so it's applied for them (<see cref="IGameProfile.GravityPersists"/>) and tagged like the tools do.
+/// games need it, so it's applied for them (<see cref="IGameProfile.GravityPersists"/>) and tagged like the entity tools' changes.
 /// </summary>
 public static class GravityPersistence
 {

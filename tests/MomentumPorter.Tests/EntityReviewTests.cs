@@ -35,14 +35,14 @@ public class EntityReviewTests(ITestOutputHelper output)
     }
 
     // The mpbhop pattern of CS:S bhop maps (bhop_arcane_v1 and friends)
-    private static List<Entity> MpBhopEntities(string filterName = "filter_teleport")
+    private static List<Entity> MpBhopEntities(string filterName = "filter_teleport", string playerName = "teleport")
     {
         Entity trigger = Make("trigger_multiple", ("model", "*354"), ("wait", "0"), ("spawnflags", "1"), ("angles", "0 0 0"));
         trigger.connections.Add(Output("OnTrigger", "AddOutput", "targetname default", 0.1f));
-        trigger.connections.Add(Output("OnTrigger", "AddOutput", "targetname teleport", 0.09f));
+        trigger.connections.Add(Output("OnTrigger", "AddOutput", $"targetname {playerName}", 0.09f));
         return
         [
-            Make("filter_activator_name", ("targetname", filterName), ("filtername", "teleport"), ("Negated", "0")),
+            Make("filter_activator_name", ("targetname", filterName), ("filtername", playerName), ("Negated", "0")),
             Make("trigger_teleport", ("model", "*160"), ("target", "stage2"), ("filtername", filterName), ("angles", "0 0 0"), ("spawnflags", "1")),
             trigger,
         ];
@@ -158,6 +158,59 @@ public class EntityReviewTests(ITestOutputHelper output)
         Assert.Equal(DocsLinks.ReviewChecklist, steps[^1].Url);
     }
 
+    [Fact]
+    public void SubmissionStepsOnlySendToTheEntityToolsForInGameFixes()
+    {
+        if (FindCssMap("de_dust") is not { } path)
+            return;
+
+        var context = new PortContext(new BSP(new FileInfo(path)), "de_dust", null);
+        foreach (Entity entity in context.Entities.Where(x => x.ClassName is "trigger_teleport" or "trigger_push").ToList())
+            context.Bsp.Entities.Remove(entity);
+        context.Bsp.Entities.Add(Make("trigger_gravity", ("model", "*1"), ("gravity", "0.5")));
+
+        EntityReview review = EntityReview.Analyze(context);
+        Assert.DoesNotContain(review.Pending, x => x.InGame);
+        Assert.True(review.Items.Single(x => x.Tool == "Gravity Triggers").IsPending);
+        IReadOnlyList<NextStep> steps = SubmissionSteps.For("de_dust", review, zoneFileWritten: false, mountedGame: null);
+        Assert.DoesNotContain(steps, x => x.Title == "Fix entities in game");
+        Assert.Contains(steps, x => x.Title == "Check the entities in game");
+        NextStep gravity = Assert.Single(steps, x => x.Title.StartsWith("Gravity Triggers"));
+        Assert.Contains("in Lumper", gravity.Text);
+
+        context.Bsp.Entities.Add(Make("trigger_push", ("model", "*2"), ("pushdir", "0 90 0"), ("speed", "800")));
+        review = EntityReview.Analyze(context);
+        steps = SubmissionSteps.For("de_dust", review, zoneFileWritten: false, mountedGame: null);
+        int setup = steps.ToList().FindIndex(x => x.Title == "Fix entities in game");
+        Assert.True(setup >= 0);
+        Assert.True(steps.ToList().FindIndex(x => x.Title.StartsWith("Gravity Triggers")) < setup);
+        Assert.True(steps.ToList().FindIndex(x => x.Title.StartsWith("Boost Triggers")) > setup);
+    }
+
+    [Fact]
+    public void FixesBhopTriggersOfEveryTeleportFilter()
+    {
+        if (FindCssMap("de_dust") is not { } path)
+            return;
+
+        var context = new PortContext(new BSP(new FileInfo(path)), "bhop_test", null);
+        List<Entity> first = MpBhopEntities("filter_a");
+        List<Entity> second = MpBhopEntities("filter_b", "teleport_b");
+        foreach (Entity entity in first.Concat(second))
+            context.Bsp.Entities.Add(entity);
+
+        Assert.Equal(2, BhopTriggers.Fix(context));
+
+        Assert.Empty(BhopTriggers.Find(context));
+        Assert.Equal(EntityTools.BhopFilterMultiName, first[1]["filtername"]);
+        Assert.Equal(EntityTools.BhopFilterMultiName + "_2", second[1]["filtername"]);
+        Assert.Equal("filter_a", Assert.Single(context.Entities, x => x.Name == EntityTools.BhopFilterMultiName)["filter01"]);
+        Assert.Equal("filter_b", Assert.Single(context.Entities, x => x.Name == EntityTools.BhopFilterMultiName + "_2")["filter01"]);
+        Assert.Single(context.Entities, x => x.Name == EntityTools.BhopFilterContextName);
+        Assert.Contains(second[2].connections, x => x.name == "OnLand" && x.param == "targetname teleport_b");
+        Assert.False(EntityReview.Analyze(context).Items.Single(x => x.Tool == "Bhop Trigger Fix").IsPending);
+    }
+
     // ---- Counter-Strike: Source's own bhop maps ----
 
     private static string? FindCssMap(string name)
@@ -204,8 +257,9 @@ public class EntityReviewTests(ITestOutputHelper output)
         int filteredTeleports = context.OfClass("trigger_teleport").Count(x => x["filtername"] == filterName);
         Assert.True(filteredTeleports > 0);
 
+        // As the Convert entities step does after the profile, then its Fix entities step
         new CounterStrikeSourceProfile().Apply(context);
-        // The job's Fix entities step follows the profile
+        BhopTriggers.Fix(context);
         MomentumPorter.Fixes.DeadEntities.Remove(context);
         MomentumPorter.Fixes.GlobalStates.Remove(context);
 
