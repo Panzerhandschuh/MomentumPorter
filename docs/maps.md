@@ -338,7 +338,7 @@ the in-game review, as is the clipboard button on a Source map in the app's queu
 `SubmissionSteps.For` turns the review into the **Next steps** list (only there, so the log stays the tools' output;
 the tab shows a dot until the selected map's steps have been looked at; the CLI prints them after the report): one step
 per pending fix made in Lumper or by porting again, then the entity tools setup and one step per pending in-game tool
-(only when there is one), the Lumper review, the packed assets, compressing, zoning (noting the zone file the
+(only when there is one), zoning (noting the zone file the
 porter wrote for GOKZ and Quake 3 maps), screenshots with `mom_official_screenshot`, the submission form and the review
 checklist, each linked to its section of the docs (`DocsLinks`).
 

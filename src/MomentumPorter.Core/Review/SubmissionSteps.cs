@@ -12,8 +12,7 @@ public sealed record NextStep(string Title, string Text, string? Url)
 
 /// <summary>
 /// What's left to do by hand after the porter is done with a map, from Momentum's map submission guides: entity fixes
-/// the porter couldn't make (in Lumper or the in-game entity tools), the Lumper checks, zoning, screenshots and the
-/// submission form.
+/// the porter couldn't make (in Lumper or the in-game entity tools), zoning, screenshots and the submission form.
 /// </summary>
 public static class SubmissionSteps
 {
@@ -52,24 +51,6 @@ public static class SubmissionSteps
 
         foreach (ReviewItem item in notes)
             steps.Add(new NextStep($"{item.Tool}: {item.Count(item.Pending)}", Capitalize(item.Message), item.Url));
-
-        steps.Add(new NextStep(
-            "Review the rest in Lumper",
-            "Open the map in Lumper. Delete the entities the Entity Review tab marks invalid, and check its comments on the remaining ones.",
-            DocsLinks.FixEntitiesInLumper));
-
-        steps.Add(new NextStep(
-            "Check the packed assets",
-            (mountedGame is null
-                ? "The porter removed packed files Momentum mounts from the games installed here (see the report); run the Remove Game Assets job for the rest. "
-                : $"Momentum mounts {mountedGame}, so the porter packed nothing and removed the packed files the installed mounted games have (see the report); run the Remove Game Assets job to catch assets from games that aren't installed here. ")
-            + "Delete copyrighted music and move the rest into sound/music, remove explicit or copyrighted textures, and if the map was renamed, use Update filename-specific Content when saving so its cubemaps follow.",
-            DocsLinks.RemoveValveAssets));
-
-        steps.Add(new NextStep(
-            "Compress and check the map",
-            "Save from Lumper with Save Compressed and Update filename-specific Content ticked, then look over Tools > Map Summary (Ctrl+H).",
-            DocsLinks.CompressTheMap));
 
         steps.Add(new NextStep(
             "Zone the map",
