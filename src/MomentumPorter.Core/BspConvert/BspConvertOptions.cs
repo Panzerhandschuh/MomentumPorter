@@ -140,6 +140,30 @@ public sealed class BspConvertOptions
     [PortOption("Copy clip hulls from", BspConvertHelp.GoldSrcHulls, Group = GoldSrcGroup, Order = 20, Advanced = true, Path = PathKind.File)]
     public string? GoldSrcHulls { get; set; }
 
+    // --pointsample
+    [PortOption("Point sampled textures", BspConvertHelp.PointSample, Group = GoldSrcGroup, Order = 25)]
+    public bool PointSample { get; set; }
+
+    // --gamma
+    [PortOption("Gamma", BspConvertHelp.Gamma, Group = GoldSrcGroup, Order = 26, Min = 1, Max = 5)]
+    public float Gamma { get; set; } = 2.2f;
+
+    // --brightness
+    [PortOption("Brightness", BspConvertHelp.Brightness, Group = GoldSrcGroup, Order = 27, Min = 0, Max = 10)]
+    public float Brightness { get; set; }
+
+    // --nooverbright
+    [PortOption("Overbright lighting", BspConvertHelp.Overbright, Group = GoldSrcGroup, Order = 42, Advanced = true)]
+    public bool Overbright { get; set; } = true;
+
+    // --lightgamma
+    [PortOption("Light gamma", BspConvertHelp.LightGamma, Group = GoldSrcGroup, Order = 40, Advanced = true, Min = 1, Max = 5)]
+    public float LightGamma { get; set; } = 2.5f;
+
+    // --texgamma
+    [PortOption("Texture gamma", BspConvertHelp.TexGamma, Group = GoldSrcGroup, Order = 41, Advanced = true, Min = 1, Max = 5)]
+    public float TexGamma { get; set; } = 2f;
+
     // Not a BSPConvert option, see BhopBlockFixStep
     [PortOption("Fix bhop blocks", BspConvertHelp.FixBhopBlocks, Group = GoldSrcGroup, Order = 30)]
     public bool FixBhopBlocks { get; set; } = true;
@@ -165,6 +189,10 @@ public sealed class BspConvertOptions
             errors.Add("The animated texture size budget must be greater than 0.");
         if (AnimFps <= 0 || AnimMaxFrames <= 0 || AnimMaxRes <= 0)
             errors.Add("Animated texture fps, max frames and max resolution must be greater than 0.");
+        if (!(Gamma > 0f) || !(LightGamma > 0f) || !(TexGamma > 0f))
+            errors.Add("Gamma, light gamma and texture gamma must be greater than 0.");
+        if (!(Brightness >= 0f))
+            errors.Add("Brightness can't be negative.");
         if (!Enum.IsDefined(OffModeEntities))
             errors.Add("Entities outside Defrag modes must be cpm or vq3.");
 
@@ -193,6 +221,15 @@ public sealed class BspConvertOptions
             {
                 wadDirs = WadDirectories!,
                 studiomdlPath = string.IsNullOrWhiteSpace(Studiomdl) ? null! : Studiomdl,
+                pointSample = PointSample,
+                brightness = new GoldSrcBrightness
+                {
+                    gamma = Gamma,
+                    brightness = Brightness,
+                    overbright = Overbright,
+                    lightGamma = LightGamma,
+                    texGamma = TexGamma,
+                },
             },
             q3 = new Q3ConverterOptions
             {
@@ -279,6 +316,12 @@ public sealed class BspConvertOptions
         Text(Wads, "--wads");
         Text(Studiomdl, "--studiomdl");
         Text(GoldSrcHulls, "--goldsrchulls");
+        Flag(PointSample, "--pointsample");
+        Value(Gamma, defaults.Gamma, "--gamma");
+        Value(Brightness, defaults.Brightness, "--brightness");
+        Flag(!Overbright, "--nooverbright");
+        Value(LightGamma, defaults.LightGamma, "--lightgamma");
+        Value(TexGamma, defaults.TexGamma, "--texgamma");
         return args;
     }
 

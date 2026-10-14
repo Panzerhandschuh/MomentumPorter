@@ -87,6 +87,24 @@ internal sealed partial class CliOptions
     [Option("goldsrchulls", HelpText = BspConvertHelp.GoldSrcHulls)]
     public string? GoldSrcHulls { get; set; }
 
+    [Option("pointsample", HelpText = BspConvertHelp.PointSample)]
+    public bool PointSample { get; set; }
+
+    [Option("gamma", HelpText = BspConvertHelp.Gamma)]
+    public float? Gamma { get; set; }
+
+    [Option("brightness", HelpText = BspConvertHelp.Brightness)]
+    public float? Brightness { get; set; }
+
+    [Option("nooverbright", HelpText = "Match the map's lighting to GoldSrc's fixed function renderer (gl_use_shaders 0) with gl_overbright 0. Half-Life's shaders always draw overbright lighting, whatever gl_overbright says.")]
+    public bool NoOverbright { get; set; }
+
+    [Option("lightgamma", HelpText = BspConvertHelp.LightGamma)]
+    public float? LightGamma { get; set; }
+
+    [Option("texgamma", HelpText = BspConvertHelp.TexGamma)]
+    public float? TexGamma { get; set; }
+
     [Option("noblockfix", HelpText = "Leave GoldSrc bhop blocks as they are. Otherwise: " + BspConvertHelp.FixBhopBlocks)]
     public bool NoBlockFix { get; set; }
 }

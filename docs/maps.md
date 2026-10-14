@@ -126,6 +126,18 @@ blocks` in the app's GoldSrc options, `--noblockfix` to turn it off). A block co
 into a `trigger_teleport` without landing on anything solid first, so this also finds blocks over a pit, which
 Momentum's runtime block fix misses because it only looks for teleports the block dips into as it drops. Named blocks lose their name and outputs, which the report warns about.
 
+GoldSrc maps are lit and their textures brightened as Half-Life's 25th anniversary update draws them with the video
+settings in the app's GoldSrc options: **Gamma** and **Brightness** (`--gamma`, `--brightness`), plus **Light gamma**,
+**Texture gamma** and **Overbright lighting** among the advanced ones (`--lightgamma`, `--texgamma`, `--nooverbright`).
+They default to the game's own (gamma 2.2, brightness 0, overbright on). A map made with an older config (gamma 2.5,
+brightness 1) has much brighter shadows with those, so set them to match. Leave overbright on unless matching
+`gl_use_shaders 0`: Half-Life's shaders draw it whatever `gl_overbright` says, so an old config's `gl_overbright 0`
+changes nothing.
+
+GoldSrc filters every texture unless texture filtering is turned off in its video options, which some maps are made for,
+with pixelated or dithered textures that look blurry filtered (kz_lain). **Point sampled textures** in the app's GoldSrc
+options (`--pointsample`) draws them unfiltered and without mips, as GoldSrc does with filtering off.
+
 In code, `BspConvertOptions` (`src/MomentumPorter.Core/BspConvert/`) mirrors BSPConvert's options with the same defaults,
 with `[PortOption]` metadata grouped General / Quake 3 / GoldSrc / Animated textures for the generated options form, and
 `ToConverterOptions` maps them onto BSPConvert's `BSPConverterOptions` as its command line does. `BspConvertJobs.Create`

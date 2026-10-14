@@ -25,6 +25,12 @@ public class BspConvertOptionsTests
         Assert.Null(converter.goldSrcHullSource);
         Assert.Null(converter.goldSrc.wadDirs);
         Assert.Null(converter.goldSrc.studiomdlPath);
+        Assert.False(converter.goldSrc.pointSample);
+        Assert.Equal(2.2f, converter.goldSrc.brightness.gamma);
+        Assert.Equal(0f, converter.goldSrc.brightness.brightness);
+        Assert.True(converter.goldSrc.brightness.overbright);
+        Assert.Equal(2.5f, converter.goldSrc.brightness.lightGamma);
+        Assert.Equal(2f, converter.goldSrc.brightness.texGamma);
 
         Q3ConverterOptions q3 = converter.q3;
         Assert.False(q3.noToolDisplacements);
@@ -105,6 +111,12 @@ public class BspConvertOptionsTests
             AnimBudget = 8,
             Wads = @"C:\wads, D:\more wads",
             Studiomdl = @"C:\momentum\bin\win64\studiomdl.exe",
+            PointSample = true,
+            Gamma = 2.5f,
+            Brightness = 1f,
+            Overbright = false,
+            LightGamma = 2.4f,
+            TexGamma = 1.9f,
         };
 
         BSPConverterOptions converter = options.ToConverterOptions("in.zip", "out");
@@ -122,6 +134,18 @@ public class BspConvertOptionsTests
         Assert.Equal(8L * 1024 * 1024, converter.q3.flipbook.byteBudget);
         Assert.Equal([@"C:\wads", @"D:\more wads"], converter.goldSrc.wadDirs);
         Assert.Equal(@"C:\momentum\bin\win64\studiomdl.exe", converter.goldSrc.studiomdlPath);
+        Assert.True(converter.goldSrc.pointSample);
+        Assert.Equal(2.5f, converter.goldSrc.brightness.gamma);
+        Assert.Equal(1f, converter.goldSrc.brightness.brightness);
+        Assert.False(converter.goldSrc.brightness.overbright);
+        Assert.Equal(2.4f, converter.goldSrc.brightness.lightGamma);
+        Assert.Equal(1.9f, converter.goldSrc.brightness.texGamma);
+
+        IReadOnlyList<string> args = options.ToCommandLine();
+        Assert.Contains("--pointsample", args);
+        Assert.Contains("--nooverbright", args);
+        Assert.Equal("2.5", args[args.ToList().IndexOf("--gamma") + 1]);
+        Assert.Equal("1", args[args.ToList().IndexOf("--brightness") + 1]);
     }
 
     [Fact]

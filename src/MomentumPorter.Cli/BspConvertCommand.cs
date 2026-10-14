@@ -117,12 +117,18 @@ internal static class BspConvertCommand
             Wads = cli.Wads,
             Studiomdl = cli.Studiomdl,
             GoldSrcHulls = cli.GoldSrcHulls,
+            PointSample = cli.PointSample,
+            Overbright = !cli.NoOverbright,
             FixBhopBlocks = !cli.NoBlockFix,
         };
 
         options.Subdiv = cli.Subdiv ?? options.Subdiv;
         options.MinDamage = cli.MinDmg ?? options.MinDamage;
         options.Scale = cli.Scale ?? options.Scale;
+        options.Gamma = cli.Gamma ?? options.Gamma;
+        options.Brightness = cli.Brightness ?? options.Brightness;
+        options.LightGamma = cli.LightGamma ?? options.LightGamma;
+        options.TexGamma = cli.TexGamma ?? options.TexGamma;
         options.FogMinHeight = cli.FogMinHeight ?? options.FogMinHeight;
         options.AnimBudget = cli.AnimBudget ?? options.AnimBudget;
         options.AnimMaxRes = cli.AnimMaxRes ?? options.AnimMaxRes;
