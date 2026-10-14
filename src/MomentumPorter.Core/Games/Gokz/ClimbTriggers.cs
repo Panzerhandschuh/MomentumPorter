@@ -34,7 +34,7 @@ public sealed partial class GokzProfile
     private const int VelocityModeRetain = 0;
     private const int VelocityModeReset = 1;
 
-    // The only keyvalues the engine's converter copies (besides outputs); everything else, climb_* included, is dropped
+    // The only keyvalues converted triggers keep (besides outputs); everything else, climb_* included, is dropped
     private static readonly HashSet<string> KeptKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         "classname",
@@ -138,7 +138,7 @@ public sealed partial class GokzProfile
             case AntiBhopName:
                 return new ClimbTrigger(ClimbTriggerType.AntiBhop, AntiBhopTime: entity.GetFloat("climb_anti_bhop_time", AntiBhopTimeDefault));
             default:
-                // Momentum's converter matches names exactly, so a differently cased name is left alone
+                // GOKZ matches climb_teleport and climb_anti_bhop exactly, so a differently cased name is left alone
                 if (name.Equals(TeleportName, StringComparison.OrdinalIgnoreCase)
                     || name.Equals(AntiCheckpointName, StringComparison.OrdinalIgnoreCase)
                     || name.Equals(AntiBhopName, StringComparison.OrdinalIgnoreCase))
@@ -172,7 +172,7 @@ public sealed partial class GokzProfile
         int spawnflags = entity.GetInt("spawnflags", TriggerAllowClients);
 
         if (entity.ContainsKey("parentname"))
-            context.Report.Warn($"{entity.Name} lost its parentname, Momentum's converter doesn't keep it");
+            context.Report.Warn($"{entity.Name} lost its parentname, so it no longer moves with its parent");
 
         foreach (string key in entity.Keys.Where(x => !KeptKeys.Contains(x)).ToList())
             entity.Remove(key);

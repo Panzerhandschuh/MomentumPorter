@@ -6,7 +6,7 @@ using MomentumPorter.Porting;
 /// <summary>
 /// CS:GO maps made for GOKZ's mapping API (github.com/KZGlobalTeam/gokz/wiki/Mapping-API). The API is driven by
 /// targetnames on stock entities (trigger_multiple, func_button, info_teleport_destination) plus keyvalues from
-/// kz_mapping_api.fgd. The trigger rules mirror Momentum's in-game entity tools ("Climb Trigger Converter").
+/// kz_mapping_api.fgd.
 /// </summary>
 public sealed partial class GokzProfile : IGameProfile
 {
