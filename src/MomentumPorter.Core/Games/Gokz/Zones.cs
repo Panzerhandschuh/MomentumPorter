@@ -40,6 +40,14 @@ public sealed partial class GokzProfile
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
     );
 
+    // Outputs a player sets off by touching a trigger or pressing a button; a timer button pressed from one of these is
+    // pressed by the player, in effect
+    private static readonly Dictionary<string, string[]> PressOutputs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["trigger_multiple"] = ["OnStartTouch", "OnStartTouchAll", "OnTrigger"],
+        ["func_button"] = ["OnPressed"],
+    };
+
     private static readonly Regex StartName = new(@"^climb_(?:bonus(?<course>\d+)_)?start$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private sealed class Course(int number)
@@ -51,7 +59,70 @@ public sealed partial class GokzProfile
         public List<Region> End { get; } = [];
 
         public string Name => Number == 0 ? "the main course" : $"bonus {Number}";
+
+        public void AddRegions(bool start, List<Region> regions) => (start ? Start : End).AddRange(regions);
     }
+
+    private static Course GetCourse(SortedDictionary<int, Course> courses, int number)
+    {
+        if (!courses.TryGetValue(number, out Course? course))
+            courses[number] = course = new Course(number);
+
+        return course;
+    }
+
+    /// <summary>
+    /// GOKZ times a course whenever its timer button is pressed, so maps also start and end the timer with a trigger
+    /// (or another button) whose output presses the timer button, which is often hidden out of reach. Those triggers
+    /// become zones of their own shape and those buttons zones around them, next to the timer button's own zone.
+    /// </summary>
+    private static void AddButtonPressers(PortContext context, SortedDictionary<int, Course> courses)
+    {
+        foreach (Entity entity in context.Entities)
+        {
+            // Timer entities are zoned already
+            if (TimerName.IsMatch(entity.Name))
+                continue;
+
+            var pressed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Entity.EntityConnection connection in entity.connections)
+            {
+                if (!connection.action.Equals("Press", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                Match match = TimerName.Match(connection.target);
+                if (!match.Success || !match.Groups["kind"].Value.Equals("button", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (!PressOutputs.TryGetValue(entity.ClassName, out string[]? outputs) || !outputs.Contains(connection.name, StringComparer.OrdinalIgnoreCase))
+                {
+                    context.Report.Warn($"{Describe(entity)} presses {connection.target} on {connection.name}, which isn't zoned; zone it in game if it times the run");
+                    continue;
+                }
+
+                if (!pressed.Add(connection.target))
+                    continue;
+
+                int number = CourseNumber(match);
+                if (match.Groups["course"].Success && number is < 1 or > MaxGokzCourse)
+                    continue;
+
+                bool button = entity.ClassName.Equals("func_button", StringComparison.OrdinalIgnoreCase);
+                List<Region> regions = button ? ButtonRegions(context, entity) : ZoneShapes.FromBrushEntity(context.Bsp, entity);
+                if (regions.Count == 0)
+                {
+                    context.Report.Warn($"{Describe(entity)} presses {connection.target} but has no brush model, so it has no zone");
+                    continue;
+                }
+
+                bool start = match.Groups["end"].Value.Equals("start", StringComparison.OrdinalIgnoreCase);
+                GetCourse(courses, number).AddRegions(start, regions);
+                context.Report.Change($"{entity.ClassName} pressing climb_*{(start ? "start" : "end")}button -> {(start ? "start" : "end")} zone {(button ? "around the button" : "of the trigger's shape")}");
+            }
+        }
+    }
+
+    private static string Describe(Entity entity) => entity.Name.Length > 0 ? $"{entity.ClassName} \"{entity.Name}\"" : $"a {entity.ClassName}";
 
     /// <summary>
     /// Momentum's timer comes from a zone file instead of entities. GOKZ's timer zones (trigger_multiple) become zones
@@ -91,10 +162,7 @@ public sealed partial class GokzProfile
                 continue;
             }
 
-            if (!courses.TryGetValue(number, out Course? course))
-                courses[number] = course = new Course(number);
-
-            (start ? course.Start : course.End).AddRange(regions);
+            GetCourse(courses, number).AddRegions(start, regions);
 
             if (button)
             {
@@ -106,6 +174,8 @@ public sealed partial class GokzProfile
                 context.Report.Change($"climb_*{(start ? "start" : "end")}zone -> {(start ? "start" : "end")} zone");
             }
         }
+
+        AddButtonPressers(context, courses);
 
         if (!courses.TryGetValue(0, out Course? main) || main.Start.Count == 0 || main.End.Count == 0)
         {

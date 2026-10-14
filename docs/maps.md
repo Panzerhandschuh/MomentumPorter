@@ -198,8 +198,7 @@ would run on.
 ### Counter-Strike: Global Offensive (GOKZ)
 
 For CS:GO maps made with GOKZ's [mapping API](https://github.com/KZGlobalTeam/gokz/wiki/Mapping-API), which gives
-meaning to targetnames and `kz_mapping_api.fgd` keyvalues on stock entities. The trigger rules are the same as Momentum's
-in-game entity tools ("Climb Trigger Converter"), so maps ported either way end up the same. They only apply to brush
+meaning to targetnames and `kz_mapping_api.fgd` keyvalues on stock entities. The trigger rules only apply to brush
 `trigger_multiple`s whose name matches exactly (case sensitive). Converted triggers keep `model`, `targetname`,
 `StartDisabled`, `solid`, `origin`, `filtername`, `hammerid` and their outputs, lose every other keyvalue (the
 `climb_*` ones included), and are tagged `_ported_by_tools 2` so the in-game tools know they're done.
@@ -215,7 +214,8 @@ in-game entity tools ("Climb Trigger Converter"), so maps ported either way end 
   and destination angles become `ResetVelocityOnTeleport` and `UseDestinationAngles`.
 - `climb_anti_checkpoint` becomes `trigger_momentum_disallowcheckpoint`, keeping its spawnflags.
 - `climb_anti_bhop` becomes `trigger_momentum_limitmovement` with the limit bhop spawnflag (524288) added to its own, and
-  `climb_anti_bhop_time` (default 0.2) as `BhopCooldown`.
+  `climb_anti_bhop_time` (default 0.2) as `BhopCooldown`. A time of 0, which in GOKZ blocks jumping altogether, gets the
+  limit jump spawnflag (131072) instead, since a `BhopCooldown` of 0 limits nothing.
 - `climb_anti_pause`, `climb_anti_jumpstat` and `climb_bhop_reset` are removed, since Momentum has nothing like them.
 - The worldspawn's `climb_mapping_api_version` is removed.
 - An `env_cascade_light` is added when the map has none (the CSM Fix), so cascaded shadow maps work. It follows the map's `light_environment`; a map without one is left alone, with a warning.
@@ -227,6 +227,10 @@ Momentum's timer comes from a zone file rather than entities, so the timer entit
   (`func_button`), bonus X `climb_bonusX_startzone` etc. Several start or end entities become regions of one zone.
 - Zone triggers become zones of the same shape: one region per brush, its outline clipped by the brush's vertical sides.
 - Buttons become box zones reaching 32 units past the button sideways and up, and 64 down.
+- GOKZ times a course whenever its timer button is pressed, so many maps start or end it with a `trigger_multiple`
+  whose `OnStartTouch`, `OnStartTouchAll` or `OnTrigger` presses the timer button, or a `func_button` whose `OnPressed`
+  does, with the timer button itself hidden out of reach. Those triggers become zones of their own shape and those buttons
+  zones around them, alongside the timer button's zone. Other entities that press a timer button are listed as warnings.
 - Each start zone teleports to the course's `climb_start`/`climb_bonusX_start`. Without one, the main course uses the
   map's first spawn point and bonuses the bottom middle of their start zone.
 - Bonuses are numbered without gaps, as Momentum requires, and at most 25 are kept.

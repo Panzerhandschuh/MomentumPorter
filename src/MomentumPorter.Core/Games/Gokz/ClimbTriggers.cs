@@ -26,7 +26,8 @@ public sealed partial class GokzProfile
     private const int BhopResetOnActivate = 1;
     private const int BhopResetOnLandNotFuncBhop = 2;
 
-    // trigger_momentum_limitmovement SF_LIMIT_BHOP
+    // trigger_momentum_limitmovement SF_LIMIT_JUMP and SF_LIMIT_BHOP
+    private const int LimitJump = 1 << 17;
     private const int LimitBhop = 1 << 19;
 
     // trigger_momentum_teleport VelocityMode values
@@ -225,7 +226,16 @@ public sealed partial class GokzProfile
 
             case ClimbTriggerType.AntiBhop:
                 entity.ClassName = "trigger_momentum_limitmovement";
-                // OR'd in, dropping SF_TRIGGER_ALLOW_CLIENTS would stop the trigger registering touches
+
+                // GOKZ blocks jumping altogether for a time of 0, where a BhopCooldown of 0 would limit nothing.
+                // The flags are OR'd in, dropping SF_TRIGGER_ALLOW_CLIENTS would stop the trigger registering touches.
+                if (trigger.AntiBhopTime == 0)
+                {
+                    entity.Set("spawnflags", spawnflags | LimitJump);
+                    context.Report.Change("climb_anti_bhop (time 0) -> trigger_momentum_limitmovement with jumping disabled");
+                    break;
+                }
+
                 entity.Set("spawnflags", spawnflags | LimitBhop);
                 entity.Set("BhopCooldown", trigger.AntiBhopTime);
                 context.Report.Change("climb_anti_bhop -> trigger_momentum_limitmovement");

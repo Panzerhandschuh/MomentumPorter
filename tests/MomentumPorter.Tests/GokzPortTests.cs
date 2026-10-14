@@ -209,7 +209,6 @@ public class GokzPortTests(ITestOutputHelper output)
     [Theory]
     [InlineData(null, "0.2")]
     [InlineData("0.5", "0.5")]
-    [InlineData("0", "0")]
     public void ConvertsAntiBhop(string? time, string cooldown)
     {
         if (CreateMap() is not { } map)
@@ -225,6 +224,26 @@ public class GokzPortTests(ITestOutputHelper output)
         Assert.Equal((1 | (1 << 19)).ToString(), entity["spawnflags"]);
         Assert.Equal(cooldown, entity["BhopCooldown"]);
         AssertNoClimbKeys(entity);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("0.0")]
+    public void ConvertsAntiBhopWithoutTimeToNoJumping(string time)
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        // GOKZ blocks jumping for good with a time of 0; a BhopCooldown of 0 would block nothing
+        Entity entity = map.AddTrigger("climb_anti_bhop", ("spawnflags", "1"), ("climb_anti_bhop_time", time));
+
+        map.Port();
+
+        Assert.Equal("trigger_momentum_limitmovement", entity.ClassName);
+        Assert.Equal((1 | (1 << 17)).ToString(), entity["spawnflags"]);
+        Assert.False(entity.ContainsKey("BhopCooldown"));
+        AssertNoClimbKeys(entity);
+        Assert.Contains("jumping disabled", map.PrintReport());
     }
 
     [Fact]
@@ -341,6 +360,61 @@ public class GokzPortTests(ITestOutputHelper output)
         Assert.Contains("timer buttons are approximated", report);
         Assert.Contains("GOKZ bonus 3 is Momentum bonus 2", report);
         Assert.Contains("bonus 4 has no timer end", report);
+    }
+
+    [Fact]
+    public void ZonesTriggersThatPressTimerButtons()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        // Timer buttons tucked away, pressed by a trigger at the end and a button at the start
+        Entity startButton = map.Add("func_button", "climb_startbutton");
+        Entity endButton = map.Add("func_button", "climb_endbutton");
+        Entity starter = map.Add("func_button", "start_press");
+        starter.connections.Add(Output("OnPressed", "climb_startbutton", "Press"));
+        Entity ender = map.AddTrigger("");
+        ender.connections.Add(Output("OnStartTouch", "climb_endbutton", "Press"));
+        ender.connections.Add(Output("OnTrigger", "climb_endbutton", "Press"));
+        // A bonus ended from a trigger, and an output that isn't the player's doing
+        map.AddTrigger("climb_bonus1_startzone");
+        Entity bonusEnder = map.AddTrigger("");
+        bonusEnder.connections.Add(Output("OnStartTouch", "climb_bonus1_endbutton", "Press"));
+        Entity relay = map.Add("logic_relay", "relay", null);
+        relay.connections.Add(Output("OnTrigger", "climb_endbutton", "Press"));
+
+        map.Port("gokz_pressers");
+
+        ZoneDefsBase zones = ParseAndValidate(Assert.Single(map.Context.ExtraOutputs).Content);
+        TrackZones main = zones.Tracks.Main!.Zones;
+
+        // The timer buttons keep their zones, the button and trigger that press them get their own
+        Assert.Equal(2, main.Segments[0].Checkpoints[0].Regions.Count);
+        Assert.Contains(main.Segments[0].Checkpoints[0].Regions, x => Contains(x, map.Bsp, starter));
+        Assert.Contains(main.Segments[0].Checkpoints[0].Regions, x => Contains(x, map.Bsp, startButton));
+        Assert.Equal(1 + ZoneShapes.FromBrushEntity(map.Bsp, ender).Count, main.End.Regions.Count);
+        Assert.Contains(main.End.Regions, x => Contains(x, map.Bsp, endButton));
+        Assert.Single(zones.Tracks.Bonuses);
+
+        string report = map.PrintReport();
+        Assert.Contains("trigger_multiple pressing climb_*endbutton -> end zone of the trigger's shape", report);
+        Assert.Contains("func_button pressing climb_*startbutton -> start zone around the button", report);
+        Assert.Contains("logic_relay \"relay\" presses climb_endbutton on OnTrigger, which isn't zoned", report);
+    }
+
+    private static Entity.EntityConnection Output(string name, string target, string action)
+    {
+        return new Entity.EntityConnection { name = name, target = target, action = action, param = "", delay = 0, fireOnce = -1 };
+    }
+
+    // Whether the region's box holds the middle of the entity's model
+    private static bool Contains(Region region, BSP bsp, Entity entity)
+    {
+        Model model = bsp.Models[entity.ModelNumber];
+        System.Numerics.Vector3 middle = (model.Minimums + model.Maximums) / 2 + entity.Origin;
+        return region.Points.Min(p => p[0]) <= middle.X && middle.X <= region.Points.Max(p => p[0])
+            && region.Points.Min(p => p[1]) <= middle.Y && middle.Y <= region.Points.Max(p => p[1])
+            && region.Bottom <= middle.Z && middle.Z <= region.Bottom + region.Height;
     }
 
     [Fact]
