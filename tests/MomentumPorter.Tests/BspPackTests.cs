@@ -42,10 +42,10 @@ public class BspPackTests
     public void FactoryAppendsPackAndInstallSteps()
     {
         (PortJob job, _) = PortJobFactory.CreateSourceMapJob("in.bsp", "out.bsp", new MapPortOptions { Pack = true, Install = true });
-        Assert.Equal(["Load map", "Convert entities", "Fix entities", "Remove mounted assets", "Check entities", "Write map", "Pack assets", "Install into Momentum"], job.Steps.Select(x => x.Name));
+        Assert.Equal(["Load map", "Convert entities", "Fix entities", "Remove mounted assets", "Fix materials", "Check entities", "Write map", "Pack assets", "Install into Momentum"], job.Steps.Select(x => x.Name));
 
         (job, _) = PortJobFactory.CreateSourceMapJob("in.bsp", "out.bsp", new MapPortOptions { Pack = false, Install = false });
-        Assert.Equal(6, job.Steps.Count);
+        Assert.Equal(7, job.Steps.Count);
     }
 
     // bspPack decompresses a compressed map with Momentum's bspzip, which drops every lump, so it gets it uncompressed

@@ -257,9 +257,9 @@ Everything else needs someone in game and is left to the entity review below.
 
 ## Automatic fixes
 
-After the game profile, `ApplyProfileStep` applies the bhop fixes, and `FixEntitiesStep` and `RemoveMountedAssetsStep`
-(`src/MomentumPorter.Core/Fixes/`) apply what Lumper's Entity Review tab would otherwise ask for by hand, where the
-answer is the same for every map. GoldSrc maps converted with BSPConvert get the entity fixes too
+After the game profile, `ApplyProfileStep` applies the bhop fixes, and `FixEntitiesStep`, `RemoveMountedAssetsStep`
+and `FixMaterialsStep` (`src/MomentumPorter.Core/Fixes/`) apply what Lumper's Entity Review tab and Pakfile Explorer
+would otherwise ask for by hand, where the answer is the same for every map. GoldSrc maps converted with BSPConvert get the entity fixes too
 (`GoldSrcEntityFixStep`).
 
 - **Bhop triggers** (`BhopTriggers`, Source maps named `bhop_*` by default, or every Source map or none as
@@ -298,6 +298,10 @@ answer is the same for every map. GoldSrc maps converted with BSPConvert get the
   removed; one that differs is a deliberate replacement and is kept with a warning. Only installed games are checked
   (found through Steam or the Settings page), the others are logged. `materials/maps/`, `maps/` and
   `resource/overviews/` are the map's own and skipped.
+- **Sky materials** (`SkyMaterials`, in `FixMaterialsStep`): the submission docs' Missing Skyboxes fix. Momentum draws
+  the `Sky` shader as `Sky_HDR` whenever HDR is on, which only samples `$hdrbasetexture` or `$hdrcompressedtexture`,
+  so a packed `materials/skybox/*.vmt` with `Sky` (or `Sky_HDR_DX9`) and nothing but a `$basetexture` shows the error
+  texture (surf_vale2). Those switch to `Sky_SDR`, which draws `$basetexture`; the rest of the file is kept as written.
 
 Not automated, because each needs a look at the map: teleport velocity modes (Reset, Keep Negative Z), boost trigger
 fixes (which scenario a boost is), landmark teleport angles, jail `logic_timer`s, weapons and `game_player_equip` in

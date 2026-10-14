@@ -38,9 +38,10 @@ and the map installed into Momentum.
   triggers from games that kept gravity changes (everything before CS:GO),
   removal of entities that do nothing in Momentum (level transitions,
   `point_servercommand`, `env_global`s nothing reads, Counter-Strike round
-  entities and the rest of Lumper's deny list), and removal of packed files
+  entities and the rest of Lumper's deny list), removal of packed files
   Momentum mounts anyway from CS:S, CS:GO, TF2, Portal 2 or HL2 (Lumper's
-  Remove Game Assets), when those games are installed.
+  Remove Game Assets), when those games are installed, and `Sky_SDR` for
+  packed skies that would otherwise show the error texture.
 - **Entity review**: what can't be decided for you is listed instead. Each
   ported map is checked the way the entity tools and the
   [review checklist](https://docs.momentum-mod.org/guide/map_submission/review_checklist/)

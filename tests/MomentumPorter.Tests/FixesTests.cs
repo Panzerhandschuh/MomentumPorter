@@ -225,6 +225,34 @@ public class FixesTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void SkyMaterialsWithoutHdrTexturesSwitchToSkySdr()
+    {
+        const string vale2 = "\"sky\"\n{\n    \"$basetexture\" \"skybox/sky27bk\"\n    \"$nofog\" \"1\"\n}\n";
+        Assert.Equal("\"Sky_SDR\"\n{\n    \"$basetexture\" \"skybox/sky27bk\"\n    \"$nofog\" \"1\"\n}\n", SkyMaterials.Fix(vale2));
+        Assert.Equal("// sky\r\n\"Sky_SDR\" { $basetexture skybox/a }", SkyMaterials.Fix("// sky\r\nSky_HDR_DX9 { $basetexture skybox/a }"));
+
+        // Momentum draws these fine: HDR textures to sample, or a shader other than Sky
+        Assert.Null(SkyMaterials.Fix("sky { $basetexture skybox/a $hdrcompressedtexture skybox/a_hdr }"));
+        Assert.Null(SkyMaterials.Fix("\"sky\" { \"$hdrbasetexture\" \"skybox/a_hdr\" \"$basetexture\" \"skybox/a\" }"));
+        Assert.Null(SkyMaterials.Fix("\"UnlitGeneric\" { \"$basetexture\" \"skybox/a\" }"));
+        Assert.Null(SkyMaterials.Fix("\"Sky_SDR\" { \"$basetexture\" \"skybox/a\" }"));
+    }
+
+    [Fact]
+    public void SurfVale2sSkyDrawsWithoutHdrTextures()
+    {
+        if (FindCssMap("surf_vale2") is not { } path)
+            return;
+
+        var context = new PortContext(new BSP(new FileInfo(path)), "surf_vale2", null);
+
+        Assert.Equal(6, SkyMaterials.Apply(context));
+        foreach (string side in new[] { "bk", "dn", "ft", "lf", "rt", "up" })
+            Assert.StartsWith("\"Sky_SDR\"", context.ReadPakFile($"materials/skybox/sky27{side}.vmt"));
+        Assert.Equal(0, SkyMaterials.Apply(context));
+    }
+
+    [Fact]
     public async Task ThePortJobRunsTheFixes()
     {
         if (FindCssMap("bhop_monster_jam") is not { } input)
