@@ -266,12 +266,28 @@ would otherwise ask for by hand, where the answer is the same for every map. Gol
   **Fix bhop triggers** / `--bhop-trigger-fix` says, since the fix breaks some maps; never KZ Mod maps): a bhop block's `trigger_multiple` renames the player
   (`AddOutput targetname X`) a moment after touching and back to `default` a little later, and the `trigger_teleport`
   around the block only takes players with that name through a `filter_activator_name`, so jumping up a slope or onto
-  a ledge that touches the trigger can teleport the player. The fix makes the renames happen `OnLand`, marks the
-  player as off the ground with a `_mom_leftground` context `OnJump`/`OnEndTouch`, and points the teleports at a
-  `filter_multi` (`momentum_tools__filter_bhop_multi`, then `_2`, `_3`... for any further name filter) of the name
-  filter and a `filter_activator_context` that rejects players with that context. Detection is the engine's
-  `IsBhopTrigger` (exactly two renames within a second on `OnStartTouch` or `OnTrigger`, the earlier one a name some
-  teleport's filter accepts). Fixed entities are tagged `_ported_by_tools 2`.
+  a ledge that touches the trigger can teleport the player. The fix turns each into a `trigger_momentum_bhop` that
+  teleports the player itself once they've stood in it as long as the first rename took (`TimeLimit`, the next tick
+  for a rename without delay), and only while they're on the ground. Its destination is the teleport's `target`, with
+  `UseDestinationAngles` from the teleport's `UseLandmarkAngles` (or its "preserve angles" spawnflag on old maps) and
+  `ResetVelocityOnTeleport` from `VelocityMode` 1. It gets `LandingLimit -1`, so bhop mode has no landing limit and
+  the other modes teleport on the second landing, like the `func_bhop`s. `OnTrigger` outputs move to `OnStartTouch`;
+  the teleports and filters stay as they were.
+  Each brush of the trigger goes to the filtered teleport it overlaps most (brushes that only share a face don't
+  count), or, when it overlaps none, the one above or below it within the player's height (many maps put the teleport
+  as a thin slab just under the trigger). One trigger often covers a whole stage of blocks over teleports to different
+  places, so brushes going to different places become separate entities (`SplitByBrushes`).
+  Where `trigger_momentum_bhop` can't do what the teleport did, that part of the trigger stays the `trigger_multiple`
+  it was, renames and all, so the map works as it did in CS:S (including the slope and ledge problem there). That's
+  a brush with no filtered teleport under it (kz_bhop_lj's name lets the player into a `trigger_push` that shoves them
+  off the block; other maps' renames do nothing there), one where a teleport to somewhere else overlaps it at least
+  half as much as the main one (where the player stands decides), and one over a teleport with a `landmark`, a
+  `VelocityMode` above 1, `TeleportOnEndTouch`, `StartDisabled`, no `target` or a name some output targets (the map
+  turns it on and off or moves its destination). Those parts are tagged, so the review counts them as looked at and
+  the fix leaves them alone when it runs again, and the report warns once for each trigger with the reasons.
+  Detection is the engine's `IsBhopTrigger` (exactly two renames within a second on `OnStartTouch` or `OnTrigger`, the earlier one a name some teleport's filter accepts), except that a
+  trigger that removes itself (`Kill` on `!self` or its own name) is a one-time teleporter, not a block (bhop_quarry's
+  `teleporter_N`). Fixed entities are tagged `_ported_by_tools 2`.
 - **Bhop blocks** (`BhopBlocks`, Source maps named `bhop_*` or `kz_*`, the ones Momentum's runtime block fix runs
   on): touch-activated `func_door`s and `func_button`s that drop the player into a teleport become `func_bhop`s in the
   BSP, as described for GoldSrc maps above.
@@ -324,7 +340,7 @@ entity changes: 3 boost triggers, ...") and into the **Next steps** tab:
 |---|---|---|---|
 | Invalid entities | required | entities Lumper denies for doing nothing (`DeadEntities`) | removed |
 | env_global | required | `env_global`s | removed (ones a `logic_auto` reads need that `logic_auto` changed first) |
-| Bhop Trigger Fix | review on `bhop_` maps, note otherwise | `trigger_multiple`s matching `IsBhopTrigger` | the renames are on `OnLand` |
+| Bhop Trigger Fix | review on `bhop_` maps, note otherwise | `trigger_multiple`s matching `IsBhopTrigger` | a tagged `trigger_momentum_bhop` or tagged `trigger_multiple` the fix left as it was, or the renames are on `OnLand` (Momentum's entity tools) |
 | Bhop Block Fix | required for `bhop_`/`kz_` maps | dropping blocks over a teleport (`BhopBlocks.Find`) | `func_bhop` |
 | Model Scale Fix | required, maps before version 21 | scaled dynamic props without a collision model | `ScaleType 1` |
 | CSM Fix | required for version 21 (CS:GO) maps | the map | it has an `env_cascade_light` |

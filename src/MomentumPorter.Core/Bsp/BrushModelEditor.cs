@@ -58,12 +58,23 @@ public sealed class BrushModelEditor
     /// <returns>The model for each brush, in brush index order</returns>
     public List<int> SplitModel(int model)
     {
-        List<(int Brush, int Leaf)> brushes = GetBrushes(model);
+        return SplitModel(model, GetBrushes(model).Select(x => (IReadOnlyList<int>)[x.Brush]).ToList());
+    }
 
-        var models = new List<int>(brushes.Count);
-        for (int i = 0; i < brushes.Count; i++)
+    /// <summary>
+    /// Gives each group of a model's brushes its own model whose collision tree only contains those brushes, like
+    /// <see cref="SplitModel(int)"/>. The first group keeps the original model.
+    /// </summary>
+    /// <param name="groups">Brush indices of the model, each in one group</param>
+    /// <returns>The model for each group, in order</returns>
+    public List<int> SplitModel(int model, IReadOnlyList<IReadOnlyList<int>> groups)
+    {
+        Dictionary<int, int> leaves = GetBrushes(model).ToDictionary(x => x.Brush, x => x.Leaf);
+
+        var models = new List<int>(groups.Count);
+        for (int i = 0; i < groups.Count; i++)
         {
-            int node = AddSingleBrushTree(brushes[i].Brush, brushes[i].Leaf, model);
+            int node = AddBrushTree(groups[i].Select(x => (x, leaves[x])).ToList(), model);
 
             int newModel = model;
             if (i > 0)
@@ -102,28 +113,39 @@ public sealed class BrushModelEditor
         AddPerLeafLump(name, lighting, x => new LeafAmbientLighting(x, lighting));
     }
 
-    // A single node whose sides both lead to a leaf holding only the brush. The node's plane doesn't matter then.
-    private int AddSingleBrushTree(int brush, int templateLeaf, int model)
+    // A single node whose sides both lead to a leaf holding only the brushes. The node's plane doesn't matter then.
+    private int AddBrushTree(List<(int Brush, int Leaf)> brushes, int model)
     {
-        (Vector3 mins, Vector3 maxs) = BrushGeometry.GetBrushBounds(_bsp, brush) ?? (_models[model].Minimums, _models[model].Maximums);
+        Vector3 mins = new(float.MaxValue), maxs = new(float.MinValue);
+        foreach ((int brush, _) in brushes)
+        {
+            (Vector3 brushMins, Vector3 brushMaxs) = BrushGeometry.GetBrushBounds(_bsp, brush) ?? (_models[model].Minimums, _models[model].Maximums);
+            mins = Vector3.Min(mins, brushMins);
+            maxs = Vector3.Max(maxs, brushMaxs);
+        }
+
         mins = ToShortBounds(mins, MathF.Floor);
         maxs = ToShortBounds(maxs, MathF.Ceiling);
 
         // Leaves reference their brushes with 16 bit indices in most versions
-        if (_leafBrushes.Type == NumList.DataType.UInt16 && _leafBrushes.Count > ushort.MaxValue)
-            throw new InvalidOperationException("Too many leaf brushes to add another");
+        if (_leafBrushes.Type == NumList.DataType.UInt16 && _leafBrushes.Count + brushes.Count > ushort.MaxValue + 1)
+            throw new InvalidOperationException("Too many leaf brushes to add more");
 
-        _leafBrushes.Add(brush);
+        int firstLeafBrush = _leafBrushes.Count;
+        foreach ((int brush, _) in brushes)
+            _leafBrushes.Add(brush);
 
-        // Keep the contents, cluster, area and water data of a leaf the brush was already in
+        // Keep the contents, cluster, area and water data of a leaf the first brush was already in
+        int templateLeaf = brushes[0].Leaf;
+        int firstBrush = brushes[0].Brush;
         var leaf = new Leaf(_leaves[templateLeaf], _leaves)
         {
             Minimums = mins,
             Maximums = maxs,
             FirstMarkFaceIndex = 0,
             NumMarkFaceIndices = 0,
-            FirstMarkBrushIndex = _leafBrushes.Count - 1,
-            NumMarkBrushIndices = 1,
+            FirstMarkBrushIndex = firstLeafBrush,
+            NumMarkBrushIndices = brushes.Count,
         };
         _leaves.Add(leaf);
         int leafIndex = _leaves.Count - 1;
@@ -133,7 +155,7 @@ public sealed class BrushModelEditor
 
         var node = new Node(new byte[Node.GetStructLength(_bsp.MapType, _nodes.LumpInfo.version)], _nodes)
         {
-            PlaneIndex = _brushSides[_brushes[brush].FirstSideIndex].PlaneIndex,
+            PlaneIndex = _brushSides[_brushes[firstBrush].FirstSideIndex].PlaneIndex,
             Child1Index = -1 - leafIndex,
             Child2Index = -1 - leafIndex,
             Minimums = mins,

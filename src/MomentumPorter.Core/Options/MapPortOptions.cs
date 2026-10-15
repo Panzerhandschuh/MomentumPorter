@@ -31,7 +31,7 @@ public sealed class MapPortOptions
     [PortOption("Compress output", "LZMA compress the ported map's lumps and packed files, like bspzip -repack -compress.", Order = 0)]
     public bool Compress { get; set; } = true;
 
-    [PortOption("Fix bhop triggers", "Make the triggers on bhop blocks that rename the player for a filtered teleport only do it once they land, so jumping up a slope or onto a ledge next to a block doesn't teleport them. By default only maps named bhop_* get it; pick On for bhop maps named otherwise (e.g. kz_bhop_*), or Off for maps it breaks. KZ Mod maps never need it.", Order = 1)]
+    [PortOption("Fix bhop triggers", "Turn the triggers on bhop blocks that rename the player for a filtered teleport into trigger_momentum_bhops, which only teleport a player standing on the block, so jumping up a slope or onto a ledge next to a block doesn't teleport them. By default only maps named bhop_* get it; pick On for bhop maps named otherwise (e.g. kz_bhop_*), or Off for maps it breaks. KZ Mod maps never need it.", Order = 1)]
     public BhopTriggerFix FixBhopTriggers { get; set; } = BhopTriggerFix.BhopMapsOnly;
 
     /// <summary>

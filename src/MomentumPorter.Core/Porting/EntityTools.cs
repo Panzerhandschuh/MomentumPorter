@@ -16,16 +16,11 @@ public static class EntityTools
     /// <summary>ENTITY_TOOLS_VERSION. Version 1 maps exist too; any value counts as tagged.</summary>
     public const int Version = 2;
 
-    /// <summary>The bhop trigger fix's filters (<see cref="Review.BhopTriggers"/>); further teleport filters get _2, _3... multis.</summary>
-    public const string BhopFilterContextName = "momentum_tools__filter_bhop_context";
-
+    /// <summary>The filter the tools' bhop trigger fix pointed the teleports at, which marks a map it went through.</summary>
     public const string BhopFilterMultiName = "momentum_tools__filter_bhop_multi";
 
     /// <summary>The "Only activate when standing on the ground" filter of the Boost Triggers tool.</summary>
     public const string StandableFilterName = "momentum_tools__filter_standable";
-
-    /// <summary>The response context the bhop trigger fix sets while the player is off the ground.</summary>
-    public const string LeftGroundContext = "_mom_leftground";
 
     public static bool IsTagged(Entity entity) => entity.ContainsKey(PortedByToolsKey);
 

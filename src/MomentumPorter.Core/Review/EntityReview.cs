@@ -253,9 +253,7 @@ public sealed class EntityReview
         List<Entity> entities = context.Entities;
         bool bhopMap = BhopTriggers.AppliesTo(context.MapName);
         int unfixed = BhopTriggers.Find(entities).Count;
-        // A fixed trigger renames the player on landing instead
-        int done = entities.Count(x => x.ClassName.Equals("trigger_multiple", StringComparison.OrdinalIgnoreCase)
-            && x.connections.Any(c => c.name.Equals("OnLand", StringComparison.OrdinalIgnoreCase) && (c.param ?? "").StartsWith("targetname", StringComparison.OrdinalIgnoreCase)));
+        int done = entities.Count(BhopTriggers.IsFixedTrigger);
         return new ReviewItem(
             "Bhop Trigger Fix",
             bhopMap ? ReviewSeverity.Review : ReviewSeverity.Note,
@@ -263,7 +261,7 @@ public sealed class EntityReview
             unfixed + done,
             done,
             bhopMap
-                ? "these trigger_multiples still rename the player on touch, so jumping up slopes or onto ledges next to a block can teleport them; port the map with Fix bhop triggers left on bhop_ maps only, which moves the renames to landing, unless the fix breaks the map"
+                ? "these trigger_multiples still rename the player on touch, so jumping up slopes or onto ledges next to a block can teleport them; port the map with Fix bhop triggers left on bhop_ maps only, which turns them into trigger_momentum_bhops that only teleport a grounded player, unless the fix breaks the map"
                 : "these trigger_multiples rename the player on touch, so jumping up slopes or onto ledges next to them can teleport the player; the porter only fixes them on maps named bhop_* by default, so for a bhop map named otherwise (e.g. kz_bhop_*), port it with Fix bhop triggers On (--bhop-trigger-fix on)",
             DocsLinks.BhopTriggerFix);
     }

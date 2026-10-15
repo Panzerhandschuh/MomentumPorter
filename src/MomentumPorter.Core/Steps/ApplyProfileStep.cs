@@ -60,7 +60,7 @@ public sealed class ApplyProfileStep : IPortStep
             {
                 int bhopTriggers = BhopTriggers.Fix(portContext);
                 if (bhopTriggers > 0)
-                    context.Log.Info($"Moved {bhopTriggers} bhop trigger{(bhopTriggers == 1 ? "'s" : "s'")} renames to landing");
+                    context.Log.Info($"Turned {bhopTriggers} bhop trigger{(bhopTriggers == 1 ? "" : "s")} into trigger_momentum_bhop");
             }
 
             if (EntityReview.HasBlockFixPrefix(state.MapName))
