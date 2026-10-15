@@ -50,48 +50,57 @@ public static class BrushGeometry
 
     /// <summary>
     /// A brush's bounds, in the model's own space. Built from its axial planes, which compiled brushes always have (as
-    /// bevels if nothing else), or else from its corners. Null for a brush with no volume.
+    /// bevels if nothing else), or else from the corners of its real sides. Null for a brush with no volume.
     /// </summary>
     public static (Vector3 Mins, Vector3 Maxs)? GetBrushBounds(BSP bsp, int brush)
     {
-        List<PlaneBSP> planes = GetBrushPlanes(bsp, brush);
-
+        // vbsp puts the six axial planes first. Its later edge bevels can be axial too, but with the wrong distance: it
+        // snaps a nearly axial bevel's normal without moving the plane, which far from the origin puts it units off
+        // (bhop_ivy_final's sloped bhop path ends up with tops below its bottom). So the first one in each direction wins.
         float?[] mins = new float?[3];
         float?[] maxs = new float?[3];
-        foreach (PlaneBSP plane in planes)
+        foreach (PlaneBSP plane in GetBrushPlanes(bsp, brush, bevels: true))
         {
             Vector3 normal = plane.Normal;
             for (int axis = 0; axis < 3; axis++)
             {
                 if (normal[axis] == 1 && normal.LengthSquared() == 1)
-                    maxs[axis] = plane.Distance;
+                    maxs[axis] ??= plane.Distance;
                 else if (normal[axis] == -1 && normal.LengthSquared() == 1)
-                    mins[axis] = -plane.Distance;
+                    mins[axis] ??= -plane.Distance;
             }
         }
 
         if (mins.All(x => x is not null) && maxs.All(x => x is not null))
-            return (new Vector3(mins[0]!.Value, mins[1]!.Value, mins[2]!.Value), new Vector3(maxs[0]!.Value, maxs[1]!.Value, maxs[2]!.Value));
+        {
+            var boxMins = new Vector3(mins[0]!.Value, mins[1]!.Value, mins[2]!.Value);
+            var boxMaxs = new Vector3(maxs[0]!.Value, maxs[1]!.Value, maxs[2]!.Value);
+            if (boxMins.X <= boxMaxs.X && boxMins.Y <= boxMaxs.Y && boxMins.Z <= boxMaxs.Z)
+                return (boxMins, boxMaxs);
+        }
 
-        return GetCornerBounds(planes);
+        // Bevels never cut into a brush, so its real sides alone give its shape
+        return GetCornerBounds(GetBrushPlanes(bsp, brush, bevels: false));
     }
 
     /// <summary>
-    /// Whether a point (in the model's own space) is inside a brush: behind every one of its planes.
+    /// Whether a point (in the model's own space) is inside a brush: behind every one of its real sides. Like the
+    /// engine's point tests, this skips bevels, which only matter to box traces.
     /// </summary>
     public static bool Contains(BSP bsp, int brush, Vector3 point)
     {
-        List<PlaneBSP> planes = GetBrushPlanes(bsp, brush);
+        List<PlaneBSP> planes = GetBrushPlanes(bsp, brush, bevels: false);
         return planes.Count > 0 && planes.All(x => Vector3.Dot(x.Normal, point) - x.Distance <= CornerEpsilon);
     }
 
     /// <summary>
     /// Where the vertical line through (x, y) (in the model's own space) passes through a brush: the heights it enters
-    /// and leaves it at, which on a sloped brush depend on where the line is. Null if the line misses the brush.
+    /// and leaves it at, which on a sloped brush depend on where the line is. Null if the line misses the brush. Skips
+    /// bevels, like <see cref="Contains"/>.
     /// </summary>
     public static (float Bottom, float Top)? GetColumnSpan(BSP bsp, int brush, float x, float y)
     {
-        List<PlaneBSP> planes = GetBrushPlanes(bsp, brush);
+        List<PlaneBSP> planes = GetBrushPlanes(bsp, brush, bevels: false);
         if (planes.Count == 0)
             return null;
 
@@ -120,7 +129,7 @@ public static class BrushGeometry
         return bottom <= top ? (bottom, top) : null;
     }
 
-    private static List<PlaneBSP> GetBrushPlanes(BSP bsp, int brush)
+    private static List<PlaneBSP> GetBrushPlanes(BSP bsp, int brush, bool bevels)
     {
         Brush brushData = bsp.Brushes[brush];
         Lump<BrushSide> sides = bsp.BrushSides;
@@ -128,7 +137,10 @@ public static class BrushGeometry
 
         var result = new List<PlaneBSP>(brushData.NumSides);
         for (int side = brushData.FirstSideIndex; side < brushData.FirstSideIndex + brushData.NumSides; side++)
-            result.Add(planes[sides[side].PlaneIndex]);
+        {
+            if (bevels || !sides[side].IsBevel)
+                result.Add(planes[sides[side].PlaneIndex]);
+        }
 
         return result;
     }
