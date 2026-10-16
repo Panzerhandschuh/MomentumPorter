@@ -218,6 +218,17 @@ meaning to targetnames and `kz_mapping_api.fgd` keyvalues on stock entities. The
   limit jump spawnflag (131072) instead, since a `BhopCooldown` of 0 limits nothing.
 - `climb_anti_pause`, `climb_anti_jumpstat` and `climb_bhop_reset` are removed, since Momentum has nothing like them.
 - The worldspawn's `climb_mapping_api_version` is removed.
+- `filter_activator_context`s get a value. CS:GO's checks one context name (`ResponseContext cpA2`) and passes when
+  the activator's value for it is above 0, so maps keep progress with `AddContext cpA2:1` and clear it with `cpA2:0`
+  (checkpoint teleports, double hop blocks). Momentum's takes `name:value` and never passes a bare name, so the filter
+  becomes `cpA2:1`, using the one value above 0 the map's `AddContext` outputs give that context (1 when none do). A
+  context the map sets to several values above 0 is left as it was, with a warning.
+- Anti-crouch sections become `trigger_momentum_limitmovement` with the limit crouch spawnflag (262144). In CS:GO they
+  are a `trigger_teleport` filtered on a context, with a `trigger_multiple` right above it (its bottom the teleport's
+  top) whose only outputs are `OnEndTouch` `AddContext`s setting that context: crouching on the floor pulls the top
+  of the player's hull out of the trigger and the teleport takes them. The teleport keeps its model and spawnflags
+  and loses `target`, `filtername` and its other teleport keyvalues; the trigger is removed once no filter on its
+  contexts is used.
 - An `env_cascade_light` is added when the map has none (the CSM Fix), so cascaded shadow maps work. It follows the map's `light_environment`; a map without one is left alone, with a warning.
 
 Momentum's timer comes from a zone file rather than entities, so the timer entities become

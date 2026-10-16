@@ -402,9 +402,96 @@ public class GokzPortTests(ITestOutputHelper output)
         Assert.Contains("logic_relay \"relay\" presses climb_endbutton on OnTrigger, which isn't zoned", report);
     }
 
-    private static Entity.EntityConnection Output(string name, string target, string action)
+    private static Entity.EntityConnection Output(string name, string target, string action, string param = "", float delay = 0)
     {
-        return new Entity.EntityConnection { name = name, target = target, action = action, param = "", delay = 0, fireOnce = -1 };
+        return new Entity.EntityConnection { name = name, target = target, action = action, param = param, delay = delay, fireOnce = -1 };
+    }
+
+    [Fact]
+    public void GivesContextFiltersTheValueTheMapSets()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        // kz_armored_core's checkpoints: set to 1 on reaching one, cleared with 0
+        Entity checkpoint = map.AddTrigger("");
+        checkpoint.connections.Add(Output("OnStartTouch", "!activator", "AddContext", "cp1:0,cp2:1"));
+        Entity start = map.AddTrigger("");
+        start.connections.Add(Output("OnStartTouch", "!activator", "AddContext", "cp1:0", 0.02f));
+        start.connections.Add(Output("OnStartTouch", "!activator", "RemoveContext", "cp2", 0.02f));
+        Entity cp1 = map.Add("filter_activator_context", "context_cp1", null, ("ResponseContext", "cp1"), ("Negated", "Allow entities that match criteria"));
+        Entity cp2 = map.Add("filter_activator_context", "context_cp2", null, ("ResponseContext", " cp2 "), ("Negated", "1"));
+        // Already Momentum's way, and a context the map sets to two values
+        Entity pair = map.Add("filter_activator_context", "context_pair", null, ("ResponseContext", "cp2:1"));
+        Entity counter = map.AddTrigger("");
+        counter.connections.Add(Output("OnStartTouch", "!activator", "AddContext", "laps:1"));
+        counter.connections.Add(Output("OnEndTouch", "!activator", "AddContext", "laps:2"));
+        Entity laps = map.Add("filter_activator_context", "context_laps", null, ("ResponseContext", "laps"));
+
+        map.Port();
+
+        // Nothing sets cp1 above 0, so it never passes, as in CS:GO
+        Assert.Equal("cp1:1", cp1["ResponseContext"]);
+        Assert.Equal("cp2:1", cp2["ResponseContext"]);
+        Assert.Equal("1", cp2["Negated"]);
+        Assert.Equal("cp2:1", pair["ResponseContext"]);
+        Assert.Equal("laps", laps["ResponseContext"]);
+        string report = map.PrintReport();
+        Assert.Contains("2 x filter_activator_context context name -> name:value", report);
+        Assert.Contains("filter_activator_context \"context_laps\" wasn't converted: the map sets \"laps\" to 1, 2", report);
+    }
+
+    [Fact]
+    public void ConvertsAntiCrouchTeleports()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        // kz_armored_core's anti-crouch: crouching on the floor leaves the trigger above the teleport, which sets
+        // "crouched" for a moment
+        Entity teleport = map.Add("trigger_teleport", "", -1, ("spawnflags", "4097"), ("target", "dest"), ("filtername", "crouch_context"), ("UseLandmarkAngles", "1"));
+        Entity trigger = map.AddTrigger("", ("wait", "0.002"));
+        trigger.connections.Add(Output("OnEndTouch", "!activator", "AddContext", "crouched:1"));
+        trigger.connections.Add(Output("OnEndTouch", "!activator", "AddContext", "crouched:0", 0.03f));
+        PlaceAbove(map.Bsp, trigger, teleport);
+        map.Add("filter_activator_context", "crouch_context", null, ("ResponseContext", "crouched"));
+        Entity reset = map.AddTrigger("");
+        reset.connections.Add(Output("OnStartTouch", "!activator", "AddContext", "crouched:0"));
+
+        // The same, with the trigger off to the side, isn't one
+        Entity otherTeleport = map.Add("trigger_teleport", "", -1, ("target", "dest"), ("filtername", "other_context"));
+        Entity otherTrigger = map.AddTrigger("");
+        otherTrigger.connections.Add(Output("OnEndTouch", "!activator", "AddContext", "other:1"));
+        PlaceAbove(map.Bsp, otherTrigger, otherTeleport);
+        otherTrigger["origin"] = $"{otherTrigger.Origin.X + 100000} {otherTrigger.Origin.Y} {otherTrigger.Origin.Z}";
+        map.Add("filter_activator_context", "other_context", null, ("ResponseContext", "other"));
+
+        map.Port();
+
+        Assert.Equal("trigger_momentum_limitmovement", teleport.ClassName);
+        Assert.Equal((4097 | (1 << 18)).ToString(), teleport["spawnflags"]);
+        Assert.False(teleport.ContainsKey("target"));
+        Assert.False(teleport.ContainsKey("filtername"));
+        Assert.False(teleport.ContainsKey("UseLandmarkAngles"));
+        Assert.Equal("2", teleport["_ported_by_tools"]);
+        Assert.DoesNotContain(trigger, map.Bsp.Entities);
+        Assert.Contains(reset, map.Bsp.Entities);
+
+        Assert.Equal("trigger_teleport", otherTeleport.ClassName);
+        Assert.Contains(otherTrigger, map.Bsp.Entities);
+        string report = map.PrintReport();
+        Assert.Contains("1 x anti-crouch trigger_teleport -> trigger_momentum_limitmovement with crouching disabled", report);
+        Assert.Contains("1 x removed the end touch trigger of an anti-crouch section", report);
+    }
+
+    // Moves the trigger so its bottom is the teleport's top, over its middle
+    private static void PlaceAbove(BSP bsp, Entity trigger, Entity teleport)
+    {
+        Model below = bsp.Models[teleport.ModelNumber];
+        Model above = bsp.Models[trigger.ModelNumber];
+        System.Numerics.Vector3 offset = (below.Minimums + below.Maximums) / 2 - (above.Minimums + above.Maximums) / 2 + teleport.Origin;
+        offset.Z = below.Maximums.Z + teleport.Origin.Z - above.Minimums.Z;
+        trigger["origin"] = $"{offset.X} {offset.Y} {offset.Z}";
     }
 
     // Whether the region's box holds the middle of the entity's model
