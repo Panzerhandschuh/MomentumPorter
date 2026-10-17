@@ -160,7 +160,8 @@ public class GokzPortTests(ITestOutputHelper output)
 
     [Theory]
     [InlineData("1", "0", "1", "0", "0.08")]
-    [InlineData("2", "0.1", "3", "1", "0.1")]
+    // A single bhop forgets a block when the player lands on another one, a sequential one only off them
+    [InlineData("2", "0.1", "7", "1", "0.1")]
     [InlineData("3", "0.05", "3", "1", "0.08")]
     public void ConvertsBhopTriggers(string type, string delay, string spawnflags, string landingLimit, string timeLimit)
     {
@@ -189,7 +190,7 @@ public class GokzPortTests(ITestOutputHelper output)
 
         string report = map.PrintReport();
         Assert.Contains("-> trigger_momentum_bhop", report);
-        Assert.Equal(type == "3", report.Contains("sequential bhop triggers only remember their own landings"));
+        Assert.DoesNotContain("sequential bhop", report);
     }
 
     [Fact]
@@ -273,6 +274,8 @@ public class GokzPortTests(ITestOutputHelper output)
 
         Entity unknownType = map.AddTrigger("climb_teleport", ("climb_teleport_type", "7"));
         Entity miscased = map.AddTrigger("Climb_Teleport");
+        // GOKZ matches these in any case
+        Entity antiCheckpoint = map.AddTrigger("Climb_Anti_Checkpoint");
         Entity noModel = map.Add("trigger_multiple", "climb_teleport", model: null);
 
         map.Port();
@@ -280,6 +283,7 @@ public class GokzPortTests(ITestOutputHelper output)
         Assert.Equal("trigger_multiple", unknownType.ClassName);
         Assert.Equal("7", unknownType["climb_teleport_type"]);
         Assert.Equal("trigger_multiple", miscased.ClassName);
+        Assert.Equal("trigger_momentum_disallowcheckpoint", antiCheckpoint.ClassName);
         Assert.Equal("trigger_multiple", noModel.ClassName);
 
         string report = map.PrintReport();
@@ -297,12 +301,16 @@ public class GokzPortTests(ITestOutputHelper output)
         map.AddTrigger("climb_anti_pause");
         map.AddTrigger("climb_anti_jumpstat");
         map.AddTrigger("climb_bhop_reset");
+        // GOKZ matches the anti triggers in any case and climb_bhop_reset exactly
+        map.AddTrigger("CLIMB_ANTI_PAUSE");
+        Entity miscasedReset = map.AddTrigger("Climb_Bhop_Reset");
 
         map.Port();
 
-        Assert.DoesNotContain(map.Bsp.Entities, x => x.Name is "climb_anti_pause" or "climb_anti_jumpstat" or "climb_bhop_reset");
+        Assert.DoesNotContain(map.Bsp.Entities, x => x.Name is "climb_anti_pause" or "CLIMB_ANTI_PAUSE" or "climb_anti_jumpstat" or "climb_bhop_reset");
+        Assert.Contains(miscasedReset, map.Bsp.Entities);
         string report = map.PrintReport();
-        Assert.Contains("2 x warning: climb_anti_pause removed", report);
+        Assert.Contains("3 x warning: climb_anti_pause removed", report);
         Assert.Contains("1 x warning: climb_anti_jumpstat removed", report);
         Assert.Contains("1 x warning: climb_bhop_reset removed", report);
     }

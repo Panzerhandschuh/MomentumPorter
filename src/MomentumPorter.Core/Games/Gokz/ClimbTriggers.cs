@@ -10,6 +10,7 @@ public sealed partial class GokzProfile
     private const string TeleportName = "climb_teleport";
     private const string AntiCheckpointName = "climb_anti_checkpoint";
     private const string AntiBhopName = "climb_anti_bhop";
+    private const string BhopResetName = "climb_bhop_reset";
 
     // kz_mapping_api.fgd defaults, used when the map leaves a keyvalue out
     private const float AntiBhopTimeDefault = 0.2f;
@@ -25,6 +26,7 @@ public sealed partial class GokzProfile
     // trigger_momentum_bhop spawnflags. 1 is also SF_TRIGGER_ALLOW_CLIENTS, so it has to stay set.
     private const int BhopResetOnActivate = 1;
     private const int BhopResetOnLandNotFuncBhop = 2;
+    private const int BhopResetOnLandAnywhereElse = 4;
 
     // trigger_momentum_limitmovement SF_LIMIT_JUMP and SF_LIMIT_BHOP
     private const int LimitJump = 1 << 17;
@@ -47,8 +49,8 @@ public sealed partial class GokzProfile
         "hammerid",
     };
 
-    // GOKZ triggers Momentum has nothing like
-    private static readonly Dictionary<string, string> UnsupportedTriggers = new(StringComparer.Ordinal)
+    // GOKZ triggers Momentum has nothing like. GOKZ matches climb_bhop_reset exactly and the anti ones in any case.
+    private static readonly Dictionary<string, string> UnsupportedTriggers = new(StringComparer.OrdinalIgnoreCase)
     {
         ["climb_anti_pause"] = "climb_anti_pause removed: Momentum has no run pausing to block",
         ["climb_anti_jumpstat"] = "climb_anti_jumpstat removed: Momentum has no jumpstats",
@@ -133,14 +135,14 @@ public sealed partial class GokzProfile
                     Relative: GetBool(entity, "climb_teleport_relative", false)
                 );
             }
-            case AntiCheckpointName:
+            case var _ when name.Equals(AntiCheckpointName, StringComparison.OrdinalIgnoreCase):
                 return new ClimbTrigger(ClimbTriggerType.AntiCheckpoint);
             case AntiBhopName:
                 return new ClimbTrigger(ClimbTriggerType.AntiBhop, AntiBhopTime: entity.GetFloat("climb_anti_bhop_time", AntiBhopTimeDefault));
             default:
-                // GOKZ matches climb_teleport and climb_anti_bhop exactly, so a differently cased name is left alone
+                // GOKZ matches climb_teleport and climb_anti_bhop exactly (climb_anti_checkpoint in any case), so a
+                // differently cased name is left alone
                 if (name.Equals(TeleportName, StringComparison.OrdinalIgnoreCase)
-                    || name.Equals(AntiCheckpointName, StringComparison.OrdinalIgnoreCase)
                     || name.Equals(AntiBhopName, StringComparison.OrdinalIgnoreCase))
                 {
                     context.Report.Warn($"trigger_multiple named \"{name}\" wasn't converted, GOKZ names are matched case sensitively");
@@ -162,9 +164,6 @@ public sealed partial class GokzProfile
 
         if (trigger.Relative)
             context.Report.Warn("climb_teleport \"Relative To Trigger Origin\" isn't reproducible; it teleports to the destination itself");
-
-        if (trigger.Type == ClimbTriggerType.SequentialBhop)
-            context.Report.Warn("sequential bhop triggers only remember their own landings, not which triggers of the set were used");
     }
 
     private static void ConvertClimbTrigger(PortContext context, Entity entity, ClimbTrigger trigger)
@@ -202,8 +201,15 @@ public sealed partial class GokzProfile
                 bool multi = trigger.Type == ClimbTriggerType.MultiBhop;
                 entity.ClassName = "trigger_momentum_bhop";
 
-                // Landing outside any bhop trigger ends a single/sequential bhop chain
-                entity.Set("spawnflags", multi ? BhopResetOnActivate : BhopResetOnActivate | BhopResetOnLandNotFuncBhop);
+                // GOKZ forgets the bhops a player has used when they land outside any bhop trigger. A single bhop only
+                // teleports a player landing again on the last bhop trigger they left, so landing on another one
+                // forgets it too; a sequential one teleports a player landing on any of them again.
+                entity.Set("spawnflags", trigger.Type switch
+                {
+                    ClimbTriggerType.MultiBhop => BhopResetOnActivate,
+                    ClimbTriggerType.SingleBhop => BhopResetOnActivate | BhopResetOnLandNotFuncBhop | BhopResetOnLandAnywhereElse,
+                    _ => BhopResetOnActivate | BhopResetOnLandNotFuncBhop,
+                });
 
                 // Multi bhops can be landed on indefinitely, the others teleport on the second landing
                 entity.Set("LandingLimit", multi ? 0 : 1);
@@ -249,7 +255,8 @@ public sealed partial class GokzProfile
     {
         foreach (Entity entity in context.OfClass("trigger_multiple").ToList())
         {
-            if (!UnsupportedTriggers.TryGetValue(entity.Name, out string? warning))
+            if (!UnsupportedTriggers.TryGetValue(entity.Name, out string? warning)
+                || entity.Name.Equals(BhopResetName, StringComparison.OrdinalIgnoreCase) && entity.Name != BhopResetName)
                 continue;
 
             context.EntityLump.Remove(entity);

@@ -203,7 +203,8 @@ would run on.
 
 For CS:GO maps made with GOKZ's [mapping API](https://github.com/KZGlobalTeam/gokz/wiki/Mapping-API), which gives
 meaning to targetnames and `kz_mapping_api.fgd` keyvalues on stock entities. The trigger rules only apply to brush
-`trigger_multiple`s whose name matches exactly (case sensitive). Converted triggers keep `model`, `targetname`,
+`trigger_multiple`s whose name matches, exactly for `climb_teleport`, `climb_anti_bhop` and `climb_bhop_reset` and
+in any case for `climb_anti_checkpoint`, `climb_anti_pause` and `climb_anti_jumpstat`, as GOKZ matches them. Converted triggers keep `model`, `targetname`,
 `StartDisabled`, `solid`, `origin`, `filtername`, `hammerid` and their outputs, lose every other keyvalue (the
 `climb_*` ones included), and are tagged `_ported_by_tools 2` so the in-game tools know they're done.
 
@@ -212,8 +213,10 @@ meaning to targetnames and `kz_mapping_api.fgd` keyvalues on stock entities. The
   `TeleportDelay`, `climb_teleport_reset_speed` (default on) becomes `VelocityMode` 1 (reset) or 0 (retain), always
   written since Momentum retains by default, and `climb_teleport_use_dest_angles` (default on) becomes `UseLandmarkAngles`.
 - `climb_teleport` with type 1 (Multi Bhop), 2 (Single Bhop) or 3 (Sequential Bhop) becomes `trigger_momentum_bhop`
-  with spawnflags 1 (reset on activate) for multi bhops and 3 (also reset when landing on something that isn't a bhop
-  trigger) for the others, and `LandingLimit` 0 for multi bhops, 1 otherwise. `climb_teleport_delay` becomes
+  with `LandingLimit` 0 for multi bhops, 1 otherwise, and spawnflags 1 (reset on activate) for multi bhops, 3 (also
+  reset when landing on something that isn't a bhop trigger) for sequential ones and 7 (also when landing on another
+  bhop trigger) for single ones. GOKZ forgets every bhop a player used once they land off them; a single bhop only
+  teleports a player landing again on the last one they left, a sequential one any of them. `climb_teleport_delay` becomes
   `TimeLimit`, at least 0.08 (GOKZ's minimum) and always written, otherwise `sv_bhop_time_limit` would apply. Reset speed
   and destination angles become `ResetVelocityOnTeleport` and `UseDestinationAngles`.
 - `climb_anti_checkpoint` becomes `trigger_momentum_disallowcheckpoint`, keeping its spawnflags.
@@ -272,7 +275,6 @@ Not reproducible, and listed as warnings:
 - Timer buttons: the timer starts on leaving the zone around the start button and stops on touching the end button's
   zone, without pressing anything.
 - `climb_teleport_reorient_player` and `climb_teleport_relative`: those triggers teleport to the destination as is.
-- Sequential bhops act as single bhops per trigger; they don't share which triggers of the set were used.
 - Courses with no start or end aren't zoned; without a main course, no zone file is written.
 
 ### Counter-Strike: Source
