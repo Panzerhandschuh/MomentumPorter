@@ -198,6 +198,7 @@ public sealed class EntityReview
         items.Add(ReviewGravityTriggers(entities));
         items.Add(ReviewWeaponStrips(entities));
         items.Add(ReviewLogicTimers(entities));
+        items.Add(ReviewScripts(entities));
         items.Add(ReviewButtons(entities));
 
         int tagged = entities.Count(x => EntityTools.IsTagged(x) || EntityTools.IsToolsEntity(x));
@@ -457,6 +458,26 @@ public sealed class EntityReview
             0,
             "old surf maps use one to send players to a jail after a while; remove it in Lumper if so (timers driving a display can stay)",
             DocsLinks.LogicTimer);
+    }
+
+    // Momentum's server has no VScript, so a script, and any input that runs one, does nothing
+    private static readonly HashSet<string> ScriptInputs = new(StringComparer.OrdinalIgnoreCase) { "RunScriptCode", "RunScriptFile", "CallScriptFunction", "RunScriptCodeQuotable" };
+
+    private static ReviewItem ReviewScripts(List<Entity> entities)
+    {
+        int scripts = entities.Count(x =>
+            x.ClassName.Equals("logic_script", StringComparison.OrdinalIgnoreCase)
+            || x["vscripts"].Length > 0
+            || x.connections.Any(c => ScriptInputs.Contains(c.action)));
+        return new ReviewItem(
+            "VScript",
+            ReviewSeverity.Review,
+            "entities using VScript",
+            scripts,
+            0,
+            "Momentum doesn't run VScript, so their scripts and RunScriptCode outputs do nothing; find what each did in game and rebuild what the map needs in Lumper (a teleport's VelocityMode, trigger_setspeed...)",
+            DocsLinks.ChecklistLumper,
+            Singular: "entity using VScript");
     }
 
     private static ReviewItem ReviewButtons(List<Entity> entities)

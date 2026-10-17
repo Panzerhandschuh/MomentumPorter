@@ -8,6 +8,7 @@ using MomentumPorter.Games.Gokz;
 using MomentumPorter.Options;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
+using MomentumPorter.Review;
 using MomentumPorter.Steam;
 using MomentumPorter.Steps;
 using Xunit;
@@ -458,6 +459,13 @@ public class GokzPortTests(ITestOutputHelper output)
         Entity reset = map.AddTrigger("");
         reset.connections.Add(Output("OnStartTouch", "!activator", "AddContext", "crouched:0"));
 
+        // kz_kareful's also stop the player they teleport, which goes with the teleport
+        Entity scripted = map.Add("trigger_teleport", "", -1, ("target", "dest"), ("filtername", "crouch_context"));
+        scripted.connections.Add(Output("OnStartTouch", "!activator", "RunScriptCode", "activator.SetVelocity(activator.GetVelocity() * 0);"));
+        Entity scriptedTrigger = map.AddTrigger("");
+        scriptedTrigger.connections.Add(Output("OnEndTouch", "!activator", "AddContext", "crouched:1"));
+        PlaceAbove(map.Bsp, scriptedTrigger, scripted);
+
         // The same, with the trigger off to the side, isn't one
         Entity otherTeleport = map.Add("trigger_teleport", "", -1, ("target", "dest"), ("filtername", "other_context"));
         Entity otherTrigger = map.AddTrigger("");
@@ -476,12 +484,80 @@ public class GokzPortTests(ITestOutputHelper output)
         Assert.Equal("2", teleport["_ported_by_tools"]);
         Assert.DoesNotContain(trigger, map.Bsp.Entities);
         Assert.Contains(reset, map.Bsp.Entities);
+        Assert.Equal("trigger_momentum_limitmovement", scripted.ClassName);
+        Assert.Empty(scripted.connections);
+        Assert.DoesNotContain(scriptedTrigger, map.Bsp.Entities);
 
         Assert.Equal("trigger_teleport", otherTeleport.ClassName);
         Assert.Contains(otherTrigger, map.Bsp.Entities);
         string report = map.PrintReport();
-        Assert.Contains("1 x anti-crouch trigger_teleport -> trigger_momentum_limitmovement with crouching disabled", report);
-        Assert.Contains("1 x removed the end touch trigger of an anti-crouch section", report);
+        Assert.Contains("2 x anti-crouch trigger_teleport -> trigger_momentum_limitmovement with crouching disabled", report);
+        Assert.Contains("2 x removed the end touch trigger of an anti-crouch section", report);
+    }
+
+    [Theory]
+    [InlineData("self.SetVelocity(Vector(0,0,0))", "OnStartTouch", 0f, true)]
+    [InlineData(" self.SetVelocity( Vector( 0, 0, 0 ) ); ", "OnEndTouch", 0f, true)]
+    [InlineData("activator.SetVelocity(activator.GetVelocity() * 0);", "OnStartTouch", 0.05f, true)]
+    [InlineData("self.SetVelocity(Vector(0.0,0.0,0.0))", "OnTrigger", 0.1f, true)]
+    // A syntax error in CS:GO too, someone else's velocity, too late, or not zero
+    [InlineData("self.SetVelocity(Vector(0.0.0))", "OnStartTouch", 0f, false)]
+    [InlineData("self.SetVelocity(Vector(0,0,0)", "OnStartTouch", 0f, false)]
+    [InlineData("activator.SetVelocity(self.GetVelocity() * 0)", "OnStartTouch", 0f, false)]
+    [InlineData("self.SetVelocity(Vector(0,0,0))", "OnStartTouch", 0.5f, false)]
+    [InlineData("self.SetVelocity(Vector(0,0,-50))", "OnStartTouch", 0f, false)]
+    [InlineData("self.SetVelocity(Vector(0,0,0))", "OnUser1", 0f, false)]
+    public void ConvertsScriptVelocityResetsOnTeleports(string code, string output, float delay, bool converted)
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity teleport = map.Add("trigger_teleport", "", -1, ("target", "dest"));
+        teleport.connections.Add(Output(output, "!activator", "RunScriptCode", code, delay));
+        teleport.connections.Add(Output("OnStartTouch", "sound", "PlaySound"));
+
+        map.Port();
+
+        Assert.Equal(converted ? "1" : "", teleport["VelocityMode"]);
+        Assert.Equal(converted ? 1 : 2, teleport.connections.Count);
+    }
+
+    [Fact]
+    public void LeavesTeleportsWithAVelocityModeAlone()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity teleport = map.Add("trigger_teleport", "", -1, ("target", "dest"), ("VelocityMode", "2"));
+        teleport.connections.Add(Output("OnStartTouch", "!activator", "RunScriptCode", "self.SetVelocity(Vector(0,0,0))"));
+
+        map.Port();
+
+        Assert.Equal("2", teleport["VelocityMode"]);
+        Assert.Single(teleport.connections);
+    }
+
+    [Fact]
+    public void ReviewCountsEntitiesUsingVScript()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        map.Add("logic_script", "script", null, ("vscripts", "danzay/misc.nut"));
+        map.AddTrigger("", ("vscripts", "lele/prosave/trigger_save.nut"));
+        Entity pad = map.AddTrigger("");
+        pad.connections.Add(Output("OnStartTouch", "!activator", "RunScriptCode", "self.SetVelocity(Vector(self.GetVelocity().x, self.GetVelocity().y, 500))"));
+        Entity file = map.Add("func_button", "");
+        file.connections.Add(Output("OnPressed", "!activator", "RunScriptFile", "danzay/nonlinear.nut"));
+        // Converted, so no longer counted
+        Entity teleport = map.Add("trigger_teleport", "", -1, ("target", "dest"));
+        teleport.connections.Add(Output("OnStartTouch", "!activator", "RunScriptCode", "self.SetVelocity(Vector(0,0,0))"));
+
+        map.Port();
+
+        ReviewItem item = Assert.Single(EntityReview.Analyze(map.Context).Items, x => x.Tool == "VScript");
+        Assert.Equal(4, item.Found);
+        Assert.Equal(ReviewSeverity.Review, item.Severity);
     }
 
     // Moves the trigger so its bottom is the teleport's top, over its middle

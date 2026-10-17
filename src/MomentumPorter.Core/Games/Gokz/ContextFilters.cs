@@ -52,7 +52,7 @@ public sealed partial class GokzProfile
     /// sets the context for a moment. A player standing on the floor touches the trigger with the top of their hull,
     /// so crouching leaves it and the teleport takes them. That hangs on the hull's height and on whether touching a
     /// trigger's face counts, so the teleport becomes a trigger_momentum_limitmovement that stops crouching instead,
-    /// and the trigger goes.
+    /// without the teleport's outputs, and the trigger goes.
     /// </summary>
     private static void ConvertAntiCrouchTeleports(PortContext context)
     {
@@ -83,7 +83,7 @@ public sealed partial class GokzProfile
         var converted = new HashSet<Entity>();
         foreach (Entity teleport in context.OfClass("trigger_teleport").ToList())
         {
-            if (teleport.connections.Count > 0 || !filters.TryGetValue(teleport["filtername"], out ContextFilter? filter))
+            if (!filters.TryGetValue(teleport["filtername"], out ContextFilter? filter))
                 continue;
 
             if (otherSetters.Contains(filter.Name) || !setters.TryGetValue(filter.Name, out List<Entity>? triggers))
@@ -98,6 +98,9 @@ public sealed partial class GokzProfile
             teleport.ClassName = "trigger_momentum_limitmovement";
             foreach (string key in TeleportKeys)
                 teleport.Remove(key);
+
+            // Its outputs ran on the players it teleported, which crouching no longer gets them
+            teleport.connections.Clear();
 
             teleport.Set("spawnflags", teleport.GetInt("spawnflags", TriggerAllowClients) | LimitCrouch);
             teleport.Set(PortedByToolsKey, EntityToolsVersion);

@@ -227,8 +227,13 @@ meaning to targetnames and `kz_mapping_api.fgd` keyvalues on stock entities. The
   are a `trigger_teleport` filtered on a context, with a `trigger_multiple` right above it (its bottom the teleport's
   top) whose only outputs are `OnEndTouch` `AddContext`s setting that context: crouching on the floor pulls the top
   of the player's hull out of the trigger and the teleport takes them. The teleport keeps its model and spawnflags
-  and loses `target`, `filtername` and its other teleport keyvalues; the trigger is removed once no filter on its
-  contexts is used.
+  and loses `target`, `filtername`, its other teleport keyvalues and its outputs (they ran on the players it
+  teleported); the trigger is removed once no filter on its contexts is used.
+- A `trigger_teleport` that stops the player with a `RunScriptCode` output gets `VelocityMode` 1 (reset) instead, since
+  Momentum doesn't run VScript. The output has to be its own `OnStartTouch`, `OnEndTouch`, `OnTrigger` or
+  `OnStartTouchAll` on `!activator`, at most 0.1 seconds late, running `self.SetVelocity(Vector(0,0,0))` or
+  `activator.SetVelocity(activator.GetVelocity() * 0)` (spaces and a `;` allowed), and the teleport can't have a
+  `VelocityMode` already. Code that didn't run in CS:GO either, like `Vector(0.0.0)`, is left alone.
 - An `env_cascade_light` is added when the map has none (the CSM Fix), so cascaded shadow maps work. It follows the map's `light_environment`; a map without one is left alone, with a warning.
 
 Momentum's timer comes from a zone file rather than entities, so the timer entities become
@@ -362,6 +367,7 @@ entity changes: 3 boost triggers, ...") and into the **Next steps** tab:
 | Gravity Triggers | review | `trigger_gravity` | has a `persist` key (set by `GravityPersistence` for games before CS:GO) |
 | Weapon strip | review | `player_weaponstrip`, `game_player_equip` | never |
 | logic_timer | note | `logic_timer` | never |
+| VScript | review | `logic_script`s, entities with `vscripts` and ones with `RunScriptCode`, `RunScriptFile` or `CallScriptFunction` outputs: Momentum's server has no VScript, so they do nothing | never |
 | func_button | note | `func_button` | spawnflag 1 |
 
 Review items are judgement calls the tools can't make for you, so a map that went through the tools still shows the

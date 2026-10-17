@@ -34,6 +34,7 @@ public sealed partial class GokzProfile : IGameProfile
         RemoveUnsupportedTriggers(context);
         ConvertAntiCrouchTeleports(context);
         FixContextFilters(context);
+        ConvertScriptVelocityResets(context);
         AddCascadeLight(context);
         WriteZones(context);
     }
