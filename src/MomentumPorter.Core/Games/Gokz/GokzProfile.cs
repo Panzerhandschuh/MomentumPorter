@@ -38,6 +38,7 @@ public sealed partial class GokzProfile : IGameProfile
         FixContextFilters(context);
         ConvertScriptVelocityResets(context);
         ConvertScriptVelocities(context);
+        ConvertNoJumpTriggers(context);
         AddCascadeLight(context);
         if (context.ConvertZones)
             WriteZones(context);

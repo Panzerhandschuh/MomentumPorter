@@ -623,6 +623,55 @@ public class GokzPortTests(ITestOutputHelper output)
         }
     }
 
+    [Theory]
+    // kz_dontjump's no-jump zones, and with "Disable auto player movement" (an HL2 flag) and NPCs allowed
+    [InlineData("8193", 1 | (1 << 17))]
+    [InlineData("8321", 1 | (1 << 17))]
+    [InlineData("8195", 1 | 2 | (1 << 17))]
+    public void ConvertsNoJumpTriggers(string spawnflags, int limitFlags)
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity trigger = map.Add("trigger_playermovement", "zone", -1, ("spawnflags", spawnflags));
+        trigger.connections.Add(Output("OnStartTouch", "sound", "PlaySound"));
+        Entity other = map.Add("trigger_playermovement", "", -1, ("spawnflags", "129"));
+
+        map.Port();
+
+        Assert.Equal("trigger_momentum_limitmovement", trigger.ClassName);
+        Assert.Equal(limitFlags.ToString(), trigger["spawnflags"]);
+        Assert.Equal("zone", trigger.Name);
+        Assert.Single(trigger.connections);
+        Assert.Equal("2", trigger["_ported_by_tools"]);
+        Assert.Equal("trigger_playermovement", other.ClassName);
+        Assert.Contains("1 x trigger_playermovement with jumping disabled -> trigger_momentum_limitmovement", map.PrintReport());
+    }
+
+    [Fact]
+    public void AddsAJumpLimitBesideAutoWalkTriggers()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        // Walks the player too, which Momentum's trigger_playermovement does
+        Entity trigger = map.Add("trigger_playermovement", "walk", -1, ("spawnflags", "12289"), ("filtername", "filter"), ("StartDisabled", "1"), ("wait", "1"));
+        trigger.connections.Add(Output("OnStartTouch", "sound", "PlaySound"));
+
+        map.Port();
+
+        Assert.Equal("trigger_playermovement", trigger.ClassName);
+        Assert.Equal("4097", trigger["spawnflags"]);
+        Entity twin = Assert.Single(map.Bsp.Entities, x => x.ClassName == "trigger_momentum_limitmovement");
+        Assert.Equal(trigger.Model, twin.Model);
+        Assert.Equal("walk", twin.Name);
+        Assert.Equal("filter", twin["filtername"]);
+        Assert.Equal("1", twin["StartDisabled"]);
+        Assert.Equal((1 | (1 << 17)).ToString(), twin["spawnflags"]);
+        Assert.False(twin.ContainsKey("wait"));
+        Assert.Empty(twin.connections);
+    }
+
     [Fact]
     public void ReviewCountsEntitiesUsingVScript()
     {

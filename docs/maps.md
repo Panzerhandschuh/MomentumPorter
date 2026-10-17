@@ -252,6 +252,13 @@ in any case for `climb_anti_checkpoint`, `climb_anti_pause` and `climb_anti_jump
   and have no `VelocityMode`, and the script has to be `self.` or `activator.SetVelocity(Vector(a, b, c))` with each
   axis a number or that same axis's own `GetVelocity()` (spaces and a `;` allowed). Anything else, like multiplying
   the velocity, stays for the review's VScript item.
+- `trigger_playermovement`s with "Disable jump while in trigger" (spawnflag 8192, kz_dontjump's no-jump zones), which
+  Momentum's `trigger_playermovement` doesn't have, become `trigger_momentum_limitmovement` with the limit jump
+  spawnflag (131072), keeping their other trigger spawnflags, name, filter and outputs. One that also auto-ducks (2048)
+  or auto-walks (4096), which Momentum's does, keeps doing that without the 8192, and gets a
+  `trigger_momentum_limitmovement` on the same brushes, with its `targetname`, `parentname`, `filtername` and
+  `StartDisabled`, for the jumps. "Disable auto player movement" (128) is an HL2 flag that does nothing for players
+  here, and is dropped.
 - An `env_cascade_light` is added when the map has none (the CSM Fix), so cascaded shadow maps work. It follows the map's `light_environment`; a map without one is left alone, with a warning.
 
 Momentum's timer comes from a zone file rather than entities, so the timer entities become
