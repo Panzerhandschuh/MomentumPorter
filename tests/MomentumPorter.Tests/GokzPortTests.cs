@@ -538,6 +538,84 @@ public class GokzPortTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void ConvertsScriptJumpPadsToPlayerSpeed()
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        // kz_bounce's jump pads keep the horizontal speed and set the vertical one
+        const string jump = "self.SetVelocity(Vector(self.GetVelocity().x, self.GetVelocity().y, 500))";
+        Entity pad = map.AddTrigger("", ("spawnflags", "4097"));
+        pad.connections.Add(Output("OnStartTouch", "!activator", "RunScriptCode", jump));
+        pad.connections.Add(Output("OnStartTouch", "sound", "PlaySound"));
+        Entity late = map.AddTrigger("", ("spawnflags", "1"));
+        Entity.EntityConnection once = Output("OnEndTouch", "!activator", "RunScriptCode", jump, 0.1f) with { fireOnce = 1 };
+        late.connections.Add(once);
+
+        map.Port();
+
+        Entity speed = Assert.Single(map.Bsp.Entities, x => x.ClassName == "player_speed");
+        Assert.Equal("porter_speed_z_500", speed["targetname"]);
+        Assert.Equal(((1 << 8) | (1 << 6)).ToString(), speed["spawnflags"]);
+        Assert.Equal("500", speed["speed"]);
+
+        Assert.Equal(2, pad.connections.Count);
+        Assert.Equal(Output("OnStartTouch", "porter_speed_z_500", "Fire"), pad.connections[0]);
+        Entity.EntityConnection fire = Assert.Single(late.connections);
+        Assert.Equal(once with { target = "porter_speed_z_500", action = "Fire", param = "" }, fire);
+        Assert.Contains("2 x RunScriptCode setting the player's velocity -> player_speed", map.PrintReport());
+    }
+
+    [Theory]
+    [InlineData("self.SetVelocity(Vector(0,0,640))", "trigger_teleport", "4097", "x 0|y 0|z 640")]
+    [InlineData(" activator.SetVelocity( Vector( activator.GetVelocity().x, -50.5, 0 ) ); ", "trigger_once", "1", "y -50.5|z 0")]
+    [InlineData("self.SetVelocity(Vector(0,0,0))", "trigger_multiple", "4097", "x 0|y 0|z 0")]
+    // Syntax errors in CS:GO too, nothing to set, speed moved between axes, someone else's velocity, a multiplied one
+    [InlineData("self.SetVelocity(Vector(0.0.0))", "trigger_multiple", "4097", "")]
+    [InlineData("self.SetVelocity(Vector(0,0,0)", "trigger_multiple", "4097", "")]
+    [InlineData("self.setvelocity(vector(0,0,0))", "trigger_multiple", "4097", "")]
+    [InlineData("self.SetVelocity(Vector(self.GetVelocity().x,self.GetVelocity().y,self.GetVelocity().z))", "trigger_multiple", "4097", "")]
+    [InlineData("self.SetVelocity(Vector(self.GetVelocity().y,self.GetVelocity().x,500))", "trigger_multiple", "4097", "")]
+    [InlineData("activator.SetVelocity(Vector(self.GetVelocity().x,self.GetVelocity().y,500))", "trigger_multiple", "4097", "")]
+    [InlineData("self.SetVelocity(Vector(self.GetVelocity().x,self.GetVelocity().y,0)*2)", "trigger_multiple", "4097", "")]
+    // Triggers that let other things through (player_speed launches the player whatever touched it), or nothing
+    [InlineData("self.SetVelocity(Vector(0,0,640))", "trigger_multiple", "9", "")]
+    [InlineData("self.SetVelocity(Vector(0,0,640))", "trigger_multiple", "0", "")]
+    // Not a trigger's touch output
+    [InlineData("self.SetVelocity(Vector(0,0,640))", "func_illusionary", "4097", "")]
+    public void ConvertsScriptVelocitiesPerAxis(string code, string className, string spawnflags, string expected)
+    {
+        if (CreateMap() is not { } map)
+            return;
+
+        Entity trigger = map.Add(className, "", -1, ("spawnflags", spawnflags), ("target", "dest"));
+        trigger.connections.Add(Output("OnStartTouch", "!activator", "RunScriptCode", code));
+
+        map.Port();
+
+        Dictionary<string, Entity> speeds = map.Bsp.Entities.Where(x => x.ClassName == "player_speed").ToDictionary(x => x["targetname"]);
+        if (expected.Length == 0)
+        {
+            Assert.Empty(speeds);
+            Assert.Equal("RunScriptCode", Assert.Single(trigger.connections).action);
+            return;
+        }
+
+        string[] axes = expected.Split('|');
+        Assert.Equal(axes.Length, speeds.Count);
+        Assert.Equal(axes.Length, trigger.connections.Count);
+        foreach (string axis in axes)
+        {
+            string[] parts = axis.Split(' ');
+            string name = $"porter_speed_{parts[0]}_{parts[1]}";
+            Assert.Contains(Output("OnStartTouch", name, "Fire"), trigger.connections);
+            int flag = parts[0] switch { "x" => 1 << 2, "y" => 1 << 4, _ => 1 << 6 };
+            Assert.Equal(((1 << 8) | flag).ToString(), speeds[name]["spawnflags"]);
+            Assert.Equal(parts[1], speeds[name]["speed"]);
+        }
+    }
+
+    [Fact]
     public void ReviewCountsEntitiesUsingVScript()
     {
         if (CreateMap() is not { } map)
@@ -545,13 +623,16 @@ public class GokzPortTests(ITestOutputHelper output)
 
         map.Add("logic_script", "script", null, ("vscripts", "danzay/misc.nut"));
         map.AddTrigger("", ("vscripts", "lele/prosave/trigger_save.nut"));
-        Entity pad = map.AddTrigger("");
-        pad.connections.Add(Output("OnStartTouch", "!activator", "RunScriptCode", "self.SetVelocity(Vector(self.GetVelocity().x, self.GetVelocity().y, 500))"));
+        // kz_kareful's booster doubles the player's speed, which player_speed can't do
+        Entity booster = map.AddTrigger("", ("spawnflags", "4097"));
+        booster.connections.Add(Output("OnEndTouch", "!activator", "RunScriptCode", "activator.SetVelocity(activator.GetVelocity() * 2);"));
         Entity file = map.Add("func_button", "");
         file.connections.Add(Output("OnPressed", "!activator", "RunScriptFile", "danzay/nonlinear.nut"));
         // Converted, so no longer counted
         Entity teleport = map.Add("trigger_teleport", "", -1, ("target", "dest"));
         teleport.connections.Add(Output("OnStartTouch", "!activator", "RunScriptCode", "self.SetVelocity(Vector(0,0,0))"));
+        Entity pad = map.AddTrigger("", ("spawnflags", "4097"));
+        pad.connections.Add(Output("OnStartTouch", "!activator", "RunScriptCode", "self.SetVelocity(Vector(self.GetVelocity().x, self.GetVelocity().y, 500))"));
 
         map.Port();
 

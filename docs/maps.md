@@ -234,6 +234,17 @@ meaning to targetnames and `kz_mapping_api.fgd` keyvalues on stock entities. The
   `OnStartTouchAll` on `!activator`, at most 0.1 seconds late, running `self.SetVelocity(Vector(0,0,0))` or
   `activator.SetVelocity(activator.GetVelocity() * 0)` (spaces and a `;` allowed), and the teleport can't have a
   `VelocityMode` already. Code that didn't run in CS:GO either, like `Vector(0.0.0)`, is left alone.
+- Other `RunScriptCode` outputs setting the velocity of whoever touched a trigger fire Momentum's `player_speed`
+  instead, mostly jump pads like `self.SetVelocity(Vector(self.GetVelocity().x, self.GetVelocity().y, 500))`. Each
+  axis set to a number gets a `player_speed` (named `porter_speed_<axis>_<speed>`, shared by every output setting it)
+  with spawnflags "launcher" and that axis (256 + 4, 16 or 64), whose `Fire` sets the player's velocity on that axis
+  once and leaves the others alone; axes kept as `GetVelocity().x` etc. aren't touched. The output keeps its delay and
+  fire count, so the velocity changes at the same moment as in CS:GO. The output has to be a `trigger_*`'s
+  `OnStartTouch`, `OnEndTouch`, `OnTrigger`, `OnStartTouchAll` or `OnEndTouchAll` on `!activator`, the trigger has to
+  let only players through (spawnflags 1 without 2, 4, 8, 16 or 64, since `player_speed` always launches the player)
+  and have no `VelocityMode`, and the script has to be `self.` or `activator.SetVelocity(Vector(a, b, c))` with each
+  axis a number or that same axis's own `GetVelocity()` (spaces and a `;` allowed). Anything else, like multiplying
+  the velocity, stays for the review's VScript item.
 - An `env_cascade_light` is added when the map has none (the CSM Fix), so cascaded shadow maps work. It follows the map's `light_environment`; a map without one is left alone, with a warning.
 
 Momentum's timer comes from a zone file rather than entities, so the timer entities become

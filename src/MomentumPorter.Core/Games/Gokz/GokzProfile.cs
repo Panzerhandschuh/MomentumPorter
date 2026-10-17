@@ -35,6 +35,7 @@ public sealed partial class GokzProfile : IGameProfile
         ConvertAntiCrouchTeleports(context);
         FixContextFilters(context);
         ConvertScriptVelocityResets(context);
+        ConvertScriptVelocities(context);
         AddCascadeLight(context);
         WriteZones(context);
     }
