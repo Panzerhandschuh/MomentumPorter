@@ -118,8 +118,12 @@ public static class BhopTriggers
         return renames[0].Delay <= renames[1].Delay ? [renames[0], renames[1]] : [renames[1], renames[0]];
     }
 
-    /// <summary>Whether a map is a bhop map by name, which gets the fix by default: it can break other maps using the pattern.</summary>
-    public static bool AppliesTo(string mapName) => mapName.StartsWith("bhop_", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Whether a map is a bhop or climb map by name, which gets the fix by default. Elsewhere it's only applied when asked,
+    /// since other maps using the pattern may not be bhop blocks.
+    /// </summary>
+    public static bool AppliesTo(string mapName) =>
+        mapName.StartsWith("bhop_", StringComparison.OrdinalIgnoreCase) || mapName.StartsWith("kz_", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Whether the porter applies the fix to a map of a game, as the options say.</summary>
     public static bool ShouldFix(BhopTriggerFix option, string mapName, IGameProfile profile)
@@ -129,7 +133,7 @@ public static class BhopTriggers
 
         return option switch
         {
-            BhopTriggerFix.BhopMapsOnly => AppliesTo(mapName),
+            BhopTriggerFix.BhopAndKzMaps => AppliesTo(mapName),
             BhopTriggerFix.On => true,
             _ => false,
         };

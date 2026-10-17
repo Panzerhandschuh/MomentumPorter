@@ -5,11 +5,11 @@ using System.ComponentModel;
 /// <summary>Which maps get the bhop trigger fix (<see cref="Review.BhopTriggers"/>). The descriptions are the app's labels.</summary>
 public enum BhopTriggerFix
 {
-    /// <summary>Maps named bhop_*.</summary>
-    [Description("bhop_ maps only")]
-    BhopMapsOnly,
+    /// <summary>Maps named bhop_* or kz_*.</summary>
+    [Description("bhop_ and kz_ maps")]
+    BhopAndKzMaps,
 
-    /// <summary>Every map (but KZ Mod's), e.g. kz_bhop_* hybrids or bhop maps missing their prefix.</summary>
+    /// <summary>Every map (but KZ Mod's), e.g. bhop maps missing their prefix.</summary>
     [Description("On")]
     On,
 
@@ -34,8 +34,8 @@ public sealed class MapPortOptions
     [PortOption("Convert zones", "Write a zone file (zones/local/<map>.json) from the map's timer entities, e.g. GOKZ's climb_startzone and climb_endbutton. Turn it off to zone the map yourself in game.", Order = 1)]
     public bool ConvertZones { get; set; } = true;
 
-    [PortOption("Fix bhop triggers", "Turn the triggers on bhop blocks that rename the player for a filtered teleport into trigger_momentum_bhops, which only teleport a player standing on the block, so jumping up a slope or onto a ledge next to a block doesn't teleport them. By default only maps named bhop_* get it; pick On for bhop maps named otherwise (e.g. kz_bhop_*), or Off for maps it breaks. KZ Mod maps never need it.", Order = 2)]
-    public BhopTriggerFix FixBhopTriggers { get; set; } = BhopTriggerFix.BhopMapsOnly;
+    [PortOption("Fix bhop triggers", "Turn the triggers on bhop blocks that rename the player for a filtered teleport into trigger_momentum_bhops, which only teleport a player standing on the block, so jumping up a slope or onto a ledge next to a block doesn't teleport them. By default only maps named bhop_* or kz_* get it; pick On for bhop maps named otherwise, or Off for maps it breaks. KZ Mod maps never need it.", Order = 2)]
+    public BhopTriggerFix FixBhopTriggers { get; set; } = BhopTriggerFix.BhopAndKzMaps;
 
     /// <summary>
     /// The source game's folder holding gameinfo.txt, for game files the map relies on (e.g. shared soundscapes).

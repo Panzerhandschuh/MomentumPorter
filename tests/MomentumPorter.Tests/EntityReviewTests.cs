@@ -497,8 +497,9 @@ public class EntityReviewTests(ITestOutputHelper output)
 
     [Theory]
     [InlineData("bhop_arcane_v1", BhopTriggerFix.Off, true, ReviewSeverity.Review)]
-    [InlineData("arcane_v1", BhopTriggerFix.BhopMapsOnly, true, ReviewSeverity.Note)]
-    [InlineData("kz_bhop_arcane", BhopTriggerFix.On, false, ReviewSeverity.Note)]
+    [InlineData("arcane_v1", BhopTriggerFix.BhopAndKzMaps, true, ReviewSeverity.Note)]
+    [InlineData("kz_bhop_arcane", BhopTriggerFix.BhopAndKzMaps, false, ReviewSeverity.Review)]
+    [InlineData("arcane_v1", BhopTriggerFix.On, false, ReviewSeverity.Note)]
     public async Task FixesBhopTriggersOnTheMapsTheOptionSays(string mapName, BhopTriggerFix fix, bool left, ReviewSeverity severity)
     {
         if (FindCssMap("bhop_arcane_v1") is not { } input)

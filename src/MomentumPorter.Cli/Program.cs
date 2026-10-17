@@ -20,7 +20,7 @@ internal sealed partial class CliOptions
     [Option('c', "compress", HelpText = "LZMA compress the output")]
     public bool Compress { get; set; }
 
-    [Option("bhop-trigger-fix", HelpText = "(Default: bhop) Which maps get the bhop trigger fix, which turns the triggers on bhop blocks that rename the player for a filtered teleport into trigger_momentum_bhops that only teleport a player standing on the block, so jumping up a slope or onto a ledge next to a block doesn't teleport them: bhop (maps named bhop_*), on (every map, e.g. kz_bhop_* ones) or off (for maps it breaks). KZ Mod maps never get it.")]
+    [Option("bhop-trigger-fix", HelpText = "(Default: bhop) Which maps get the bhop trigger fix, which turns the triggers on bhop blocks that rename the player for a filtered teleport into trigger_momentum_bhops that only teleport a player standing on the block, so jumping up a slope or onto a ledge next to a block doesn't teleport them: bhop (maps named bhop_* or kz_*), on (every map, e.g. bhop maps missing their prefix) or off (for maps it breaks). KZ Mod maps never get it.")]
     public string? BhopTriggerFix { get; set; }
 
     [Option("game-dir", HelpText = "The game's folder holding gameinfo.txt, for game files the map uses (e.g. shared soundscapes). Defaults to the folder above the input's maps folder.")]
@@ -55,7 +55,7 @@ internal static class Program
 
         BhopTriggerFix? bhopTriggerFix = cli.BhopTriggerFix?.ToLowerInvariant() switch
         {
-            null or "bhop" => BhopTriggerFix.BhopMapsOnly,
+            null or "bhop" => BhopTriggerFix.BhopAndKzMaps,
             "on" => BhopTriggerFix.On,
             "off" => BhopTriggerFix.Off,
             _ => null,

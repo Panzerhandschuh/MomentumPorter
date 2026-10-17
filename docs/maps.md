@@ -12,9 +12,9 @@ MomentumPorter-CLI review <map.bsp> [--steps]
 ```
 
 `--bhop-trigger-fix` picks the maps that get the bhop trigger fix (see [Automatic fixes](#automatic-fixes)): `bhop`
-(the default) for maps named `bhop_*`, `on` for every map, e.g. bhop maps named otherwise (`kz_bhop_*` climb/bhop
-hybrids such as `kz_bhop_yonkoma`, or a map missing its prefix), `off` for maps the fix breaks. KZ Mod maps never get it, since their
-bhop blocks are their own entities. In the app it's the **Fix bhop triggers** dropdown (bhop_ maps only, On, Off),
+(the default) for maps named `bhop_*` or `kz_*` (CS:S and GOKZ climb maps such as `kz_bounce`, and `kz_bhop_*`
+hybrids such as `kz_bhop_yonkoma`), `on` for every map, e.g. a bhop map missing its prefix, `off` for maps the fix breaks. KZ Mod maps never get it, since their
+bhop blocks are their own entities. In the app it's the **Fix bhop triggers** dropdown (bhop_ and kz_ maps, On, Off),
 shown while the queue has a Source map that isn't a KZ Mod one.
 
 `--nozones` skips writing a zone file from GOKZ's timer entities (as it does for Quake 3 maps), for zoning the map in
@@ -168,9 +168,8 @@ Counter-Strike entities (spawns, buy zones...) in a version 19/20 BSP for CS:S o
 map without GOKZ entities goes through the GOKZ profile, which only adds the cascaded shadow light and zones nothing).
 Failing those, the game folder the map sits in, then its name (`kz_` KZ Mod, `bhop_`/`surf_` CS:S), with a warning.
 
-Whatever the game (but KZ Mod), a Source map named `bhop_*` gets the bhop trigger fix by default (see
-[Automatic fixes](#automatic-fixes)), and
-one named `bhop_*` or `kz_*` gets the bhop block fix baked in after the profile ran
+Whatever the game (but KZ Mod), a Source map named `bhop_*` or `kz_*` gets the bhop trigger fix by default (see
+[Automatic fixes](#automatic-fixes)) and the bhop block fix baked in after the profile ran
 (dropping `func_door`/`func_button` blocks over a teleport become `func_bhop`s, see
 [Quake 3 and GoldSrc maps](#quake-3-and-goldsrc-maps)), since those are the maps Momentum's own runtime block fix
 would run on.
@@ -303,8 +302,8 @@ and `FixMaterialsStep` (`src/MomentumPorter.Core/Fixes/`) apply what Lumper's En
 would otherwise ask for by hand, where the answer is the same for every map. GoldSrc maps converted with BSPConvert get the entity fixes too
 (`GoldSrcEntityFixStep`).
 
-- **Bhop triggers** (`BhopTriggers`, Source maps named `bhop_*` by default, or every Source map or none as
-  **Fix bhop triggers** / `--bhop-trigger-fix` says, since the fix breaks some maps; never KZ Mod maps): a bhop block's `trigger_multiple` renames the player
+- **Bhop triggers** (`BhopTriggers`, Source maps named `bhop_*` or `kz_*` by default, or every Source map or none as
+  **Fix bhop triggers** / `--bhop-trigger-fix` says; never KZ Mod maps, whose bhop blocks are their own entities): a bhop block's `trigger_multiple` renames the player
   (`AddOutput targetname X`) a moment after touching and back to `default` a little later, and the `trigger_teleport`
   around the block only takes players with that name through a `filter_activator_name`, so jumping up a slope or onto
   a ledge that touches the trigger can teleport the player. The fix turns each into a `trigger_momentum_bhop` that

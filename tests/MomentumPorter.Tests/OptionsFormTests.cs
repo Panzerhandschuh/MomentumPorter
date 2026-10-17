@@ -104,8 +104,8 @@ public class OptionsFormTests
         var options = new MapPortOptions();
         var field = (EnumOptionViewModel)new OptionsFormViewModel(options).Find(nameof(MapPortOptions.FixBhopTriggers))!;
 
-        Assert.Equal(["bhop_ maps only", "On", "Off"], field.Choices.Select(x => x.Label));
-        Assert.Equal("bhop_ maps only", field.Selected?.Label);
+        Assert.Equal(["bhop_ and kz_ maps", "On", "Off"], field.Choices.Select(x => x.Label));
+        Assert.Equal("bhop_ and kz_ maps", field.Selected?.Label);
 
         field.Selected = field.Choices[1];
         Assert.Equal(BhopTriggerFix.On, options.FixBhopTriggers);

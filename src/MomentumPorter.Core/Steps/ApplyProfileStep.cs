@@ -11,7 +11,7 @@ using MomentumPorter.Steam;
 
 /// <summary>
 /// Runs the game profile's conversions on the loaded BSP, then the bhop fixes Source maps get by name: the bhop
-/// trigger fix for maps named bhop_* (or the maps the options say), and the bhop block fix for maps Momentum's own
+/// trigger fix for maps named bhop_* or kz_* (or the maps the options say), and the bhop block fix for maps Momentum's own
 /// block fix would run on (named bhop_* or kz_*), baked in so the blocks are func_bhops in the BSP.
 /// </summary>
 public sealed class ApplyProfileStep : IPortStep
