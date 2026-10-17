@@ -726,8 +726,10 @@ public class GokzPortTests(ITestOutputHelper output)
         Assert.Contains("no zone file was written", map.PrintReport());
     }
 
-    [Fact]
-    public async Task JobWritesZoneFileNextToMap()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task JobWritesZoneFileNextToMap(bool convertZones)
     {
         if (CreateMap() is not { } map)
             return;
@@ -745,7 +747,7 @@ public class GokzPortTests(ITestOutputHelper output)
             Directory.CreateDirectory(Path.GetDirectoryName(input)!);
             new BSPWriter(map.Bsp).WriteBSP(input, false);
 
-            (PortJob job, MapPortState state) = PortJobFactory.CreateSourceMapJob(input, outputPath, new MapPortOptions { Pack = false, Install = false });
+            (PortJob job, MapPortState state) = PortJobFactory.CreateSourceMapJob(input, outputPath, new MapPortOptions { Pack = false, Install = false, ConvertZones = convertZones });
             var context = new PortJobContext { Log = NullLog.Instance, WorkDirectory = work };
             context.Set(state);
 
@@ -754,8 +756,9 @@ public class GokzPortTests(ITestOutputHelper output)
             Assert.True(result.Succeeded, result.Error);
             Assert.Equal("gokz", state.Profile?.Name);
             string zonePath = Path.Combine(dir, "out", "maps", "zones", "local", "kz_synthetic_mom.json");
-            Assert.True(File.Exists(zonePath));
-            ParseAndValidate(File.ReadAllText(zonePath));
+            Assert.Equal(convertZones, File.Exists(zonePath));
+            if (convertZones)
+                ParseAndValidate(File.ReadAllText(zonePath));
 
             var ported = new BSP(new FileInfo(outputPath));
             Assert.Contains(ported.Entities, x => x.ClassName == "trigger_momentum_teleport" && x["_ported_by_tools"] == "2");

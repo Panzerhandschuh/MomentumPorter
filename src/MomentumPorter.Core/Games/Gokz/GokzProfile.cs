@@ -27,6 +27,8 @@ public sealed partial class GokzProfile : IGameProfile
     // CS:GO already reverts gravity on leaving the trigger, like Momentum
     public bool GravityPersists => false;
 
+    public bool WritesZones => true;
+
     public void Apply(PortContext context)
     {
         CheckMappingApiVersion(context);
@@ -37,7 +39,8 @@ public sealed partial class GokzProfile : IGameProfile
         ConvertScriptVelocityResets(context);
         ConvertScriptVelocities(context);
         AddCascadeLight(context);
-        WriteZones(context);
+        if (context.ConvertZones)
+            WriteZones(context);
     }
 
     private static void CheckMappingApiVersion(PortContext context)

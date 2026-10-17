@@ -71,6 +71,7 @@ internal static class Program
             Game = cli.Game,
             Compress = cli.Compress,
             FixBhopTriggers = bhopTriggerFix.Value,
+            ConvertZones = !cli.NoZones,
             GameDirectory = cli.GameDirectory,
             Pack = false,
             Install = false,

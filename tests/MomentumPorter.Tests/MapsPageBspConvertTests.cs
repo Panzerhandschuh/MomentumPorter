@@ -85,7 +85,7 @@ public class MapsPageBspConvertTests
             Assert.True(page.ShowBspConvertOptions);
             Assert.Contains(BspConvertOptions.GoldSrcGroup, Groups());
             Assert.Contains(BspConvertOptions.Quake3Group, Groups());
-            Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.FixBhopTriggers)], MapFields());
+            Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.ConvertZones), nameof(MapPortOptions.FixBhopTriggers)], MapFields());
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.Overwrite)));
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.OutputDirectory)));
             Assert.Null(page.BspConvertOptionsForm.Find(nameof(BspConvertOptions.Studiomdl)));
@@ -111,9 +111,10 @@ public class MapsPageBspConvertTests
             page.Remove(page.Queue[0]);
             Assert.Equal([BspConvertOptions.GeneralGroup, BspConvertOptions.GoldSrcGroup], Groups());
 
-            // The bhop trigger fix is for Source maps of any name, but not KZ Mod's
+            // The bhop trigger fix is for Source maps of any name, but not KZ Mod's, and zones for the games that have
+            // them (any Source map until its game is known)
             page.AddFiles([surf]);
-            Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.FixBhopTriggers)], MapFields());
+            Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.ConvertZones), nameof(MapPortOptions.FixBhopTriggers)], MapFields());
             if (FindKzMap("kz_bhop_arctic") is { } kz)
             {
                 page.Remove(page.Queue.Single(x => x.InputPath == surf));

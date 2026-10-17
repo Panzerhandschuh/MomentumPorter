@@ -38,6 +38,12 @@ public interface IGameProfile
     /// </summary>
     bool HasBhopTriggers => true;
 
+    /// <summary>
+    /// The profile writes a zone file from the map's timer entities, unless <see cref="PortContext.ConvertZones"/> is off.
+    /// Only GOKZ's so far; the other games' maps are zoned in game.
+    /// </summary>
+    bool WritesZones => false;
+
     void Apply(PortContext context);
 }
 

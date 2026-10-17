@@ -33,7 +33,8 @@ internal sealed partial class CliOptions
     [Option("lavatriggers", HelpText = BspConvertHelp.LavaTriggers)]
     public bool LavaTriggers { get; set; }
 
-    [Option("nozones", HelpText = BspConvertHelp.NoZones)]
+    // Also for GOKZ maps, see Program.Run
+    [Option("nozones", HelpText = BspConvertHelp.NoZones + " Also for GOKZ maps.")]
     public bool NoZones { get; set; }
 
     [Option("offmodeents", HelpText = "(Default: cpm) " + BspConvertHelp.OffModeEnts)]

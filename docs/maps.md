@@ -7,7 +7,7 @@ Porting maps made for other games: Source maps (Kreedz Climbing Mod, CS:GO with 
 The verbs `sounds` and `weapon` build asset packs (see [weapons.md](weapons.md) and [player-sounds.md](player-sounds.md)), and `review` checks a map against Momentum's entity tools (see [Entity review](#entity-review-and-next-steps)). Without a verb, the arguments are a map to port:
 
 ```
-MomentumPorter-CLI <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--bhop-trigger-fix bhop|on|off] [--game-dir <folder>]
+MomentumPorter-CLI <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--bhop-trigger-fix bhop|on|off] [--nozones] [--game-dir <folder>]
 MomentumPorter-CLI review <map.bsp> [--steps]
 ```
 
@@ -16,6 +16,10 @@ MomentumPorter-CLI review <map.bsp> [--steps]
 hybrids such as `kz_bhop_yonkoma`, or a map missing its prefix), `off` for maps the fix breaks. KZ Mod maps never get it, since their
 bhop blocks are their own entities. In the app it's the **Fix bhop triggers** dropdown (bhop_ maps only, On, Off),
 shown while the queue has a Source map that isn't a KZ Mod one.
+
+`--nozones` skips writing a zone file from GOKZ's timer entities (as it does for Quake 3 maps), for zoning the map in
+game instead. In the app it's the **Convert zones** checkbox, shown while the queue has a Source map that may be a GOKZ
+one; Quake 3 maps have BSPConvert's own **No zones**.
 
 `--game-dir` is the source game's folder (the one with `gameinfo.txt`), for game files the map relies on, such as
 shared soundscapes. It defaults to the folder above the input's `maps` folder, or for KZ maps from elsewhere, Kreedz
@@ -248,7 +252,8 @@ meaning to targetnames and `kz_mapping_api.fgd` keyvalues on stock entities. The
 - An `env_cascade_light` is added when the map has none (the CSM Fix), so cascaded shadow maps work. It follows the map's `light_environment`; a map without one is left alone, with a warning.
 
 Momentum's timer comes from a zone file rather than entities, so the timer entities become
-`zones/local/<map>.json` next to the ported BSP (Momentum reads local zones from `maps/zones/local/`):
+`zones/local/<map>.json` next to the ported BSP (Momentum reads local zones from `maps/zones/local/`), unless
+**Convert zones** is off (`--nozones`):
 
 - The main course is `climb_startzone`/`climb_endzone` (`trigger_multiple`) and `climb_startbutton`/`climb_endbutton`
   (`func_button`), bonus X `climb_bonusX_startzone` etc. Several start or end entities become regions of one zone.

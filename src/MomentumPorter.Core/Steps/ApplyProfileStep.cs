@@ -49,7 +49,7 @@ public sealed class ApplyProfileStep : IPortStep
         if (state.GameDirectory is null && profile.Name == "kzmod")
             state.GameDirectory = settings.ResolveKreedzClimbingContentDirectory(steam);
 
-        var portContext = new PortContext(bsp, state.MapName, state.GameDirectory, context.Report);
+        var portContext = new PortContext(bsp, state.MapName, state.GameDirectory, context.Report) { ConvertZones = state.Options.ConvertZones };
         GameContent? gameContent = OpenGameContent(profile, state, settings, steam, context.Log);
         try
         {

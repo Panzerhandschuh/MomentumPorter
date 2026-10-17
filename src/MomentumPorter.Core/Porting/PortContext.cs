@@ -37,6 +37,12 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
     public string? GameDirectory { get; } = gameDirectory;
 
     /// <summary>
+    /// Write a zone file from the map's timer entities, for profiles that can (<see cref="IGameProfile.WritesZones"/>).
+    /// Off, the timer entities are left for zoning the map in game.
+    /// </summary>
+    public bool ConvertZones { get; init; } = true;
+
+    /// <summary>
     /// Files the conversion produced besides the BSP (e.g. a zone file), written next to the output BSP.
     /// </summary>
     public List<ExtraOutput> ExtraOutputs { get; } = [];
