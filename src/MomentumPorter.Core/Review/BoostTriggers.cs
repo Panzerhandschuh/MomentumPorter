@@ -9,7 +9,8 @@ using MomentumPorter.Bsp;
 /// The triggers the entity tools' "Boost Triggers" tool lists: the ones that speed the player up, which other games'
 /// physics let players exploit (re-triggering a push in the air, jumping on a basevelocity trigger). Which fix each one
 /// needs depends on how the map uses it, so they're only found here, for the reviewer to go through in game.
-/// Mirrors CMomentumEntityTools::ScanEntities and IsBaseVelocityTrigger / IsGravityTrigger / IsActivatingTriggerPush.
+/// Mirrors CMomentumEntityTools::ScanEntities and IsBaseVelocityTrigger / IsGravityTrigger / IsActivatingTriggerPush,
+/// except that basevelocity triggers count only when they push sideways, like the tools' trigger_pushes.
 /// </summary>
 public static class BoostTriggers
 {
@@ -24,7 +25,7 @@ public static class BoostTriggers
         /// <summary>trigger_setspeed, which the tools turn pushes into.</summary>
         SetSpeed,
 
-        /// <summary>trigger_multiple adding basevelocity to the player.</summary>
+        /// <summary>trigger_multiple adding horizontal basevelocity to the player (vertical boosts aren't exploitable).</summary>
         BaseVelocity,
 
         /// <summary>trigger_multiple lowering the player's gravity for a moment.</summary>
@@ -82,7 +83,9 @@ public static class BoostTriggers
         return boosts;
     }
 
-    // An output giving the player basevelocity ("basevelocity x y z")
+    // An output giving the player horizontal basevelocity ("basevelocity x y z"). Unlike the tools, which list vertical
+    // ones too, this skips "basevelocity 0 0 z": the player's next tick adds it to their velocity once, and re-entering
+    // the trigger only builds up horizontal speed, since landing takes the vertical speed away.
     private static (string Output, string Param)? FindBaseVelocityOutput(Entity entity)
     {
         foreach (string output in BaseVelocityOutputs)
@@ -90,12 +93,21 @@ public static class BoostTriggers
             foreach (Entity.EntityConnection connection in Connections(entity, output))
             {
                 string[] parts = Split(connection.param);
-                if (parts.Length == 4 && parts[0].Equals("basevelocity", StringComparison.OrdinalIgnoreCase))
+                if (parts.Length == 4 && parts[0].Equals("basevelocity", StringComparison.OrdinalIgnoreCase)
+                    && (MathF.Abs(ToFloat(parts[1])) > 0.0001f || MathF.Abs(ToFloat(parts[2])) > 0.0001f))
+                {
                     return (output, string.Join(' ', parts[1..]));
+                }
             }
         }
 
         return null;
+    }
+
+    // atof: what the engine makes of a keyvalue that isn't a number
+    private static float ToFloat(string value)
+    {
+        return float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float result) ? result : 0f;
     }
 
     // One output lowering gravity at once and one putting it back to 1 after a delay (TryGetGravityOutput)

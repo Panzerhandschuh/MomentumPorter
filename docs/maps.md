@@ -379,7 +379,7 @@ entity changes: 3 boost triggers, ...") and into the **Next steps** tab:
 | Teleport Velocity Mode | review on `surf_` maps, note otherwise | destinations inside `playerclip` brushes (surf cages, jails), which the docs say should keep only downward velocity; bhop maps box their fail destinations in clip too | every teleport to it has a `VelocityMode` |
 | Teleport Velocity Mode | note | every other destination | same |
 | Landmark Teleports | review | `trigger_teleport`s with a `landmark` | tagged |
-| Boost Triggers | review | horizontal `trigger_push`es, `trigger_setspeed`s, `trigger_multiple`s adding basevelocity, lowering gravity for a moment or renaming the player for a filtered push (`BoostTriggers.Find`) | tagged |
+| Boost Triggers | review | horizontal `trigger_push`es, `trigger_setspeed`s, `trigger_multiple`s adding horizontal basevelocity (the in-game tool also lists straight-up ones, which can't be exploited), lowering gravity for a moment or renaming the player for a filtered push (`BoostTriggers.Find`) | tagged |
 | Gravity Triggers | review | `trigger_gravity` | has a `persist` key (set by `GravityPersistence` for games before CS:GO) |
 | Weapon strip | review | `player_weaponstrip`, `game_player_equip` | never |
 | logic_timer | note | `logic_timer` | never |

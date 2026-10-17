@@ -101,6 +101,11 @@ public class EntityReviewTests(ITestOutputHelper output)
     {
         Entity baseVelocity = Make("trigger_multiple", ("model", "*1"));
         baseVelocity.connections.Add(Output("OnStartTouch", "AddOutput", "basevelocity 0 0 500", 0));
+        baseVelocity.connections.Add(Output("OnEndTouch", "AddOutput", "basevelocity 0 50 80", 0));
+
+        // Straight up only, like kz_bounce's nudges under its jump pads
+        Entity vertical = Make("trigger_multiple", ("model", "*10"));
+        vertical.connections.Add(Output("OnStartTouch", "AddOutput", "basevelocity 0 0 5", 0));
 
         Entity gravity = Make("trigger_multiple", ("model", "*2"));
         gravity.connections.Add(Output("OnEndTouch", "AddOutput", "gravity 0.5", 0));
@@ -121,6 +126,7 @@ public class EntityReviewTests(ITestOutputHelper output)
             Make("trigger_push", ("model", "*7"), ("pushdir", "-90 0 0"), ("angles", "45 0 0"), ("speed", "500")),
             Make("trigger_setspeed", ("model", "*8"), ("HorizontalSpeed", "1000")),
             baseVelocity,
+            vertical,
             gravity,
             permanentGravity,
             activator,
@@ -134,6 +140,7 @@ public class EntityReviewTests(ITestOutputHelper output)
             [BoostTriggers.BoostKind.Push, BoostTriggers.BoostKind.Push, BoostTriggers.BoostKind.SetSpeed, BoostTriggers.BoostKind.BaseVelocity, BoostTriggers.BoostKind.Gravity, BoostTriggers.BoostKind.ActivatesPush],
             boosts.Select(x => x.Kind));
         Assert.Equal(["*5", "*7", "*8", "*1", "*2", "*4"], boosts.Select(x => x.Entity.Model));
+        Assert.Equal("basevelocity 0 50 80 on OnEndTouch", boosts[3].Description);
     }
 
     [Fact]
