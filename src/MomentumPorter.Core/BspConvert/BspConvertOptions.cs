@@ -76,6 +76,14 @@ public sealed class BspConvertOptions
     [PortOption("Set up Quake 3 content", BspConvertHelp.Q3Content, Group = Quake3Group, Order = 60)]
     public bool SetUpQuake3Content { get; set; } = true;
 
+    // --q3gamma
+    [PortOption("Gamma", BspConvertHelp.Q3Gamma, Group = Quake3Group, Order = 70, Min = Q3Brightness.MinGamma, Max = Q3Brightness.MaxGamma)]
+    public float Quake3Gamma { get; set; } = 1f;
+
+    // --mapoverbrightbits
+    [PortOption("Map overbright bits", BspConvertHelp.MapOverBrightBits, Group = Quake3Group, Order = 71, Min = 0, Max = Q3Brightness.MaxMapOverBrightBits)]
+    public int MapOverBrightBits { get; set; } = 2;
+
     // --mindmg
     [PortOption("Respawn damage", BspConvertHelp.MinDmg, Group = Quake3Group, Order = 100, Advanced = true, Min = 0)]
     public int MinDamage { get; set; } = 50;
@@ -193,6 +201,10 @@ public sealed class BspConvertOptions
             errors.Add("Gamma, light gamma and texture gamma must be greater than 0.");
         if (!(Brightness >= 0f))
             errors.Add("Brightness can't be negative.");
+        if (!(Quake3Gamma >= Q3Brightness.MinGamma && Quake3Gamma <= Q3Brightness.MaxGamma))
+            errors.Add($"Quake 3 gamma must be between {Q3Brightness.MinGamma.ToString(CultureInfo.InvariantCulture)} and {Q3Brightness.MaxGamma.ToString(CultureInfo.InvariantCulture)}.");
+        if (MapOverBrightBits is < 0 or > Q3Brightness.MaxMapOverBrightBits)
+            errors.Add($"Map overbright bits must be between 0 and {Q3Brightness.MaxMapOverBrightBits}.");
         if (!Enum.IsDefined(OffModeEntities))
             errors.Add("Entities outside Defrag modes must be cpm or vq3.");
 
@@ -242,7 +254,12 @@ public sealed class BspConvertOptions
                 noFogOverlay = NoFogOverlay,
                 offModeEntityFallback = OffModeEntities.ToString().ToLowerInvariant(),
                 clampOverbright = ClampOverbright,
-                mod = string.IsNullOrWhiteSpace(Quake3Mod) ? null : Quake3Mod.Trim(),
+                brightness = new Q3Brightness
+                {
+                    gamma = Quake3Gamma,
+                    mapOverBrightBits = MapOverBrightBits,
+                },
+                mod =string.IsNullOrWhiteSpace(Quake3Mod) ? null : Quake3Mod.Trim(),
                 flipbook = new FlipbookOptions
                 {
                     enabled = !NoAnim,
@@ -306,6 +323,8 @@ public sealed class BspConvertOptions
         Value(FogMinHeight, defaults.FogMinHeight, "--fogminheight");
         Flag(NoFogOverlay, "--nofogoverlay");
         Flag(ClampOverbright, "--clampoverbright");
+        Value(Quake3Gamma, defaults.Quake3Gamma, "--q3gamma");
+        Value(MapOverBrightBits, defaults.MapOverBrightBits, "--mapoverbrightbits");
         Text(Quake3Mod, "--q3mod");
         Flag(NoAnim, "--noanim");
         Value(AnimBudget, defaults.AnimBudget, "--animbudget");

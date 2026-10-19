@@ -55,6 +55,12 @@ internal sealed partial class CliOptions
     [Option("clampoverbright", HelpText = BspConvertHelp.ClampOverbright)]
     public bool ClampOverbright { get; set; }
 
+    [Option("q3gamma", HelpText = "(Default: 1) " + BspConvertHelp.Q3Gamma)]
+    public float? Q3Gamma { get; set; }
+
+    [Option("mapoverbrightbits", HelpText = "(Default: 2) " + BspConvertHelp.MapOverBrightBits)]
+    public int? MapOverBrightBits { get; set; }
+
     [Option("q3mod", HelpText = BspConvertHelp.Q3Mod + " Takes the mod's folder name (missionpack...) or baseq3.")]
     public string? Q3Mod { get; set; }
 

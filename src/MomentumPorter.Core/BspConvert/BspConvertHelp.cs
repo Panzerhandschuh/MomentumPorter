@@ -27,7 +27,9 @@ public static class BspConvertHelp
     public const string FogMinHeight = "Minimum vertical height (units) for converted fog volumes. Only used with --fogobb.";
     public const string NoFogOverlay = "Don't draw fog shader visible stages (e.g. scrolling clouds) as an overlay face; fog brush faces are just dropped.";
     public const string ClampOverbright = "Apply Quake 3's hue-preserving overbright clamp to lightmaps, flattening over-bright highlights toward white.";
-    public const string Q3Mod = "The Quake 3 game whose content maps use: Quake 3 (baseq3) or a mod or expansion installed next to it, like Team Arena (missionpack), whose files are used before Quake 3's. Detected by default from the textures the map uses that neither it nor Quake 3 has; the log says which it picked.";
+    public const string Q3Gamma = "The r_gamma video setting the map's lighting is matched to, which brightens dark lighting [0.5-3]. Quake 3's default is 1. For maps made with a brighter config that look too dark; textures stay as they are.";
+    public const string MapOverBrightBits = "The r_mapOverBrightBits setting the map's lighting is matched to, which draws it 2^n as bright [0-4]. Quake 3's default is 2 (4x).";
+    public const string Q3Mod ="The Quake 3 game whose content maps use: Quake 3 (baseq3) or a mod or expansion installed next to it, like Team Arena (missionpack), whose files are used before Quake 3's. Detected by default from the textures the map uses that neither it nor Quake 3 has; the log says which it picked.";
     public const string Q3Content = "Extract the Quake 3 install's baseq3 pak files into the Q3Content folder next to Momentum Porter, and its mods' pk3s (Team Arena's missionpack...) into Q3Mods (the Settings page's Quake 3 folder, else Steam's; about 700 MB for Quake 3 and 600 MB for Team Arena, once, and again when they change), so the textures, shaders and sounds maps share with the game are packed into them. Folders filled by hand are left as they are.";
 
     // Animated textures

@@ -42,6 +42,8 @@ public class BspConvertOptionsTests
         Assert.False(q3.noFogOverlay);
         Assert.Equal("cpm", q3.offModeEntityFallback);
         Assert.False(q3.clampOverbright);
+        Assert.Equal(1f, q3.brightness.gamma);
+        Assert.Equal(2, q3.brightness.mapOverBrightBits);
         Assert.Null(q3.mod);
 
         FlipbookOptions flipbook = q3.flipbook;
@@ -184,6 +186,10 @@ public class BspConvertOptionsTests
     [InlineData(nameof(BspConvertOptions.Scale), 0f)]
     [InlineData(nameof(BspConvertOptions.AnimAlpha), 1.5f)]
     [InlineData(nameof(BspConvertOptions.AnimFps), 0)]
+    [InlineData(nameof(BspConvertOptions.Quake3Gamma), 0.4f)]
+    [InlineData(nameof(BspConvertOptions.Quake3Gamma), 3.5f)]
+    [InlineData(nameof(BspConvertOptions.MapOverBrightBits), -1)]
+    [InlineData(nameof(BspConvertOptions.MapOverBrightBits), 5)]
     public void RejectsOutOfRangeValues(string property, object value)
     {
         var options = new BspConvertOptions();
@@ -200,6 +206,12 @@ public class BspConvertOptionsTests
 
         var options = new BspConvertOptions { Subdiv = 2, NoPak = true, OffModeEntities = OffModeEntities.VQ3, Scale = 1.5f, Maps = "a,b" };
         Assert.Equal(["--nopak", "--maps", "a,b", "--subdiv", "2", "--offmodeents", "vq3", "--scale", "1.5"], options.ToCommandLine());
+
+        var brightness = new BspConvertOptions { Quake3Gamma = 1.3f, MapOverBrightBits = 3 };
+        Assert.Equal(["--q3gamma", "1.3", "--mapoverbrightbits", "3"], brightness.ToCommandLine());
+        Q3Brightness q3Brightness = brightness.ToConverterOptions("in.pk3", "out").q3.brightness;
+        Assert.Equal(1.3f, q3Brightness.gamma);
+        Assert.Equal(3, q3Brightness.mapOverBrightBits);
 
         var mod = new BspConvertOptions { Quake3Mod = "missionpack" };
         Assert.Equal(["--q3mod", "missionpack"], mod.ToCommandLine());

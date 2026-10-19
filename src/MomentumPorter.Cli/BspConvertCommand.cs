@@ -125,6 +125,8 @@ internal static class BspConvertCommand
         options.Subdiv = cli.Subdiv ?? options.Subdiv;
         options.MinDamage = cli.MinDmg ?? options.MinDamage;
         options.Scale = cli.Scale ?? options.Scale;
+        options.Quake3Gamma = cli.Q3Gamma ?? options.Quake3Gamma;
+        options.MapOverBrightBits = cli.MapOverBrightBits ?? options.MapOverBrightBits;
         options.Gamma = cli.Gamma ?? options.Gamma;
         options.Brightness = cli.Brightness ?? options.Brightness;
         options.LightGamma = cli.LightGamma ?? options.LightGamma;

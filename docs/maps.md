@@ -138,6 +138,12 @@ brightness 1) has much brighter shadows with those, so set them to match. Leave 
 `gl_use_shaders 0`: Half-Life's shaders draw it whatever `gl_overbright` says, so an old config's `gl_overbright 0`
 changes nothing.
 
+Quake 3 maps' lightmaps and light grid are lit the same way, for Quake 3's video settings in the app's Quake 3 options:
+**Gamma** (`--q3gamma`, `r_gamma`, 0.5-3), which brightens dark lighting most, and **Map overbright bits**
+(`--mapoverbrightbits`, `r_mapOverBrightBits`, 0-4), which draws lighting 2^n as bright (external lightmaps excepted,
+as in Quake 3). They default to Quake 3's own (1 and 2), which convert maps exactly as bright as before they were
+options; raise them for a map that looks too dark. Unlike Quake 3's gamma, these leave textures alone.
+
 GoldSrc filters every texture unless texture filtering is turned off in its video options, which some maps are made for,
 with pixelated or dithered textures that look blurry filtered (kz_lain). **Point sampled textures** in the app's GoldSrc
 options (`--pointsample`) draws them unfiltered and without mips, as GoldSrc does with filtering off.
