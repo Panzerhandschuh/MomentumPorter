@@ -144,6 +144,12 @@ Quake 3 maps' lightmaps and light grid are lit the same way, for Quake 3's video
 as in Quake 3). They default to Quake 3's own (1 and 2), which convert maps exactly as bright as before they were
 options; raise them for a map that looks too dark. Unlike Quake 3's gamma, these leave textures alone.
 
+A high gamma or brightness also brings out the steps between the darkest luxels, so dark lighting turns splotchy.
+**Minimum light** in the app's BSPConvert options (`--minlight`, 0-255 per color channel, like the map compilers'
+`-minlight`) lifts lightmaps and model lighting to at least that much before the settings above, which evens those
+areas out. It works for both games; on GoldSrc maps, switchable lights' styles add to it without getting it too. 0,
+the default, leaves the lighting as it is.
+
 GoldSrc filters every texture unless texture filtering is turned off in its video options, which some maps are made for,
 with pixelated or dithered textures that look blurry filtered (kz_lain). **Point sampled textures** in the app's GoldSrc
 options (`--pointsample`) draws them unfiltered and without mips, as GoldSrc does with filtering off.
