@@ -145,10 +145,11 @@ as in Quake 3). They default to Quake 3's own (1 and 2), which convert maps exac
 options; raise them for a map that looks too dark. Unlike Quake 3's gamma, these leave textures alone.
 
 A high gamma or brightness also brings out the steps between the darkest luxels, so dark lighting turns splotchy.
-**Minimum light** in the app's BSPConvert options (`--minlight`, 0-255 per color channel, like the map compilers'
-`-minlight`) lifts lightmaps and model lighting to at least that much before the settings above, which evens those
-areas out. It works for both games; on GoldSrc maps, switchable lights' styles add to it without getting it too. 0,
-the default, leaves the lighting as it is.
+**Clamp dark shadows** in the app's BSPConvert options (`--clampdarkshadows` in the CLI) evens those areas out for
+both games. It passes BSPConvert `--minlight 4`, which lifts lightmaps and model lighting to at least 4 (of 255, per
+color channel, like the map compilers' `-minlight`) before the settings above; on GoldSrc maps, switchable lights'
+styles add to it without getting it too. The value is fixed because the setting is very sensitive: 4 fixes the
+shadows of maps whose gamma was raised a lot while barely changing the rest. It's off by default.
 
 GoldSrc filters every texture unless texture filtering is turned off in its video options, which some maps are made for,
 with pixelated or dithered textures that look blurry filtered (kz_lain). **Point sampled textures** in the app's GoldSrc

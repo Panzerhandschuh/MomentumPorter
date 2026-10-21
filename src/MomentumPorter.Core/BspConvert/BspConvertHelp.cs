@@ -12,7 +12,7 @@ public static class BspConvertHelp
     public const string Prefix = "Prefix for the converted BSP's file name.";
     public const string Output = "Output game directory for converted BSP/materials (e.g. Momentum Mod's momentum folder).";
     public const string Maps = "Convert only the named BSP(s) from an archive instead of every BSP it contains. Comma-separated map names without extension (e.g. --maps pgrocket,pgplasma). Case-insensitive.";
-    public const string MinLight = "The least light the map's lightmaps and model lighting get [0-255 per color channel], like the map compilers' -minlight, before the gamma and brightness settings. Evens out dark, splotchy lighting, which a high gamma brings out. 0 leaves the lighting as it is. For Quake 3 and GoldSrc maps.";
+    public const string ClampDarkShadows = "Lift the darkest lighting a little (--minlight 4), which evens out the splotchy shadows of maps whose gamma was raised a lot. For Quake 3 and GoldSrc maps.";
     public const string Overwrite ="Replace files that are already in the output folder (BSPConvert's own behaviour). Otherwise the conversion stops before copying anything.";
 
     // Quake 3

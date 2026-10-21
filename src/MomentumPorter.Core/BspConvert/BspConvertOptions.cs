@@ -44,9 +44,15 @@ public sealed class BspConvertOptions
     [PortOption("Maps", BspConvertHelp.Maps, Group = GeneralGroup, Order = 50, Advanced = true)]
     public string? Maps { get; set; }
 
-    // --minlight
-    [PortOption("Minimum light", BspConvertHelp.MinLight, Group = GeneralGroup, Order = 45, Min = 0, Max = 255)]
-    public int MinLight { get; set; }
+    // --minlight ClampDarkShadowsMinLight when on; the full range is too sensitive to be worth showing
+    [PortOption("Clamp dark shadows", BspConvertHelp.ClampDarkShadows, Group = GeneralGroup, Order = 45)]
+    public bool ClampDarkShadows { get; set; }
+
+    /// <summary>The <c>--minlight</c> <see cref="ClampDarkShadows"/> gives: enough to even out the splotchy shadows of a
+    /// map whose gamma was raised a lot, while barely changing the rest of its lighting.</summary>
+    public const int ClampDarkShadowsMinLight = 4;
+
+    public int MinLight => ClampDarkShadows ? ClampDarkShadowsMinLight : 0;
 
     // Not a BSPConvert option: BSPConvert always overwrites, and so does the porter unless this is turned off
     [PortOption("Overwrite existing files", BspConvertHelp.Overwrite, Group = GeneralGroup, Order = 60, Advanced = true)]
@@ -207,8 +213,6 @@ public sealed class BspConvertOptions
             errors.Add("Brightness can't be negative.");
         if (!(Quake3Gamma >= Q3Brightness.MinGamma && Quake3Gamma <= Q3Brightness.MaxGamma))
             errors.Add($"Quake 3 gamma must be between {Q3Brightness.MinGamma.ToString(CultureInfo.InvariantCulture)} and {Q3Brightness.MaxGamma.ToString(CultureInfo.InvariantCulture)}.");
-        if (MinLight is < 0 or > 255)
-            errors.Add("Minimum light must be between 0 and 255.");
         if (MapOverBrightBits is < 0 or > Q3Brightness.MaxMapOverBrightBits)
             errors.Add($"Map overbright bits must be between 0 and {Q3Brightness.MaxMapOverBrightBits}.");
         if (!Enum.IsDefined(OffModeEntities))
@@ -319,7 +323,7 @@ public sealed class BspConvertOptions
         Flag(Compress, "--compress");
         Text(Prefix, "--prefix");
         Text(Maps, "--maps");
-        Value(MinLight, defaults.MinLight, "--minlight");
+        Value(MinLight, 0, "--minlight");
         Value(Subdiv, defaults.Subdiv, "--subdiv");
         Flag(NoToolDisplacements, "--notooldisps");
         Flag(PatchDisplacements, "--patchdisps");

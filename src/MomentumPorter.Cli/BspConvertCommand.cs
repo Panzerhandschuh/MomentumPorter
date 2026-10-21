@@ -111,6 +111,7 @@ internal static class BspConvertCommand
             FogObb = cli.FogObb,
             NoFogOverlay = cli.NoFogOverlay,
             ClampOverbright = cli.ClampOverbright,
+            ClampDarkShadows = cli.ClampDarkShadows,
             SetUpQuake3Content = !cli.NoQ3Content,
             Quake3Mod = cli.Q3Mod,
             NoAnim = cli.NoAnim,
@@ -125,7 +126,6 @@ internal static class BspConvertCommand
         options.Subdiv = cli.Subdiv ?? options.Subdiv;
         options.MinDamage = cli.MinDmg ?? options.MinDamage;
         options.Scale = cli.Scale ?? options.Scale;
-        options.MinLight = cli.MinLight ?? options.MinLight;
         options.Quake3Gamma = cli.Q3Gamma ?? options.Quake3Gamma;
         options.MapOverBrightBits = cli.MapOverBrightBits ?? options.MapOverBrightBits;
         options.Gamma = cli.Gamma ?? options.Gamma;

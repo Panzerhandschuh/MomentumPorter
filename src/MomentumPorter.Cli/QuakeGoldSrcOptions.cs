@@ -18,8 +18,8 @@ internal sealed partial class CliOptions
     [Option("maps", HelpText = BspConvertHelp.Maps)]
     public string? Maps { get; set; }
 
-    [Option("minlight", HelpText = "(Default: 0) " + BspConvertHelp.MinLight)]
-    public int? MinLight { get; set; }
+    [Option("clampdarkshadows", HelpText = BspConvertHelp.ClampDarkShadows)]
+    public bool ClampDarkShadows { get; set; }
 
     [Option("subdiv", HelpText = "(Default: 3) " + BspConvertHelp.Subdiv)]
     public int? Subdiv { get; set; }

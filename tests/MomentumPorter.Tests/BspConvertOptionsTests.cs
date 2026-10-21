@@ -192,8 +192,6 @@ public class BspConvertOptionsTests
     [InlineData(nameof(BspConvertOptions.Quake3Gamma), 3.5f)]
     [InlineData(nameof(BspConvertOptions.MapOverBrightBits), -1)]
     [InlineData(nameof(BspConvertOptions.MapOverBrightBits), 5)]
-    [InlineData(nameof(BspConvertOptions.MinLight), -1)]
-    [InlineData(nameof(BspConvertOptions.MinLight), 256)]
     public void RejectsOutOfRangeValues(string property, object value)
     {
         var options = new BspConvertOptions();
@@ -217,12 +215,12 @@ public class BspConvertOptionsTests
         Assert.Equal(1.3f, q3Brightness.gamma);
         Assert.Equal(3, q3Brightness.mapOverBrightBits);
 
-        // Minimum light is one option for both games
-        var minLight = new BspConvertOptions { MinLight = 12 };
-        Assert.Equal(["--minlight", "12"], minLight.ToCommandLine());
-        BSPConverterOptions minLightConverter = minLight.ToConverterOptions("in.pk3", "out");
-        Assert.Equal(12, minLightConverter.q3.brightness.minLight);
-        Assert.Equal(12, minLightConverter.goldSrc.brightness.minLight);
+        // Clamp dark shadows is one checkbox for both games, a fixed minimum light
+        var clampDarkShadows = new BspConvertOptions { ClampDarkShadows = true };
+        Assert.Equal(["--minlight", "4"], clampDarkShadows.ToCommandLine());
+        BSPConverterOptions clampConverter = clampDarkShadows.ToConverterOptions("in.pk3", "out");
+        Assert.Equal(4, clampConverter.q3.brightness.minLight);
+        Assert.Equal(4, clampConverter.goldSrc.brightness.minLight);
 
         var mod = new BspConvertOptions { Quake3Mod = "missionpack" };
         Assert.Equal(["--q3mod", "missionpack"], mod.ToCommandLine());
