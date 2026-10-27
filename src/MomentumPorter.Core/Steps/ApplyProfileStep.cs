@@ -56,13 +56,6 @@ public sealed class ApplyProfileStep : IPortStep
             portContext.GameContent = gameContent;
             profile.Apply(portContext);
 
-            if (BhopTriggers.ShouldFix(state.Options.FixBhopTriggers, state.MapName, profile))
-            {
-                int bhopTriggers = BhopTriggers.Fix(portContext);
-                if (bhopTriggers > 0)
-                    context.Log.Info($"Turned {bhopTriggers} bhop trigger{(bhopTriggers == 1 ? "" : "s")} into trigger_momentum_bhop");
-            }
-
             if (EntityReview.HasBlockFixPrefix(state.MapName))
             {
                 int blocks = BhopBlocks.Convert(portContext);

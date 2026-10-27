@@ -461,15 +461,12 @@ public sealed class MapsPageViewModel : PageViewModel
             : Queue.SelectMany(x => x.MapKinds).ToHashSet();
         bool quake3 = kinds.Contains(InputKind.Quake3Bsp);
         bool goldSrc = kinds.Contains(InputKind.GoldSrcBsp);
-        // KZ Mod's bhop blocks are its own entities, so only its maps have no use for the bhop trigger fix
-        bool bhopTriggers = Queue.Count == 0 || Queue.Any(x => x.MapKinds.Contains(InputKind.SourceBsp) && GameProfiles.Find(x.DetectedProfile ?? "")?.HasBhopTriggers != false);
         // Only some games' maps get zones (Quake 3's have BSPConvert's own No zones option)
         bool zones = Queue.Count == 0 || Queue.Any(x => x.MapKinds.Contains(InputKind.SourceBsp) && GameProfiles.Find(x.DetectedProfile ?? "")?.WritesZones != false);
 
-        // The map options apply to every kind of map (compress) or to Source maps (the bhop trigger fix, zones)
+        // The map options apply to every kind of map (compress) or to Source maps (zones)
         OptionsForm.SetFilter(x => x.Name switch
         {
-            nameof(MapPortOptions.FixBhopTriggers) => bhopTriggers,
             nameof(MapPortOptions.ConvertZones) => zones,
             _ => true,
         });

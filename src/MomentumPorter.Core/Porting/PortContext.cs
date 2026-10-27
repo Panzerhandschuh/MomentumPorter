@@ -190,24 +190,7 @@ public sealed class PortContext(BSP bsp, string mapName, string? gameDirectory, 
         if (model <= 0)
             return [entity];
 
-        return CopyForModels(entity, BrushModels.SplitModel(model));
-    }
-
-    /// <summary>
-    /// Turns a brush entity into one entity per group of its brushes, like <see cref="SplitByBrush"/>. The original
-    /// entity keeps the first group.
-    /// </summary>
-    /// <param name="groups">Brush indices of the entity's model, each in one group</param>
-    public List<Entity> SplitByBrushes(Entity entity, IReadOnlyList<IReadOnlyList<int>> groups)
-    {
-        if (groups.Count <= 1)
-            return [entity];
-
-        return CopyForModels(entity, BrushModels.SplitModel(entity.ModelNumber, groups));
-    }
-
-    private List<Entity> CopyForModels(Entity entity, List<int> models)
-    {
+        List<int> models = BrushModels.SplitModel(model);
         var entities = new List<Entity> { entity };
         foreach (int newModel in models.Skip(1))
         {

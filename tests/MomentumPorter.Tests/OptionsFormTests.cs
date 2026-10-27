@@ -12,6 +12,21 @@ public class OptionsFormTests
         Best,
     }
 
+    public enum Speed
+    {
+        [System.ComponentModel.Description("Slow and careful")]
+        Slow,
+
+        [System.ComponentModel.Description("Quick")]
+        Quick,
+    }
+
+    public sealed class DescribedOptions
+    {
+        [PortOption("Speed", "How fast.")]
+        public Speed Speed { get; set; } = Speed.Slow;
+    }
+
     public sealed class SampleOptions
     {
         [PortOption("Game", "Which game.")]
@@ -95,21 +110,21 @@ public class OptionsFormTests
         OptionGroupViewModel general = Assert.Single(form.Groups);
         Assert.False(general.ShowHeader);
         Assert.False(form.HasAdvanced);
-        Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.ConvertZones), nameof(MapPortOptions.FixBhopTriggers)], general.Fields.Select(x => x.Name));
+        Assert.Equal([nameof(MapPortOptions.Compress), nameof(MapPortOptions.ConvertZones)], general.Fields.Select(x => x.Name));
     }
 
     [Fact]
     public void EnumChoicesUseTheirDescriptions()
     {
-        var options = new MapPortOptions();
-        var field = (EnumOptionViewModel)new OptionsFormViewModel(options).Find(nameof(MapPortOptions.FixBhopTriggers))!;
+        var options = new DescribedOptions();
+        var field = (EnumOptionViewModel)new OptionsFormViewModel(options).Find(nameof(DescribedOptions.Speed))!;
 
-        Assert.Equal(["bhop_ and kz_ maps", "On", "Off"], field.Choices.Select(x => x.Label));
-        Assert.Equal("bhop_ and kz_ maps", field.Selected?.Label);
+        Assert.Equal(["Slow and careful", "Quick"], field.Choices.Select(x => x.Label));
+        Assert.Equal("Slow and careful", field.Selected?.Label);
 
         field.Selected = field.Choices[1];
-        Assert.Equal(BhopTriggerFix.On, options.FixBhopTriggers);
-        Assert.Equal(BhopTriggerFix.On, field.Value);
+        Assert.Equal(Speed.Quick, options.Speed);
+        Assert.Equal(Speed.Quick, field.Value);
     }
 
     [Fact]

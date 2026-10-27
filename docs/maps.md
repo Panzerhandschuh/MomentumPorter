@@ -7,15 +7,9 @@ Porting maps made for other games: Source maps (Kreedz Climbing Mod, CS:GO with 
 The verbs `sounds` and `weapon` build asset packs (see [weapons.md](weapons.md) and [player-sounds.md](player-sounds.md)), and `review` checks a map against Momentum's entity tools (see [Entity review](#entity-review-and-next-steps)). Without a verb, the arguments are a map to port:
 
 ```
-MomentumPorter-CLI <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--bhop-trigger-fix bhop|on|off] [--nozones] [--game-dir <folder>]
+MomentumPorter-CLI <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--nozones] [--game-dir <folder>]
 MomentumPorter-CLI review <map.bsp> [--steps]
 ```
-
-`--bhop-trigger-fix` picks the maps that get the bhop trigger fix (see [Automatic fixes](#automatic-fixes)): `bhop`
-(the default) for maps named `bhop_*` or `kz_*` (CS:S and GOKZ climb maps such as `kz_bounce`, and `kz_bhop_*`
-hybrids such as `kz_bhop_yonkoma`), `on` for every map, e.g. a bhop map missing its prefix, `off` for maps the fix breaks. KZ Mod maps never get it, since their
-bhop blocks are their own entities. In the app it's the **Fix bhop triggers** dropdown (bhop_ and kz_ maps, On, Off),
-shown while the queue has a Source map that isn't a KZ Mod one.
 
 `--nozones` skips writing a zone file from GOKZ's timer entities (as it does for Quake 3 maps), for zoning the map in
 game instead. In the app it's the **Convert zones** checkbox, shown while the queue has a Source map that may be a GOKZ
@@ -181,8 +175,8 @@ Counter-Strike entities (spawns, buy zones...) in a version 19/20 BSP for CS:S o
 map without GOKZ entities goes through the GOKZ profile, which only adds the cascaded shadow light and zones nothing).
 Failing those, the game folder the map sits in, then its name (`kz_` KZ Mod, `bhop_`/`surf_` CS:S), with a warning.
 
-Whatever the game (but KZ Mod), a Source map named `bhop_*` or `kz_*` gets the bhop trigger fix by default (see
-[Automatic fixes](#automatic-fixes)) and the bhop block fix baked in after the profile ran
+Whatever the game (but KZ Mod), a Source map named `bhop_*` or `kz_*` gets the bhop block fix baked in after the
+profile ran
 (dropping `func_door`/`func_button` blocks over a teleport become `func_bhop`s, see
 [Quake 3 and GoldSrc maps](#quake-3-and-goldsrc-maps)), since those are the maps Momentum's own runtime block fix
 would run on.
@@ -305,42 +299,16 @@ fix every CS:S map needs, tagging the props `_ported_by_tools 2`: older Source g
 the model's `.phy` in the map's pak file and then in CS:S's files (found through Steam or the Settings page). Without
 CS:S the fix is applied anyway, with a warning. CS:GO maps don't need it, since CS:GO doesn't square the scale.
 
-The bhop fixes apply to Source maps by name and `persist` on gravity triggers by game (see [Automatic fixes](#automatic-fixes)).
+The bhop block fix applies to Source maps by name and `persist` on gravity triggers by game (see [Automatic fixes](#automatic-fixes)).
 Everything else needs someone in game and is left to the entity review below.
 
 ## Automatic fixes
 
-After the game profile, `ApplyProfileStep` applies the bhop fixes, and `FixEntitiesStep`, `RemoveMountedAssetsStep`
+After the game profile, `ApplyProfileStep` applies the bhop block fix, and `FixEntitiesStep`, `RemoveMountedAssetsStep`
 and `FixMaterialsStep` (`src/MomentumPorter.Core/Fixes/`) apply what Lumper's Entity Review tab and Pakfile Explorer
 would otherwise ask for by hand, where the answer is the same for every map. GoldSrc maps converted with BSPConvert get the entity fixes too
 (`GoldSrcEntityFixStep`).
 
-- **Bhop triggers** (`BhopTriggers`, Source maps named `bhop_*` or `kz_*` by default, or every Source map or none as
-  **Fix bhop triggers** / `--bhop-trigger-fix` says; never KZ Mod maps, whose bhop blocks are their own entities): a bhop block's `trigger_multiple` renames the player
-  (`AddOutput targetname X`) a moment after touching and back to `default` a little later, and the `trigger_teleport`
-  around the block only takes players with that name through a `filter_activator_name`, so jumping up a slope or onto
-  a ledge that touches the trigger can teleport the player. The fix turns each into a `trigger_momentum_bhop` that
-  teleports the player itself once they've stood in it as long as the first rename took (`TimeLimit`, the next tick
-  for a rename without delay), and only while they're on the ground. Its destination is the teleport's `target`, with
-  `UseDestinationAngles` from the teleport's `UseLandmarkAngles` (or its "preserve angles" spawnflag on old maps) and
-  `ResetVelocityOnTeleport` from `VelocityMode` 1. It gets `LandingLimit -1`, so bhop mode has no landing limit and
-  the other modes teleport on the second landing, like the `func_bhop`s. `OnTrigger` outputs move to `OnStartTouch`;
-  the teleports and filters stay as they were.
-  Each brush of the trigger goes to the filtered teleport it overlaps most (brushes that only share a face don't
-  count), or, when it overlaps none, the one above or below it within the player's height (many maps put the teleport
-  as a thin slab just under the trigger). One trigger often covers a whole stage of blocks over teleports to different
-  places, so brushes going to different places become separate entities (`SplitByBrushes`).
-  Where `trigger_momentum_bhop` can't do what the teleport did, that part of the trigger stays the `trigger_multiple`
-  it was, renames and all, so the map works as it did in CS:S (including the slope and ledge problem there). That's
-  a brush with no filtered teleport under it (kz_bhop_lj's name lets the player into a `trigger_push` that shoves them
-  off the block; other maps' renames do nothing there), one where a teleport to somewhere else overlaps it at least
-  half as much as the main one (where the player stands decides), and one over a teleport with a `landmark`, a
-  `VelocityMode` above 1, `TeleportOnEndTouch`, `StartDisabled`, no `target` or a name some output targets (the map
-  turns it on and off or moves its destination). Those parts are tagged, so the review counts them as looked at and
-  the fix leaves them alone when it runs again, and the report warns once for each trigger with the reasons.
-  Detection is the engine's `IsBhopTrigger` (exactly two renames within a second on `OnStartTouch` or `OnTrigger`, the earlier one a name some teleport's filter accepts), except that a
-  trigger that removes itself (`Kill` on `!self` or its own name) is a one-time teleporter, not a block (bhop_quarry's
-  `teleporter_N`). Fixed entities are tagged `_ported_by_tools 2`.
 - **Bhop blocks** (`BhopBlocks`, Source maps named `bhop_*` or `kz_*`, the ones Momentum's runtime block fix runs
   on): touch-activated `func_door`s and `func_button`s that drop the player into a teleport become `func_bhop`s in the
   BSP, as described for GoldSrc maps above.
@@ -393,7 +361,7 @@ entity changes: 3 boost triggers, ...") and into the **Next steps** tab:
 |---|---|---|---|
 | Invalid entities | required | entities Lumper denies for doing nothing (`DeadEntities`) | removed |
 | env_global | required | `env_global`s | removed (ones a `logic_auto` reads need that `logic_auto` changed first) |
-| Bhop Trigger Fix | review on `bhop_` maps, note otherwise | `trigger_multiple`s matching `IsBhopTrigger` | a tagged `trigger_momentum_bhop` or tagged `trigger_multiple` the fix left as it was, or the renames are on `OnLand` (Momentum's entity tools) |
+| Bhop Trigger Fix | note, in game: only maps whose triggers overhang their blocks or lie on slopes need it | `trigger_multiple`s matching the engine's `IsBhopTrigger` (exactly two renames within a second on `OnStartTouch` or `OnTrigger`, the earlier one a name some teleport's filter accepts) | a tagged `trigger_momentum_bhop`, or the renames are on `OnLand` (the tools' older fix) |
 | Bhop Block Fix | required for `bhop_`/`kz_` maps | dropping blocks over a teleport (`BhopBlocks.Find`) | `func_bhop` |
 | Model Scale Fix | required, maps before version 21 | scaled dynamic props without a collision model | `ScaleType 1` |
 | CSM Fix | required for version 21 (CS:GO) maps | the map | it has an `env_cascade_light` |

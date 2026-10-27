@@ -33,12 +33,6 @@ public interface IGameProfile
     bool GravityPersists => true;
 
     /// <summary>
-    /// The game's bhop blocks can be the renaming trigger_multiples and filtered teleports the bhop trigger fix is for.
-    /// Not Kreedz Climbing's, whose bhop blocks are its own entities.
-    /// </summary>
-    bool HasBhopTriggers => true;
-
-    /// <summary>
     /// The profile writes a zone file from the map's timer entities, unless <see cref="PortContext.ConvertZones"/> is off.
     /// Only GOKZ's so far; the other games' maps are zoned in game.
     /// </summary>

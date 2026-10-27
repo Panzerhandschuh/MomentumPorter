@@ -85,15 +85,6 @@ public class EntityReviewTests(ITestOutputHelper output)
         List<Entity> otherName = MpBhopEntities();
         otherName[0]["filtername"] = "somebody";
         Assert.Empty(BhopTriggers.Find(otherName));
-
-        // A one-time teleporter that removes itself (bhop_quarry's teleporter_N)
-        List<Entity> teleporter = MpBhopEntities();
-        teleporter[2].connections.Add(Output("OnTrigger", "Kill", "", 0, "!self"));
-        Assert.Empty(BhopTriggers.Find(teleporter));
-        List<Entity> namedTeleporter = MpBhopEntities();
-        namedTeleporter[2]["targetname"] = "teleporter_1";
-        namedTeleporter[2].connections.Add(Output("OnUser1", "Kill", "", 4, "teleporter_1"));
-        Assert.Empty(BhopTriggers.Find(namedTeleporter));
     }
 
     [Fact]
@@ -204,159 +195,6 @@ public class EntityReviewTests(ITestOutputHelper output)
         Assert.True(steps.ToList().FindIndex(x => x.Title.StartsWith("Boost Triggers")) > setup);
     }
 
-    // Two brush models of a map, far enough apart that a player standing in one isn't near the other
-    private static (string First, string Second) TwoBrushModels(BSP bsp)
-    {
-        var models = new List<(string Model, Vector3 Mins, Vector3 Maxs)>();
-        for (int i = 1; i < bsp.Models.Count; i++)
-        {
-            var bounds = BrushGeometry.GetBrushes(bsp, i).Select(x => BrushGeometry.GetBrushBounds(bsp, x.Brush)).OfType<(Vector3 Mins, Vector3 Maxs)>().ToList();
-            if (bounds.Count > 0)
-                models.Add(($"*{i}", bounds.Select(x => x.Mins).Aggregate(Vector3.Min), bounds.Select(x => x.Maxs).Aggregate(Vector3.Max)));
-        }
-
-        var first = models[0];
-        var second = models.First(x => Vector3.Max(Vector3.Zero, Vector3.Max(first.Mins - x.Maxs, x.Mins - first.Maxs)).Length() > 200);
-        return (first.Model, second.Model);
-    }
-
-    private static string ReportText(PortContext context)
-    {
-        using var writer = new StringWriter();
-        context.Report.Print(writer);
-        return writer.ToString();
-    }
-
-    [Fact]
-    public void FixesBhopTriggersOfEveryTeleportFilter()
-    {
-        if (FindCssMap("de_dust") is not { } path)
-            return;
-
-        var context = new PortContext(new BSP(new FileInfo(path)), "bhop_test", null);
-        (string a, string b) = TwoBrushModels(context.Bsp);
-        List<Entity> first = MpBhopEntities("filter_a", "teleport_a", a, a, "stage2");
-        first[1]["UseLandmarkAngles"] = "1";
-        first[1]["VelocityMode"] = "1";
-        first[2].connections.Add(Output("OnTrigger", "Open", "", 0, "door"));
-        // An old map's teleport that keeps the player's angles, and a rename without a delay
-        List<Entity> second = MpBhopEntities("filter_b", "teleport_b", b, b, "stage3");
-        second[1]["spawnflags"] = "33";
-        second[2].connections[1] = Output("OnTrigger", "AddOutput", "targetname teleport_b", 0);
-        foreach (Entity entity in first.Concat(second))
-            context.Bsp.Entities.Add(entity);
-
-        Assert.Equal(2, BhopTriggers.Fix(context));
-
-        Assert.Empty(BhopTriggers.Find(context));
-        Entity fixedA = first[2];
-        Assert.Equal("trigger_momentum_bhop", fixedA.ClassName);
-        Assert.Equal("stage2", fixedA["target"]);
-        Assert.Equal(0.09f, fixedA.GetFloat("TimeLimit", 0), 3);
-        Assert.Equal(-1, fixedA.GetInt("LandingLimit", 0));
-        Assert.Equal(0, fixedA.GetInt("ProgressTeleport", 1));
-        Assert.Equal(1, fixedA.GetInt("UseDestinationAngles", 0));
-        Assert.Equal(1, fixedA.GetInt("ResetVelocityOnTeleport", 0));
-        Assert.Equal(3, fixedA.GetInt("spawnflags", 0));
-        Assert.False(fixedA.ContainsKey("wait"));
-        Assert.False(fixedA.ContainsKey("angles"));
-        Assert.True(EntityTools.IsTagged(fixedA));
-        // The renames are gone, the trigger's other outputs stay
-        Entity.EntityConnection open = Assert.Single(fixedA.connections);
-        Assert.Equal(("OnStartTouch", "door", "Open"), (open.name, open.target, open.action));
-
-        Entity fixedB = second[2];
-        Assert.Equal("stage3", fixedB["target"]);
-        Assert.Equal(0, fixedB.GetInt("UseDestinationAngles", 1));
-        Assert.Equal(0, fixedB.GetInt("ResetVelocityOnTeleport", 1));
-        Assert.True(fixedB.GetFloat("TimeLimit", 0) is > 0 and < 0.01f);
-        Assert.Empty(fixedB.connections);
-
-        // The teleports stay as they were; nothing renames the player for them any more
-        Assert.Equal("filter_a", first[1]["filtername"]);
-        Assert.False(EntityTools.IsTagged(first[1]));
-        Assert.True(BhopTriggers.IsFixed(context.Entities));
-        Assert.False(EntityReview.Analyze(context).Items.Single(x => x.Tool == "Bhop Trigger Fix").IsPending);
-        Assert.DoesNotContain("warning", ReportText(context));
-    }
-
-    // Where trigger_momentum_bhop can't do what the map's teleport did, the trigger stays as the map had it
-    [Theory]
-    [InlineData("different places", "it's inside teleports to different places")]
-    [InlineData("away", "no teleport its renames are for is under it")]
-    [InlineData("landmark", "its teleport has a landmark")]
-    [InlineData("velocity", "its teleport has VelocityMode 2")]
-    [InlineData("disabled", "its teleport starts disabled")]
-    [InlineData("toggled", "its teleport is changed by the map's outputs")]
-    public void LeavesBhopTriggersWhoseTeleportCantBeCopied(string scenario, string reason)
-    {
-        if (FindCssMap("de_dust") is not { } path)
-            return;
-
-        var context = new PortContext(new BSP(new FileInfo(path)), "bhop_test", null);
-        (string a, string b) = TwoBrushModels(context.Bsp);
-        List<Entity> entities = MpBhopEntities(triggerModel: a, teleportModel: scenario == "away" ? b : a);
-        Entity teleport = entities[1];
-        switch (scenario)
-        {
-            case "different places":
-                entities.Add(Make("trigger_teleport", ("model", a), ("target", "elsewhere"), ("filtername", "filter_teleport"), ("spawnflags", "1")));
-                break;
-            case "landmark":
-                teleport["landmark"] = "landmark_1";
-                break;
-            case "velocity":
-                teleport["VelocityMode"] = "2";
-                break;
-            case "disabled":
-                teleport["StartDisabled"] = "1";
-                break;
-            case "toggled":
-                teleport["targetname"] = "stage2_teleport";
-                Entity relay = Make("logic_relay", ("targetname", "open_stage2"));
-                relay.connections.Add(Output("OnTrigger", "Disable", "", 0, "stage2_teleport"));
-                entities.Add(relay);
-                break;
-        }
-
-        foreach (Entity entity in entities)
-            context.Bsp.Entities.Add(entity);
-
-        BhopTriggers.Fix(context);
-
-        Entity trigger = entities[2];
-        Assert.Equal("trigger_multiple", trigger.ClassName);
-        Assert.Equal("0", trigger["wait"]);
-        Assert.Equal(["targetname default", "targetname teleport"], trigger.connections.Where(x => x.name == "OnTrigger").Select(x => x.param));
-        Assert.True(EntityTools.IsTagged(trigger));
-        Assert.Empty(context.OfClass("trigger_momentum_bhop"));
-        Assert.Contains($"warning: bhop trigger fix: left the bhop trigger {a} as it was, since {reason}", ReportText(context));
-
-        // Done as far as the review goes, and the fix leaves it alone when run again
-        Assert.Empty(BhopTriggers.Find(context));
-        Assert.Equal(0, BhopTriggers.Fix(context));
-        Assert.False(EntityReview.Analyze(context).Items.Single(x => x.Tool == "Bhop Trigger Fix").IsPending);
-    }
-
-    [Fact]
-    public void SplitsABrushModelIntoGroups()
-    {
-        if (FindCssMap("de_dust") is not { } path)
-            return;
-
-        var bsp = new BSP(new FileInfo(path));
-        int model = Enumerable.Range(1, bsp.Models.Count - 1).First(x => BrushGeometry.GetBrushes(bsp, x).Count >= 3);
-        List<int> brushes = BrushGeometry.GetBrushes(bsp, model).Select(x => x.Brush).ToList();
-        List<IReadOnlyList<int>> groups = [[brushes[0], brushes[2]], brushes.Where((_, i) => i != 0 && i != 2).ToList()];
-
-        List<int> models = new BrushModelEditor(bsp).SplitModel(model, groups);
-
-        Assert.Equal(model, models[0]);
-        Assert.Equal(bsp.Models.Count - 1, models[1]);
-        for (int i = 0; i < groups.Count; i++)
-            Assert.Equal(groups[i].Order(), BrushGeometry.GetBrushes(bsp, models[i]).Select(x => x.Brush));
-    }
-
     // ---- Counter-Strike: Source's own bhop maps ----
 
     private static string? FindCssMap(string name)
@@ -390,59 +228,35 @@ public class EntityReviewTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void FixesTheBhopTriggersOfACssBhopMap()
+    public void LeavesTheBhopTriggersOfACssBhopMapForTheEntityTools()
     {
         if (FindCssMap("bhop_arcane_v1") is not { } path)
             return;
 
-        var bsp = new BSP(new FileInfo(path));
-        var context = new PortContext(bsp, "bhop_arcane_v1", null);
+        var context = new PortContext(new BSP(new FileInfo(path)), "bhop_arcane_v1", null);
         List<BhopTriggers.BhopTrigger> before = BhopTriggers.Find(context);
         Assert.NotEmpty(before);
-        int brushes = before.Sum(x => BrushGeometry.GetBrushes(bsp, x.Entity.ModelNumber).Count);
-        string filterName = before[0].FilterName;
-        int filteredTeleports = context.OfClass("trigger_teleport").Count(x => x["filtername"] == filterName);
-        Assert.True(filteredTeleports > 0);
 
         // As the Convert entities step does after the profile, then its Fix entities step
         new CounterStrikeSourceProfile().Apply(context);
-        BhopTriggers.Fix(context);
         MomentumPorter.Fixes.DeadEntities.Remove(context);
         MomentumPorter.Fixes.GlobalStates.Remove(context);
 
-        Assert.Empty(BhopTriggers.Find(context));
-        Assert.True(BhopTriggers.IsFixed(context.Entities));
+        Assert.Equal(before.Count, BhopTriggers.Find(context).Count);
+        Assert.DoesNotContain(context.Entities, x => x.ClassName == "trigger_momentum_bhop");
 
-        // Each trigger covers a stage of blocks over teleports to different places, so it's split by destination
-        List<Entity> bhops = context.OfClass("trigger_momentum_bhop").ToList();
-        Assert.True(bhops.Count > before.Count);
-        Assert.All(bhops, x => Assert.True(EntityTools.IsTagged(x)));
-        Assert.Equal(brushes, bhops.Sum(x => BrushGeometry.GetBrushes(bsp, x.ModelNumber).Count));
-        var targets = context.OfClass("trigger_teleport").Where(x => x["filtername"] == filterName).Select(x => x["target"]).ToHashSet();
-        Assert.All(bhops, x => Assert.Contains(x["target"], targets));
-        Assert.All(bhops.Where(x => x["hammerid"].Length > 0).GroupBy(x => x["hammerid"]), x => Assert.Equal(x.Count(), x.Select(y => y["target"]).Distinct().Count()));
-        Assert.All(bhops, x => Assert.DoesNotContain(x.connections, c => (c.param ?? "").StartsWith("targetname")));
-
-        // The teleports stay as they were
-        Assert.Equal(filteredTeleports, context.OfClass("trigger_teleport").Count(x => x["filtername"] == filterName && !EntityTools.IsTagged(x)));
-
-        // The review sees the fix as done and the pushes as still to be looked at
+        // The review mentions them as a note for the entity tools, and the pushes as still to be looked at
         EntityReview review = EntityReview.Analyze(context);
         output.WriteLine(string.Join(Environment.NewLine, review.Lines()));
         ReviewItem bhop = Assert.Single(review.Items, x => x.Tool == "Bhop Trigger Fix");
-        Assert.Equal(bhops.Count, bhop.Found);
-        Assert.False(bhop.IsPending);
+        Assert.Equal(before.Count, bhop.Pending);
+        Assert.Equal(ReviewSeverity.Note, bhop.Severity);
+        Assert.True(bhop.InGame);
         ReviewItem boosts = Assert.Single(review.Items, x => x.Tool == "Boost Triggers");
         Assert.True(boosts.Pending > 0);
         Assert.True(review.NeedsManualChanges);
         Assert.False(review.HasMissingRequiredFixes);
         Assert.Contains("boost triggers", review.Summary);
-        Assert.True(review.ThroughEntityTools);
-
-        using var writer = new StringWriter();
-        context.Report.Print(writer);
-        Assert.Contains("bhop trigger fix: trigger_multiple -> trigger_momentum_bhop", writer.ToString());
-        Assert.DoesNotContain("warning: bhop trigger fix", writer.ToString());
     }
 
     [Fact]
@@ -490,36 +304,9 @@ public class EntityReviewTests(ITestOutputHelper output)
         Assert.True(review.NeedsManualChanges);
 
         var ported = new BSP(new FileInfo(outputPath));
-        Assert.Contains(ported.Entities, x => x.ClassName == "trigger_momentum_bhop" && EntityTools.IsTagged(x));
+        Assert.DoesNotContain(ported.Entities, x => x.ClassName == "trigger_momentum_bhop");
         EntityReview again = EntityReview.AnalyzeFile(outputPath);
-        Assert.False(again.Items.Single(x => x.Tool == "Bhop Trigger Fix").IsPending);
-    }
-
-    [Theory]
-    [InlineData("bhop_arcane_v1", BhopTriggerFix.Off, true, ReviewSeverity.Review)]
-    [InlineData("arcane_v1", BhopTriggerFix.BhopAndKzMaps, true, ReviewSeverity.Note)]
-    [InlineData("kz_bhop_arcane", BhopTriggerFix.BhopAndKzMaps, false, ReviewSeverity.Review)]
-    [InlineData("arcane_v1", BhopTriggerFix.On, false, ReviewSeverity.Note)]
-    public async Task FixesBhopTriggersOnTheMapsTheOptionSays(string mapName, BhopTriggerFix fix, bool left, ReviewSeverity severity)
-    {
-        if (FindCssMap("bhop_arcane_v1") is not { } input)
-            return;
-
-        using var temp = new TempFolder();
-        string outputPath = temp.Combine(mapName + ".bsp");
-        var options = new MapPortOptions { Pack = false, Install = false, FixBhopTriggers = fix };
-        (PortJob job, MapPortState state) = PortJobFactory.CreateSourceMapJob(input, outputPath, options);
-        var context = new PortJobContext { Log = NullLog.Instance, WorkDirectory = temp.Path };
-        context.Set(state);
-
-        PortJobResult result = await job.RunAsync(context);
-
-        Assert.True(result.Succeeded, result.Error);
-        var ported = new BSP(new FileInfo(outputPath));
-        Assert.Equal(!left, BhopTriggers.IsFixed(ported.Entities.ToList()));
-        ReviewItem bhop = context.TryGet<EntityReview>()!.Items.Single(x => x.Tool == "Bhop Trigger Fix");
-        Assert.Equal(left, bhop.IsPending);
-        Assert.Equal(severity, bhop.Severity);
+        Assert.Equal(ReviewSeverity.Note, again.Items.Single(x => x.Tool == "Bhop Trigger Fix").Severity);
     }
 
     // ---- Maps in Momentum's maps folder that went through the in-game entity tools ----
