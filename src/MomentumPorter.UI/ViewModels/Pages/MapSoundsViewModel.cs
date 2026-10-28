@@ -1,8 +1,11 @@
 namespace MomentumPorter.UI.ViewModels.Pages;
 
 using System.Reactive;
+using System.Reactive.Concurrency;
+using System.Reactive.Linq;
 using MomentumPorter.Fixes;
 using MomentumPorter.Settings;
+using MomentumPorter.UI.Services;
 using ReactiveUI;
 
 /// <summary>
@@ -78,35 +81,43 @@ public sealed class MapSoundRowViewModel : ReactiveObject
 /// </summary>
 public sealed class MapSoundsViewModel : ReactiveObject
 {
+    // How often the timeline follows the sound, and how long it leaves the slider alone after a seek
+    private static readonly TimeSpan Tick = TimeSpan.FromMilliseconds(200);
+    private const long SeekSettleMs = 400;
+
     private readonly Func<string, byte[]?> _read;
-    private readonly Func<byte[], string, string?> _play;
-    private readonly Action _stop;
-    private readonly Action<double> _setVolume;
+    private readonly ISoundPreview _preview;
+    private readonly IScheduler _scheduler;
     private MapSoundRowViewModel? _playing;
-    private int _plays;
+    private IDisposable? _ticks;
+    private long _seekedAt;
     private string? _previewStatus;
+    // Where unmuting goes when the volume wasn't muted from anywhere
+    private const double DefaultVolume = 50;
+
     private double _volume;
+    private double? _unmutedVolume;
+    private double _position;
+    private double _duration;
 
     /// <param name="read">Reads a packed file's bytes, for the preview</param>
-    /// <param name="play">Plays a sound's bytes (with its file name for the format); returns why it couldn't</param>
     /// <param name="ported">The map has been ported already, so the picks only apply when it's ported again</param>
-    /// <param name="volume">The preview's volume from 0 to 1, which <paramref name="setVolume"/> applies</param>
+    /// <param name="volume">The preview's volume from 0 to 1</param>
+    /// <param name="scheduler">Where the timeline's updates run; the UI thread unless a test drives them</param>
     public MapSoundsViewModel(
         string mapName,
         MapSounds sounds,
         MapMusicChoice? choice,
         bool ported,
         Func<string, byte[]?> read,
-        Func<byte[], string, string?> play,
-        Action stop,
+        ISoundPreview preview,
         double volume,
-        Action<double> setVolume)
+        IScheduler? scheduler = null)
     {
         MapName = mapName;
         _read = read;
-        _play = play;
-        _stop = stop;
-        _setVolume = setVolume;
+        _preview = preview;
+        _scheduler = scheduler ?? RxApp.MainThreadScheduler;
         Ported = ported;
         InMusicFolder = sounds.InMusicFolder;
         Volume = volume * 100;
@@ -121,6 +132,7 @@ public sealed class MapSoundsViewModel : ReactiveObject
 
         ResetCommand = ReactiveCommand.Create(() => Apply(null));
         StopCommand = ReactiveCommand.Create(Stop);
+        MuteCommand = ReactiveCommand.Create(ToggleMute);
     }
 
     public string MapName { get; }
@@ -146,22 +158,69 @@ public sealed class MapSoundsViewModel : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref _volume, Math.Clamp(value, 0, 100));
-            _setVolume(_volume / 100);
+            _preview.Volume = _volume / 100;
+            // Any other change (e.g. the slider) forgets the volume muting kept
+            _unmutedVolume = null;
+            this.RaisePropertyChanged(nameof(IsMuted));
+            this.RaisePropertyChanged(nameof(VolumeText));
         }
     }
 
+    public bool IsMuted => _volume < 0.5;
+
+    public string VolumeText => $"{_volume:0}";
+
     public string? PortedNote => Ported ? "This map has been ported already: port it again to apply these picks." : null;
 
-    /// <summary>What the preview is playing, or why it couldn't.</summary>
+    /// <summary>Why the preview couldn't play a sound.</summary>
     public string? PreviewStatus
     {
         get => _previewStatus;
         private set => this.RaiseAndSetIfChanged(ref _previewStatus, value);
     }
 
+    /// <summary>The sound the timeline is for, or null when nothing is playing.</summary>
+    public string? NowPlaying => _playing?.Name;
+
+    public bool IsPreviewing => _playing is not null;
+
+    /// <summary>Where the playing sound is, in seconds; setting it seeks, e.g. past a long fade-in.</summary>
+    public double Position
+    {
+        get => _position;
+        set
+        {
+            if (_playing is null)
+                return;
+
+            SetPosition(Math.Clamp(value, 0, _duration));
+            _seekedAt = Environment.TickCount64;
+            _preview.Seek(TimeSpan.FromSeconds(_position));
+        }
+    }
+
+    /// <summary>The playing sound's length in seconds, the timeline's end.</summary>
+    public double Duration
+    {
+        get => _duration;
+        private set => this.RaiseAndSetIfChanged(ref _duration, value);
+    }
+
+    /// <summary>"0:42 / 3:15", in minutes and seconds even for a short sound, so it reads like a player's clock.</summary>
+    public string PositionText => $"{Clock(_position)} / {Clock(_duration)}";
+
+    private static string Clock(double seconds)
+    {
+        var time = TimeSpan.FromSeconds(Math.Floor(seconds));
+        return time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"m\:ss");
+    }
+
     public ReactiveCommand<Unit, Unit> ResetCommand { get; }
 
     public ReactiveCommand<Unit, Unit> StopCommand { get; }
+
+    /// <summary>Mutes the preview, or puts the volume back to what it was before.</summary>
+    public ReactiveCommand<Unit, Unit> MuteCommand { get; }
 
     /// <summary>The picks to save, with the sounds that might have been music saved as not, so they count as listened to.</summary>
     public MapMusicChoice ToChoice()
@@ -182,11 +241,26 @@ public sealed class MapSoundsViewModel : ReactiveObject
 
     public void Stop()
     {
-        _stop();
-        if (_playing is not null)
-            _playing.IsPlaying = false;
-        _playing = null;
+        _preview.Stop();
+        _ticks?.Dispose();
+        _ticks = null;
         PreviewStatus = null;
+        SetPlaying(null);
+    }
+
+    // Muted is just no volume, so the slider shows it. Unmuting puts back the volume it was muted at, or the default
+    // when the slider was dragged down instead
+    private void ToggleMute()
+    {
+        if (IsMuted)
+        {
+            Volume = _unmutedVolume ?? DefaultVolume;
+            return;
+        }
+
+        double volume = _volume;
+        Volume = 0;
+        _unmutedVolume = volume;
     }
 
     // The saved picks, or (with none) the suggestion: long sounds ticked
@@ -217,32 +291,53 @@ public sealed class MapSoundsViewModel : ReactiveObject
             return;
         }
 
-        string? error = _play(bytes, row.Path);
+        string? error = _preview.Play(bytes, row.Path);
         if (error is not null)
         {
             PreviewStatus = $"{row.Name}: {error}";
             return;
         }
 
-        _playing = row;
-        row.IsPlaying = true;
-        PreviewStatus = $"Playing {row.Name} ({row.Length})";
-        // Not awaited: the command would stay busy (and the button disabled) for the whole sound
-        _ = ClearWhenFinishedAsync(row, ++_plays);
+        Duration = (row.Sound.Length ?? TimeSpan.Zero).TotalSeconds;
+        SetPlaying(row);
+        _ticks = Observable.Interval(Tick, _scheduler).Subscribe(_ => Follow());
     }
 
-    // Nothing says when a sound ends, so its button goes back to Play after its length
-    private async Task ClearWhenFinishedAsync(MapSoundRowViewModel row, int play)
+    // Moves the timeline along with the sound, and puts its button back to Play when it ends
+    private void Follow()
     {
-        if (row.Sound.Length is not { } length)
+        if (_playing is null)
             return;
 
-        await Task.Delay(length + TimeSpan.FromMilliseconds(250));
-        if (play == _plays && _playing == row)
+        if (_preview.Position() is not { } now || now.Finished)
         {
-            row.IsPlaying = false;
-            _playing = null;
-            PreviewStatus = null;
+            Stop();
+            return;
         }
+
+        // The player's length is the decoded one, which beats the header's estimate for some MP3s
+        if (now.Length > TimeSpan.Zero)
+            Duration = now.Length.TotalSeconds;
+        if (Environment.TickCount64 - _seekedAt > SeekSettleMs)
+            SetPosition(now.Position.TotalSeconds);
+    }
+
+    private void SetPlaying(MapSoundRowViewModel? row)
+    {
+        if (_playing is not null)
+            _playing.IsPlaying = false;
+        _playing = row;
+        if (row is not null)
+            row.IsPlaying = true;
+
+        SetPosition(0);
+        this.RaisePropertyChanged(nameof(NowPlaying));
+        this.RaisePropertyChanged(nameof(IsPreviewing));
+    }
+
+    private void SetPosition(double seconds)
+    {
+        this.RaiseAndSetIfChanged(ref _position, seconds, nameof(Position));
+        this.RaisePropertyChanged(nameof(PositionText));
     }
 }

@@ -1,6 +1,8 @@
 namespace MomentumPorter.Tests;
 
+using System.Reactive.Linq;
 using MomentumPorter.Detection;
+using MomentumPorter.Fixes;
 using MomentumPorter.Options;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Settings;
@@ -311,5 +313,72 @@ public class MapsPageTests
         Assert.Equal(10, page.FindMusicChoice("bhop_badges")!.Music.Count);
         // The volume is kept even so
         Assert.Equal(0.35, SettingsService.Load(temp.Combine("settings.json")).Settings.PreviewVolume, 3);
+    }
+
+    [Fact]
+    public async Task TheSoundsPreviewTimelineFollowsAndSeeks()
+    {
+        // The header guessed the length a little short, as it can for a VBR MP3
+        var sound = new PackedSound("sound/map/track.mp3", 1000, TimeSpan.FromSeconds(170), ["ambient_generic, plays everywhere"], MusicGuess.Music, "long");
+        var preview = new FakeSoundPreview();
+        var scheduler = new System.Reactive.Concurrency.HistoricalScheduler();
+        var review = new MapSoundsViewModel("map", new MapSounds([sound], 0), null, false, _ => [1, 2, 3], preview, 0.5, scheduler);
+        MapSoundRowViewModel row = Assert.Single(review.Rows);
+        Assert.Equal(0.5, preview.Volume);
+
+        await row.PlayCommand.Execute();
+        Assert.True(row.IsPlaying);
+        Assert.True(review.IsPreviewing);
+        Assert.Equal("map/track.mp3", review.NowPlaying);
+        Assert.Equal(170, review.Duration);
+
+        // It follows the player, with the player's length
+        preview.Now = new PreviewPosition(TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(3), false);
+        scheduler.AdvanceBy(TimeSpan.FromMilliseconds(200));
+        Assert.Equal(180, review.Duration);
+        Assert.Equal(10, review.Position);
+        Assert.Equal("0:10 / 3:00", review.PositionText);
+
+        // Moving the slider skips ahead, but not past the end
+        review.Position = 95;
+        review.Position = 500;
+        Assert.Equal([TimeSpan.FromSeconds(95), TimeSpan.FromSeconds(180)], preview.Seeks);
+        Assert.Equal(180, review.Position);
+
+        // At the end the button goes back to Play and the timeline hides
+        preview.Now = preview.Now!.Value with { Finished = true };
+        scheduler.AdvanceBy(TimeSpan.FromMilliseconds(200));
+        Assert.False(row.IsPlaying);
+        Assert.False(review.IsPreviewing);
+        Assert.Null(preview.Now);
+
+        // Nothing to seek once it's stopped
+        review.Position = 30;
+        Assert.Equal(2, preview.Seeks.Count);
+        Assert.Equal(0, review.Position);
+    }
+
+    [Fact]
+    public async Task TheSoundsPreviewMutesAndUnmutes()
+    {
+        var sound = new PackedSound("sound/map/track.mp3", 1000, TimeSpan.FromMinutes(3), [], MusicGuess.Music, "long");
+        var preview = new FakeSoundPreview();
+        var review = new MapSoundsViewModel("map", new MapSounds([sound], 0), null, false, _ => [1], preview, 0.3, new System.Reactive.Concurrency.HistoricalScheduler());
+
+        await review.MuteCommand.Execute();
+        Assert.True(review.IsMuted);
+        Assert.Equal(0, preview.Volume);
+
+        // Back to where it was
+        await review.MuteCommand.Execute();
+        Assert.False(review.IsMuted);
+        Assert.Equal(30, review.Volume);
+        Assert.Equal(0.3, preview.Volume, 3);
+
+        // Dragged all the way down instead, unmuting goes to the default
+        review.Volume = 0;
+        Assert.True(review.IsMuted);
+        await review.MuteCommand.Execute();
+        Assert.Equal(50, review.Volume);
     }
 }

@@ -5,8 +5,20 @@
         x:Class="MomentumPorter.UI.Views.Pages.MapSoundsWindow"
         x:DataType="vm:MapSoundsViewModel"
         Title="{Binding Title}"
-        Width="980" Height="680" MinWidth="720" MinHeight="420"
+        Width="980" Height="680" MinWidth="840" MinHeight="420"
         WindowStartupLocation="CenterOwner">
+
+  <Window.Resources>
+    <!--
+      The theme pads a slider 15px either side of its 20px thumb and makes it at least 32px, all on one side when the
+      padding is less: the timeline would make the bar grow as it appears, and the volume slider sat off centre.
+      Even 6px makes both 32px across, the buttons' height, with the thumb in the middle.
+    -->
+    <GridLength x:Key="SliderPreContentMargin">6</GridLength>
+    <GridLength x:Key="SliderPostContentMargin">6</GridLength>
+    <x:Double x:Key="SliderHorizontalHeight">0</x:Double>
+    <x:Double x:Key="SliderVerticalWidth">0</x:Double>
+  </Window.Resources>
 
   <Window.Styles>
     <!-- A sound the review takes out of the map -->
@@ -59,7 +71,8 @@
                  IsVisible="{Binding PortedNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
     </StackPanel>
 
-    <DockPanel DockPanel.Dock="Bottom" Margin="0 10 0 0">
+    <!-- Above the list, which the volume slider opens over -->
+    <DockPanel Name="PreviewBar" DockPanel.Dock="Bottom" Margin="0 10 0 0" ZIndex="1">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
         <Button Command="{Binding ResetCommand}" ToolTip.Tip="Untick everything but the sounds of 2 minutes or longer, and remove nothing">
           <TextBlock Text="Reset to suggested" />
@@ -72,19 +85,49 @@
           </StackPanel>
         </Button>
       </StackPanel>
-      <!-- How loud the preview plays; changes the sound that's playing -->
-      <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0 0 16 0"
-                  ToolTip.Tip="Preview volume">
-        <materialIcons:MaterialIcon Kind="VolumeHigh" Width="18" Height="18" VerticalAlignment="Center" />
-        <Slider Value="{Binding Volume}" Minimum="0" Maximum="100" Width="140" VerticalAlignment="Center" />
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
-                  IsVisible="{Binding PreviewStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-        <Button Classes="icon" Command="{Binding StopCommand}" ToolTip.Tip="Stop">
-          <materialIcons:MaterialIcon Kind="Stop" Width="16" Height="16" />
+      <!--
+        How loud the preview plays: a vertical slider that opens over the list on hover or click, like a media player's.
+        It's drawn in this window (overflowing the bar upwards) rather than in a Popup, whose separate window made the
+        button lose the pointer as it opened, so it flickered open and shut.
+      -->
+      <Panel Name="VolumeHost" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0 0 8 0">
+        <Button Name="VolumeButton" Classes="icon" Width="32" Height="32" Command="{Binding MuteCommand}">
+          <Panel>
+            <materialIcons:MaterialIcon Kind="VolumeHigh" Width="20" Height="20" IsVisible="{Binding !IsMuted}" />
+            <materialIcons:MaterialIcon Kind="VolumeOff" Width="20" Height="20" IsVisible="{Binding IsMuted}" />
+          </Panel>
         </Button>
-        <TextBlock Text="{Binding PreviewStatus}" Classes="muted" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-      </StackPanel>
+        <!-- A Canvas takes no room, so the slider sits above the button without growing the bar -->
+        <Canvas>
+          <Border Name="VolumePanel" IsVisible="False" Width="44" Canvas.Left="-6" Canvas.Bottom="32" Padding="0 10 0 8"
+                  CornerRadius="6" BorderThickness="1"
+                  Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}" BorderBrush="{StaticResource PanelBorder}">
+            <StackPanel Spacing="6">
+              <Slider Name="VolumeSlider" Value="{Binding Volume}" Minimum="0" Maximum="100" SmallChange="5" LargeChange="10"
+                      Orientation="Vertical" Height="130" HorizontalAlignment="Center" />
+              <TextBlock Text="{Binding VolumeText}" FontSize="12" HorizontalAlignment="Center"
+                         FontFamily="{StaticResource Monospace}" />
+            </StackPanel>
+          </Border>
+        </Canvas>
+      </Panel>
+
+      <!-- The playing sound's timeline: drag or click it to skip ahead, e.g. past a long fade-in -->
+      <Panel Margin="0 0 16 0">
+        <Grid ColumnDefinitions="Auto, Auto, *, Auto" VerticalAlignment="Center" IsVisible="{Binding IsPreviewing}">
+          <Button Grid.Column="0" Classes="icon" Command="{Binding StopCommand}" ToolTip.Tip="Stop" VerticalAlignment="Center">
+            <materialIcons:MaterialIcon Kind="Stop" Width="16" Height="16" />
+          </Button>
+          <TextBlock Name="NowPlayingText" Grid.Column="1" Text="{Binding NowPlaying}" FontWeight="SemiBold" MaxWidth="170" Margin="4 0 10 0"
+                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NowPlaying}" />
+          <Slider Name="TimelineSlider" Grid.Column="2" Value="{Binding Position}" Minimum="0" Maximum="{Binding Duration}" MinWidth="80"
+                  SmallChange="5" LargeChange="15" VerticalAlignment="Center" ToolTip.Tip="Skip to a point in the sound" />
+          <TextBlock Grid.Column="3" Text="{Binding PositionText}" Margin="10 0 0 0" VerticalAlignment="Center"
+                     FontFamily="{StaticResource Monospace}" FontSize="12" />
+        </Grid>
+        <TextBlock Text="{Binding PreviewStatus}" Classes="muted" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                   ToolTip.Tip="{Binding PreviewStatus}" IsVisible="{Binding !IsPreviewing}" />
+      </Panel>
     </DockPanel>
 
     <Border Classes="panel" Padding="10">

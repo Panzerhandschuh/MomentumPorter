@@ -419,10 +419,8 @@ public sealed class MapsPageViewModel : PageViewModel
             FindMusicChoice(item.MapName),
             item.IsFinished,
             path => pak is null ? null : ReadPakFile(pak, path),
-            SoundPreviewPlayer.PlayFile,
-            SoundPreviewPlayer.Stop,
-            _settings.Settings.PreviewVolume,
-            volume => SoundPreviewPlayer.Volume = volume);
+            SoundPreviewPlayer.Files,
+            _settings.Settings.PreviewVolume);
 
         bool saved = await _dialogs.ShowMapSoundsAsync(review);
 
