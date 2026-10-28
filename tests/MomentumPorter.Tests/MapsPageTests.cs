@@ -4,6 +4,7 @@ using MomentumPorter.Detection;
 using MomentumPorter.Options;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Settings;
+using MomentumPorter.Steam;
 using MomentumPorter.Steps;
 using MomentumPorter.UI.Services;
 using MomentumPorter.UI.ViewModels;
@@ -33,6 +34,11 @@ public class MapsPageTests
         public Task<string?> PickFolderAsync(string title) => Task.FromResult<string?>(null);
 
         public Task<string?> PickSaveFileAsync(string title, string suggestedName, params FileFilter[] filters) => Task.FromResult<string?>(null);
+
+        /// <summary>Answers the Sounds review: changes its picks and returns whether to save them.</summary>
+        public Func<MapSoundsViewModel, bool>? SoundsReview { get; set; }
+
+        public Task<bool> ShowMapSoundsAsync(MapSoundsViewModel sounds) => Task.FromResult(SoundsReview?.Invoke(sounds) ?? false);
     }
 
     private static readonly Action<Action> Inline = action => action();
@@ -149,7 +155,7 @@ public class MapsPageTests
         job.Configure(context);
 
         Assert.StartsWith(temp.Combine("work"), job.WorkDirectory);
-        Assert.Equal(["Load map", "Convert entities", "Fix entities", "Remove mounted assets", "Fix materials", "Check entities", "Write map", "Pack assets"], job.Job.Steps.Select(x => x.Name));
+        Assert.Equal(["Load map", "Convert entities", "Fix entities", "Remove mounted assets", "Move music", "Fix materials", "Check entities", "Write map", "Pack assets"], job.Job.Steps.Select(x => x.Name));
         MapPortState state = context.Get<MapPortState>();
         Assert.Equal(Path.Combine(job.WorkDirectory, "kz_x.bsp"), state.OutputPath);
         Assert.NotSame(maps.Options, state.Options);
@@ -255,5 +261,55 @@ public class MapsPageTests
         Assert.True(item.HasReport);
         Assert.Contains(item.Log.Lines, x => x.Text.StartsWith("Packed kz_dance.bsp"));
         Assert.Null(item.InstalledPath);
+    }
+    [Fact]
+    public async Task TheSoundsReviewKeepsItsPicksForThePort()
+    {
+        GameLocation? css = new SteamLocator().Find(KnownGame.CounterStrikeSource);
+        string? map = css?.ContentDirectory is { } content ? Path.Combine(content, "maps", "bhop_badges.bsp") : null;
+        if (map is null || !File.Exists(map))
+            return;
+
+        using var temp = new TempFolder();
+        var dialogs = new FakeDialogs();
+        var settings = SettingsService.Load(temp.Combine("settings.json"));
+        var page = new MapsPageViewModel(settings, dialogs, new JobRunnerService(Inline), Inline);
+
+        MapQueueItemViewModel item = Assert.Single(page.AddFiles([map]));
+        await item.DetectGameAsync(Inline);
+        Assert.Equal("Sounds: 12 music", item.SoundsSummary);
+
+        // Untick one track and take another out
+        dialogs.SoundsReview = review =>
+        {
+            Assert.Equal(12, review.Rows.Count(x => x.IsMusic));
+            // One list, longest first
+            Assert.Equal(review.Rows.OrderByDescending(x => x.Sound.Length).Select(x => x.Path), review.Rows.Select(x => x.Path));
+            Assert.Equal(50, review.Volume);
+            review.Volume = 20;
+            review.Rows.Single(x => x.Name == "badges/underwater1.mp3").IsMusic = false;
+            review.Rows.Single(x => x.Name == "badges/rush_hour.mp3").IsRemoved = true;
+            return true;
+        };
+        await page.ReviewSoundsAsync(item);
+
+        Assert.Equal("Sounds: 10 music, 1 other, 1 removed", item.SoundsSummary);
+        MapMusicChoice choice = MusicChoices.Load(temp.Combine(MusicChoices.FileName)).Find("bhop_badges")!;
+        Assert.True(choice.IsNotMusic("sound/badges/underwater1.mp3"));
+        Assert.True(choice.IsRemoved("sound/badges/rush_hour.mp3"));
+        Assert.Equal(10, choice.Music.Count);
+        Assert.Equal(0.2, SettingsService.Load(temp.Combine("settings.json")).Settings.PreviewVolume, 3);
+
+        // Cancelled: nothing changes
+        dialogs.SoundsReview = review =>
+        {
+            review.Rows[0].IsRemoved = true;
+            review.Volume = 35;
+            return false;
+        };
+        await page.ReviewSoundsAsync(item);
+        Assert.Equal(10, page.FindMusicChoice("bhop_badges")!.Music.Count);
+        // The volume is kept even so
+        Assert.Equal(0.35, SettingsService.Load(temp.Combine("settings.json")).Settings.PreviewVolume, 3);
     }
 }

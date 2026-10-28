@@ -49,7 +49,7 @@ internal static class ReviewCommand
         }
 
         string mapName = Path.GetFileNameWithoutExtension(options.Map);
-        EntityReview review = EntityReview.AnalyzeFile(options.Map);
+        EntityReview review = EntityReview.AnalyzeFile(options.Map, Settings.MusicChoices.TryLoad(Settings.MusicChoices.DefaultPath).Find(mapName));
         review.Print(Console.Out);
 
         if (options.Steps)

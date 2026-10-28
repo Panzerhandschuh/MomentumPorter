@@ -3,8 +3,10 @@ namespace MomentumPorter.UI.ViewModels.Pages;
 using LibBSP;
 using MomentumPorter.BspConvert;
 using MomentumPorter.Detection;
+using MomentumPorter.Fixes;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
+using MomentumPorter.Settings;
 using MomentumPorter.Steps;
 using MomentumPorter.UI.ViewModels.Shared;
 using ReactiveUI;
@@ -17,6 +19,8 @@ public sealed class MapQueueItemViewModel : QueueItemViewModel
     private string? _game;
     private string? _detectedProfile;
     private IReadOnlySet<InputKind> _mapKinds;
+    private MapSounds? _sounds;
+    private string? _soundsSummary;
 
     public MapQueueItemViewModel(string path)
     {
@@ -70,7 +74,8 @@ public sealed class MapQueueItemViewModel : QueueItemViewModel
     /// Reviews the map file as it is (not a port of it) on a worker thread and shows the result in the item's log,
     /// report and next steps.
     /// </summary>
-    public async Task ReviewAsync(Action<Action> post)
+    /// <param name="music">The map's saved Sounds review picks, so settled sounds aren't brought up again</param>
+    public async Task ReviewAsync(Action<Action> post, MapMusicChoice? music = null)
     {
         if (!CanReview || IsRunning)
             return;
@@ -86,7 +91,7 @@ public sealed class MapQueueItemViewModel : QueueItemViewModel
         {
             try
             {
-                return (Review.EntityReview.AnalyzeFile(InputPath), (string?)null);
+                return (Review.EntityReview.AnalyzeFile(InputPath, music), (string?)null);
             }
             catch (Exception ex)
             {
@@ -155,21 +160,22 @@ public sealed class MapQueueItemViewModel : QueueItemViewModel
         if (Kind != InputKind.SourceBsp)
             return;
 
-        (string? profile, string text) = await Task.Run(() =>
+        (string? profile, string text, MapSounds? sounds) = await Task.Run(() =>
         {
             try
             {
                 var bsp = new BSP(new FileInfo(InputPath));
+                MapSounds? sounds = ScanSounds(bsp);
                 SourceGameSniffer.Detection? detection = SourceGameSniffer.Detect(bsp, LoadBspStep.FindGameDirectory(InputPath), MapName);
                 if (detection is null)
-                    return (null, "Unknown game, pick one in the options");
+                    return (null, "Unknown game, pick one in the options", sounds);
 
                 string name = GameProfiles.Find(detection.Profile)?.Description ?? detection.Profile;
-                return (detection.Profile, detection.Certain ? name : $"{name}? (guessed from {detection.Reason})");
+                return (detection.Profile, detection.Certain ? name : $"{name}? (guessed from {detection.Reason})", sounds);
             }
             catch (Exception ex)
             {
-                return ((string?)null, $"Couldn't read the map: {ex.Message}");
+                return ((string?)null, $"Couldn't read the map: {ex.Message}", (MapSounds?)null);
             }
         });
 
@@ -177,7 +183,65 @@ public sealed class MapQueueItemViewModel : QueueItemViewModel
         {
             DetectedProfile = profile;
             Game = text;
+            Sounds = sounds;
         });
+    }
+
+    private MapSounds? ScanSounds(BSP bsp)
+    {
+        try
+        {
+            return MapMusic.Scan(new PortContext(bsp, MapName, null));
+        }
+        catch (Exception)
+        {
+            // A pak file that can't be read doesn't stop the map being detected; it has no Sounds review
+            return null;
+        }
+    }
+
+    /// <summary>The map's packed sounds outside sound/music/, read when it was queued; null until then or for other maps.</summary>
+    public MapSounds? Sounds
+    {
+        get => _sounds;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref _sounds, value);
+            this.RaisePropertyChanged(nameof(HasSounds));
+        }
+    }
+
+    public bool HasSounds => _sounds is { Sounds.Count: > 0 };
+
+    /// <summary>"Sounds: 12 music, 3 other" for the button that opens the map's Sounds review.</summary>
+    public string? SoundsSummary
+    {
+        get => _soundsSummary;
+        private set => this.RaiseAndSetIfChanged(ref _soundsSummary, value);
+    }
+
+    /// <summary>
+    /// Counts what porting the map will do with its sounds, from its saved picks.
+    /// </summary>
+    public void UpdateSoundsSummary(MapMusicChoice? choice)
+    {
+        if (_sounds is not { Sounds.Count: > 0 } sounds)
+        {
+            SoundsSummary = null;
+            return;
+        }
+
+        (List<string> move, List<string> remove) = MapMusic.Decide(sounds, choice);
+        int other = sounds.Sounds.Count - move.Count - remove.Count;
+        var parts = new List<string>();
+        if (move.Count > 0)
+            parts.Add($"{move.Count} music");
+        if (other > 0)
+            parts.Add(move.Count == 0 && remove.Count == 0 ? $"{other}, none ticked as music" : $"{other} other");
+        if (remove.Count > 0)
+            parts.Add($"{remove.Count} removed");
+
+        SoundsSummary = "Sounds: " + string.Join(", ", parts);
     }
 
     private async Task DetectArchiveAsync(Action<Action> post)

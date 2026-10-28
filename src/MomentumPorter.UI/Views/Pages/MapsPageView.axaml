@@ -111,6 +111,17 @@
                                                   Margin="0 1 4 0" Foreground="{StaticResource WarningBrush}" />
                       <TextBlock Grid.Column="1" Text="{Binding Attention}" Classes="warning" FontSize="12" TextWrapping="Wrap" />
                     </Grid>
+                    <!-- The map's packed sounds: what porting moves into sound/music/ and what's left to listen to -->
+                    <Button IsVisible="{Binding HasSounds}" IsEnabled="{Binding !IsRunning}" Padding="6 2" Margin="0 3 0 0"
+                            HorizontalAlignment="Left" Background="Transparent" BorderThickness="0"
+                            ToolTip.Tip="Listen to the map's packed sounds and pick its music, which porting moves into sound/music/ for the music volume slider"
+                            Command="{Binding #Page.((vm:MapsPageViewModel)DataContext).ReviewSoundsCommand}"
+                            CommandParameter="{Binding}">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <materialIcons:MaterialIcon Kind="MusicNote" Width="14" Height="14" />
+                        <TextBlock Text="{Binding SoundsSummary}" FontSize="12" TextDecorations="Underline" />
+                      </StackPanel>
+                    </Button>
                   </StackPanel>
                   <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" Spacing="2">
                     <Button Classes="icon" IsVisible="{Binding CanReview}" IsEnabled="{Binding !IsRunning}"

@@ -3,8 +3,10 @@ namespace MomentumPorter.Review;
 using System.Numerics;
 using LibBSP;
 using MomentumPorter.Bsp;
+using MomentumPorter.Fixes;
 using MomentumPorter.Games.GoldSrc;
 using MomentumPorter.Porting;
+using MomentumPorter.Settings;
 
 public enum ReviewSeverity
 {
@@ -81,7 +83,7 @@ public sealed class EntityReview
     public bool HasMissingRequiredFixes => Pending.Any(x => x.Severity == ReviewSeverity.Required);
 
     /// <summary>
-    /// One line for a queue item: "Needs manual entity changes: 3 boost triggers, 2 gravity triggers", or
+    /// One line for a queue item: "Needs manual changes: 3 boost triggers, 2 gravity triggers", or
     /// null when nothing but notes is pending.
     /// </summary>
     public string? Summary
@@ -92,7 +94,7 @@ public sealed class EntityReview
             if (pending.Count == 0)
                 return null;
 
-            return "Needs manual entity changes: " + string.Join(", ", pending.Select(x => x.Count(x.Pending)));
+            return "Needs manual changes: " + string.Join(", ", pending.Select(x => x.Count(x.Pending)));
         }
     }
 
@@ -163,7 +165,7 @@ public sealed class EntityReview
     /// <summary>
     /// Reviews a Source map file as it is, e.g. a ported map saved from Lumper after the in-game review.
     /// </summary>
-    public static EntityReview AnalyzeFile(string path)
+    public static EntityReview AnalyzeFile(string path, MapMusicChoice? music = null)
     {
         var bsp = new BSP(new FileInfo(path));
         if (!bsp.MapType.IsSubtypeOf(MapType.Source))
@@ -173,13 +175,15 @@ public sealed class EntityReview
         if (gameDirectory is not null && !File.Exists(Path.Combine(gameDirectory, "gameinfo.txt")))
             gameDirectory = null;
 
-        return Analyze(new PortContext(bsp, Path.GetFileNameWithoutExtension(path), gameDirectory));
+        return Analyze(new PortContext(bsp, Path.GetFileNameWithoutExtension(path), gameDirectory), music);
     }
 
     /// <summary>
-    /// Reviews a map's entities. The map's name decides whether Momentum's own block fix would run for it.
+    /// Reviews a map's entities, and its packed sounds for music outside sound/music/. The map's name decides whether
+    /// Momentum's own block fix would run for it.
     /// </summary>
-    public static EntityReview Analyze(PortContext context)
+    /// <param name="music">The map's Sounds review, whose settled sounds aren't brought up again</param>
+    public static EntityReview Analyze(PortContext context, MapMusicChoice? music = null)
     {
         List<Entity> entities = context.Entities;
         var items = new List<ReviewItem>();
@@ -200,6 +204,7 @@ public sealed class EntityReview
         items.Add(ReviewLogicTimers(entities));
         items.Add(ReviewScripts(entities));
         items.Add(ReviewButtons(entities));
+        items.AddRange(ReviewMusic(context, music));
 
         int tagged = entities.Count(x => EntityTools.IsTagged(x) || EntityTools.IsToolsEntity(x));
         return new EntityReview(context.MapName, items, tagged);
@@ -489,6 +494,47 @@ public sealed class EntityReview
             buttons.Count(x => (x.GetInt("spawnflags", 0) & 1) != 0),
             "buttons reset much slower in Momentum; if one holds players up, add 1 (Don't move) to its spawnflags in Lumper",
             DocsLinks.FuncButton);
+    }
+
+    // Music outside sound/music/ isn't on the music volume slider (Fixes.MapMusic). A port moves the long sounds itself,
+    // so what's left is what its Sounds review didn't settle: long sounds it kept out, and the ones that might be music
+    private static IEnumerable<ReviewItem> ReviewMusic(PortContext context, MapMusicChoice? choice)
+    {
+        MapSounds sounds = MapMusic.Scan(context);
+        List<PackedSound> music = sounds.Music.Where(x => choice?.Decided(x.Path) != true).ToList();
+        List<PackedSound> maybe = sounds.Maybe.Where(x => choice?.Decided(x.Path) != true).ToList();
+        static string Files(List<PackedSound> list) =>
+            string.Join(", ", list.Take(5).Select(x => x.Name)) + (list.Count > 5 ? $" and {list.Count - 5} more" : "");
+
+        yield return new ReviewItem(
+            "Music",
+            ReviewSeverity.Review,
+            "long sounds outside sound/music/",
+            music.Count + sounds.InMusicFolder,
+            sounds.InMusicFolder,
+            $"they're 2 minutes or longer, so most likely music, which Momentum's music volume slider only controls in sound/music/; port the map with the porter, which moves what's ticked in its Sounds review, or move them in Lumper ({Files(music)})",
+            DocsLinks.Sounds,
+            Singular: "long sound outside sound/music/");
+
+        yield return new ReviewItem(
+            "Possible music",
+            ReviewSeverity.Note,
+            "sounds that might be music",
+            maybe.Count,
+            0,
+            $"listen to them in the map's Sounds review on the porter's Maps page and tick the music, then port the map again so the music volume slider controls it ({Files(maybe)})",
+            DocsLinks.Sounds,
+            Singular: "sound that might be music");
+
+        int moved = sounds.InMusicFolder;
+        yield return new ReviewItem(
+            "Copyrighted music",
+            ReviewSeverity.Note,
+            "music files",
+            moved,
+            0,
+            "the docs ask for copyrighted music to be removed; take it out in the map's Sounds review on the porter's Maps page and port the map again, or delete it in Lumper",
+            DocsLinks.Sounds);
     }
 
     /// <summary>Momentum's runtime block fix (and the tools' export of it) only runs for these maps.</summary>

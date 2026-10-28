@@ -182,5 +182,7 @@ public class SettingsTests
         public Task<string?> PickFolderAsync(string title) => Task.FromResult<string?>(null);
 
         public Task<string?> PickSaveFileAsync(string title, string suggestedName, params FileFilter[] filters) => Task.FromResult<string?>(null);
+
+        public Task<bool> ShowMapSoundsAsync(MomentumPorter.UI.ViewModels.Pages.MapSoundsViewModel sounds) => Task.FromResult(false);
     }
 }

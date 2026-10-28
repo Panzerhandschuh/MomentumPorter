@@ -20,7 +20,7 @@ public sealed class ReviewEntitiesStep : IPortStep
         MapPortState state = context.Get<MapPortState>();
         PortContext portContext = state.PortContext ?? throw new InvalidOperationException("The map's entities haven't been converted");
 
-        EntityReview review = EntityReview.Analyze(portContext);
+        EntityReview review = EntityReview.Analyze(portContext, context.TryGet<Settings.MapMusicChoice>());
         review.Report(context.Report);
         context.Set(review);
 

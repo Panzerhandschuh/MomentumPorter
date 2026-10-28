@@ -1,0 +1,96 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MomentumPorter.UI.ViewModels.Pages"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        x:Class="MomentumPorter.UI.Views.Pages.MapSoundsWindow"
+        x:DataType="vm:MapSoundsViewModel"
+        Title="{Binding Title}"
+        Width="980" Height="680" MinWidth="720" MinHeight="420"
+        WindowStartupLocation="CenterOwner">
+
+  <Window.Styles>
+    <!-- A sound the review takes out of the map -->
+    <Style Selector="TextBlock.removed">
+      <Setter Property="TextDecorations" Value="Strikethrough" />
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+  </Window.Styles>
+
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:MapSoundRowViewModel">
+      <Border Padding="6 5" CornerRadius="4" Background="#0AFFFFFF" Margin="0 1">
+        <Grid ColumnDefinitions="Auto, 64, Auto, *, Auto">
+          <Button Grid.Column="0" Classes="icon" VerticalAlignment="Center" Command="{Binding PlayCommand}"
+                  ToolTip.Tip="Listen to it (press again to stop)">
+            <Panel>
+              <materialIcons:MaterialIcon Kind="Play" Width="18" Height="18" IsVisible="{Binding !IsPlaying}" />
+              <materialIcons:MaterialIcon Kind="Stop" Width="18" Height="18" IsVisible="{Binding IsPlaying}" />
+            </Panel>
+          </Button>
+          <TextBlock Grid.Column="1" Text="{Binding Length}" VerticalAlignment="Center" HorizontalAlignment="Right"
+                     Margin="0 0 12 0" FontFamily="{StaticResource Monospace}" FontSize="12" />
+          <CheckBox Grid.Column="2" Content="Music" IsChecked="{Binding IsMusic}" VerticalAlignment="Center" Margin="0 0 12 0"
+                    ToolTip.Tip="Move it into sound/music/ when the map is ported, so the music volume slider controls it" />
+          <StackPanel Grid.Column="3" Spacing="1" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                       Classes.removed="{Binding IsRemoved}" ToolTip.Tip="{Binding Path}" />
+            <TextBlock Text="{Binding Uses}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding UsesTip}" />
+          </StackPanel>
+          <ToggleButton Grid.Column="4" IsChecked="{Binding IsRemoved}" Padding="6 4" VerticalAlignment="Center" Margin="8 0 0 0"
+                        ToolTip.Tip="Take it out of the map when it's ported, e.g. copyrighted music">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="16" Height="16" />
+              <TextBlock Text="Remove" FontSize="12" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+        </Grid>
+      </Border>
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <DockPanel Margin="16 14 16 12">
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0 0 0 8">
+      <TextBlock Classes="h1">
+        <Run Text="Sounds" />
+        <Run Text="{Binding MapName}" Foreground="{StaticResource MutedBrush}" FontWeight="Normal" />
+      </TextBlock>
+      <TextBlock Text="{Binding Intro}" Classes="muted" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding PortedNote}" Classes="warning" TextWrapping="Wrap"
+                 IsVisible="{Binding PortedNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+    </StackPanel>
+
+    <DockPanel DockPanel.Dock="Bottom" Margin="0 10 0 0">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+        <Button Command="{Binding ResetCommand}" ToolTip.Tip="Untick everything but the sounds of 2 minutes or longer, and remove nothing">
+          <TextBlock Text="Reset to suggested" />
+        </Button>
+        <Button Name="CancelButton" Content="Cancel" />
+        <Button Name="SaveButton" Classes="accent" ToolTip.Tip="Keep these picks for the map; porting it applies them">
+          <StackPanel>
+            <materialIcons:MaterialIcon Kind="ContentSaveOutline" />
+            <TextBlock Text="Save" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+      <!-- How loud the preview plays; changes the sound that's playing -->
+      <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0 0 16 0"
+                  ToolTip.Tip="Preview volume">
+        <materialIcons:MaterialIcon Kind="VolumeHigh" Width="18" Height="18" VerticalAlignment="Center" />
+        <Slider Value="{Binding Volume}" Minimum="0" Maximum="100" Width="140" VerticalAlignment="Center" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                  IsVisible="{Binding PreviewStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <Button Classes="icon" Command="{Binding StopCommand}" ToolTip.Tip="Stop">
+          <materialIcons:MaterialIcon Kind="Stop" Width="16" Height="16" />
+        </Button>
+        <TextBlock Text="{Binding PreviewStatus}" Classes="muted" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+    </DockPanel>
+
+    <Border Classes="panel" Padding="10">
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding Rows}" />
+      </ScrollViewer>
+    </Border>
+  </DockPanel>
+</Window>

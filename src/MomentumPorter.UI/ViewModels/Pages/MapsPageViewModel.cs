@@ -6,6 +6,7 @@ using System.Reactive.Linq;
 using Material.Icons;
 using MomentumPorter.BspConvert;
 using MomentumPorter.Detection;
+using MomentumPorter.Fixes;
 using MomentumPorter.Options;
 using MomentumPorter.Pipeline;
 using MomentumPorter.Porting;
@@ -30,6 +31,7 @@ public sealed class MapsPageViewModel : PageViewModel
     private static readonly string[] SharedBspConvertOptions = [nameof(BspConvertOptions.OutputDirectory), nameof(BspConvertOptions.Compress), nameof(BspConvertOptions.Overwrite), nameof(BspConvertOptions.Studiomdl)];
 
     private readonly SettingsService _settings;
+    private readonly MusicChoicesService _music;
     private readonly IDialogService _dialogs;
     private readonly Action<Action> _post;
     private MapPortOptions _options = new();
@@ -51,6 +53,8 @@ public sealed class MapsPageViewModel : PageViewModel
     public MapsPageViewModel(SettingsService settings, IDialogService dialogs, JobRunnerService runner, Action<Action> post)
     {
         _settings = settings;
+        // Next to the settings file, so a test's settings folder holds its own picks too
+        _music = new MusicChoicesService(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(settings.FilePath))!, MusicChoices.FileName));
         _dialogs = dialogs;
         _post = post;
         Runner = runner;
@@ -71,6 +75,7 @@ public sealed class MapsPageViewModel : PageViewModel
         LoadPresetCommand = ReactiveCommand.CreateFromTask(LoadPresetAsync, running.Select(x => !x));
         OpenMomentumMapsCommand = ReactiveCommand.Create(OpenMomentumMaps);
         ReviewCommand = ReactiveCommand.CreateFromTask<MapQueueItemViewModel>(ReviewAsync);
+        ReviewSoundsCommand = ReactiveCommand.CreateFromTask<MapQueueItemViewModel>(ReviewSoundsAsync);
 
         // Looking at the Next steps tab reads the selected map's steps
         this.WhenAnyValue(x => x.SelectedItem, x => x.BottomTab).Subscribe(_ => UpdateNextStepsUnread());
@@ -239,6 +244,12 @@ public sealed class MapsPageViewModel : PageViewModel
     /// <summary>Checks a Source map against Momentum's entity tools as it is, without porting it.</summary>
     public ReactiveCommand<MapQueueItemViewModel, Unit> ReviewCommand { get; }
 
+    /// <summary>Opens a map's Sounds review, to listen to its packed sounds and pick its music.</summary>
+    public ReactiveCommand<MapQueueItemViewModel, Unit> ReviewSoundsCommand { get; }
+
+    /// <summary>The picks saved in a map's Sounds review, which its port applies; null when it hasn't had one.</summary>
+    public MapMusicChoice? FindMusicChoice(string mapName) => _music.Choices.Find(mapName);
+
     /// <summary>
     /// Adds map files to the queue, skipping ones already waiting in it. Returns the items added.
     /// </summary>
@@ -255,6 +266,7 @@ public sealed class MapsPageViewModel : PageViewModel
             item.WhenAnyValue(x => x.Status).Subscribe(_ => UpdateQueueState());
             item.WhenAnyValue(x => x.MapKinds, x => x.DetectedProfile).Subscribe(_ => UpdateVisibleOptions());
             item.WhenAnyValue(x => x.NextStepsUnread).Subscribe(_ => UpdateNextStepsUnread());
+            item.WhenAnyValue(x => x.Sounds).Subscribe(_ => UpdateSoundsSummary(item));
             Queue.Add(item);
             added.Add(item);
             _ = item.DetectGameAsync(_post);
@@ -301,6 +313,7 @@ public sealed class MapsPageViewModel : PageViewModel
         string workDirectory = CreateWorkDirectory(settings, item.MapName);
         string workOutput = Path.Combine(workDirectory, item.MapName + ".bsp");
         (PortJob job, MapPortState state) = PortJobFactory.CreateSourceMapJob(item.InputPath, workOutput, options);
+        MapMusicChoice? music = FindMusicChoice(item.MapName);
 
         return new PreparedJob(
             job,
@@ -310,6 +323,8 @@ public sealed class MapsPageViewModel : PageViewModel
                 context.Set(state);
                 context.Set(settings);
                 context.Set<IUserPrompts>(new DialogUserPrompts(_dialogs));
+                if (music is not null)
+                    context.Set(music);
             },
             (context, result) => Deliver(context, result, state, settings));
     }
@@ -361,8 +376,79 @@ public sealed class MapsPageViewModel : PageViewModel
     private async Task ReviewAsync(MapQueueItemViewModel item)
     {
         SelectedItem = item;
-        await item.ReviewAsync(_post);
+        await item.ReviewAsync(_post, FindMusicChoice(item.MapName));
     }
+
+    /// <summary>
+    /// Reads the map's sounds afresh (and keeps its pak file for the preview while the review is open), shows the
+    /// review, and keeps its picks for the map's next port.
+    /// </summary>
+    public async Task ReviewSoundsAsync(MapQueueItemViewModel item)
+    {
+        SelectedItem = item;
+        (MapSounds? sounds, byte[]? pak, string? error) = await Task.Run(() =>
+        {
+            try
+            {
+                var bsp = new LibBSP.BSP(new FileInfo(item.InputPath));
+                return (MapMusic.Scan(new PortContext(bsp, item.MapName, null)), bsp.PakFile?.Data, (string?)null);
+            }
+            catch (Exception ex)
+            {
+                return ((MapSounds?)null, (byte[]?)null, $"Couldn't read the map's sounds: {ex.Message}");
+            }
+        });
+
+        if (sounds is null)
+        {
+            await _dialogs.ShowMessageAsync("Sounds", error ?? "Couldn't read the map's sounds");
+            return;
+        }
+
+        if (sounds.Sounds.Count == 0)
+        {
+            await _dialogs.ShowMessageAsync("Sounds", sounds.InMusicFolder > 0
+                ? $"{item.Title}'s packed sounds are all in a music folder already."
+                : $"{item.Title} doesn't pack any sounds.");
+            return;
+        }
+
+        var review = new MapSoundsViewModel(
+            item.MapName,
+            sounds,
+            FindMusicChoice(item.MapName),
+            item.IsFinished,
+            path => pak is null ? null : ReadPakFile(pak, path),
+            SoundPreviewPlayer.PlayFile,
+            SoundPreviewPlayer.Stop,
+            _settings.Settings.PreviewVolume,
+            volume => SoundPreviewPlayer.Volume = volume);
+
+        bool saved = await _dialogs.ShowMapSoundsAsync(review);
+
+        // The volume is kept whether or not the picks are
+        if (Math.Abs(_settings.Settings.PreviewVolume - review.Volume / 100) > 0.001)
+        {
+            _settings.Settings.PreviewVolume = review.Volume / 100;
+            if (_settings.Save() is { } settingsError)
+                Message = settingsError;
+        }
+
+        if (!saved)
+            return;
+
+        _music.Choices.Set(item.MapName, review.ToChoice());
+        Message = _music.Save() ?? $"Saved {item.Title}'s sound picks{(item.IsFinished ? "; port it again to apply them" : "")}";
+        UpdateSoundsSummary(item);
+    }
+
+    private static byte[]? ReadPakFile(byte[] pak, string path)
+    {
+        using var zip = (SharpCompress.Archives.Zip.ZipArchive)SharpCompress.Archives.Zip.ZipArchive.OpenArchive(new MemoryStream(pak));
+        return PortContext.FindEntry(zip, path) is { } entry ? PortContext.ReadEntry(entry) : null;
+    }
+
+    private void UpdateSoundsSummary(MapQueueItemViewModel item) => item.UpdateSoundsSummary(FindMusicChoice(item.MapName));
 
     /// <summary>
     /// Quake 3 and GoldSrc maps: BSPConvert converts into the work folder, then the files are copied into Momentum's
@@ -511,6 +597,7 @@ public sealed class MapsPageViewModel : PageViewModel
         Options = options;
         OptionsForm = new OptionsFormViewModel(options) { ShowAdvanced = ShowAdvanced };
         UpdateVisibleOptions();
+
     }
 
     public void SavePreset(Stream stream) => OptionsPreset.Save(Options, stream);

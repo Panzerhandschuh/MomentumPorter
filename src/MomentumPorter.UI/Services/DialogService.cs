@@ -4,6 +4,8 @@ using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using MomentumPorter.Pipeline;
+using MomentumPorter.UI.ViewModels.Pages;
+using MomentumPorter.UI.Views.Pages;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 
@@ -25,6 +27,9 @@ public interface IDialogService
     Task<string?> PickFolderAsync(string title);
 
     Task<string?> PickSaveFileAsync(string title, string suggestedName, params FileFilter[] filters);
+
+    /// <summary>Shows a map's Sounds review. Returns true when its picks were saved.</summary>
+    Task<bool> ShowMapSoundsAsync(MapSoundsViewModel sounds);
 }
 
 /// <summary>
@@ -101,6 +106,21 @@ public sealed class AvaloniaDialogService(Func<Window?> owner) : IDialogService
                 ShowOverwritePrompt = true,
             });
             return file?.TryGetLocalPath();
+        });
+    }
+
+    public Task<bool> ShowMapSoundsAsync(MapSoundsViewModel sounds)
+    {
+        return OnUiThread(async () =>
+        {
+            var window = new MapSoundsWindow { DataContext = sounds };
+            if (owner() is not { } parent)
+            {
+                window.Show();
+                return false;
+            }
+
+            return await window.ShowDialog<bool>(parent);
         });
     }
 

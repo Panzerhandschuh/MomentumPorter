@@ -69,6 +69,9 @@ internal static class Program
             context.Set(state);
             // Nobody to ask on the command line: steps that would prompt (e.g. overwriting an installed map) decline
             context.Set<IUserPrompts>(new DeclinePrompts());
+            // The map's Sounds review from the app, if it had one
+            if (Settings.MusicChoices.TryLoad(Settings.MusicChoices.DefaultPath).Find(Path.GetFileNameWithoutExtension(cli.Input)) is { } music)
+                context.Set(music);
 
             PortJobResult result = await job.RunAsync(context);
             result.Report.Print(Console.Out);

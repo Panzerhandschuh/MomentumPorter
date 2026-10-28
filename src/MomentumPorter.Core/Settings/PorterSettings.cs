@@ -61,6 +61,15 @@ public sealed class PorterSettings
     /// <summary>The desktop app looks for a newer GitHub release when it starts.</summary>
     public bool CheckForUpdates { get; set; } = true;
 
+    /// <summary>How loud the Sounds review plays a map's sounds, from 0 to 1.</summary>
+    public double PreviewVolume
+    {
+        get => _previewVolume;
+        set => _previewVolume = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.5;
+    }
+
+    private double _previewVolume = 0.5;
+
     public static string DefaultOutputDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MomentumPorter", "maps");
 
