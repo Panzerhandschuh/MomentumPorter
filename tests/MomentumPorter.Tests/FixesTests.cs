@@ -1,5 +1,6 @@
 namespace MomentumPorter.Tests;
 
+using BSPConvert.Lib.GoldSrc;
 using LibBSP;
 using MomentumPorter.Assets.Vpk;
 using MomentumPorter.Fixes;
@@ -14,8 +15,8 @@ using Xunit.Abstractions;
 
 /// <summary>
 /// The fixes Lumper's entity review and the entity tools would otherwise ask for by hand. The entity rules run on
-/// hand-made entities; the rest hosts them in an installed CS:S map, or uses Momentum's installed maps, and does
-/// nothing when those aren't there.
+/// hand-made entities (the GoldSrc ones through BSPConvert's entity conversion); the rest hosts them in an installed
+/// CS:S map, or uses installed maps, and does nothing when those aren't there.
 /// </summary>
 public class FixesTests(ITestOutputHelper output)
 {
@@ -31,12 +32,6 @@ public class FixesTests(ITestOutputHelper output)
     {
         GameLocation? css = new SteamLocator().Find(KnownGame.CounterStrikeSource);
         string? path = css?.ContentDirectory is { } content ? Path.Combine(content, "maps", name + ".bsp") : null;
-        return path is not null && File.Exists(path) ? path : null;
-    }
-
-    private static string? FindMomentumMap(string name)
-    {
-        string? path = new SteamLocator().FindMomentum()?.ContentDirectory is { } content ? Path.Combine(content, "maps", name + ".bsp") : null;
         return path is not null && File.Exists(path) ? path : null;
     }
 
@@ -153,23 +148,50 @@ public class FixesTests(ITestOutputHelper output)
     [Fact]
     public void RemovesTheEnvGlobalsBspConvertLeavesBehind()
     {
-        if (FindMomentumMap("kz_cg_venice") is not { } path)
-            return;
+        // A GoldSrc door locked by a multisource that reads a global state, which a button sets through an env_global
+        // (as in kz_cg_venice). BSPConvert gives the state a logic_branch the multisource listens to and leaves the
+        // env_globals, which only Half-Life's level transitions read
+        List<Entity> entities =
+        [
+            Make("worldspawn"),
+            Make("env_global", ("globalstate", "gate"), ("initialstate", "0"), ("spawnflags", "1")),
+            Make("env_global", ("targetname", "open_gate"), ("globalstate", "gate"), ("triggermode", "1")),
+            Make("multisource", ("targetname", "gate_master"), ("globalstate", "gate")),
+            Make("func_door", ("targetname", "gate_door"), ("master", "gate_master"), ("model", "*1")),
+            Make("func_button", ("target", "open_gate"), ("model", "*2")),
+        ];
+        ConvertWithBspConvert(entities);
 
-        EntityReview before = EntityReview.AnalyzeFile(path);
-        output.WriteLine(string.Join(Environment.NewLine, before.Lines()));
-        Assert.Equal(4, before.Items.Single(x => x.Tool == "env_global").Found);
-        Assert.True(before.HasMissingRequiredFixes);
-
-        var bsp = new BSP(new FileInfo(path));
-        var context = new PortContext(bsp, "kz_cg_venice", null);
+        var bsp = new BSP("gs_globals", MapType.Source20) { Entities = new Entities() };
+        foreach (Entity entity in entities)
+            bsp.Entities.Add(entity);
+        var context = new PortContext(bsp, "gs_globals", null);
+        Assert.Equal(2, context.OfClass("env_global").Count());
+        Assert.Contains(context.OfClass("logic_branch"), x => x.Name == "__goldsrc_global_gate");
+        Assert.True(EntityReview.Analyze(context).HasMissingRequiredFixes);
         int branches = context.OfClass("logic_branch").Count();
 
-        Assert.Equal(4, GlobalStates.Remove(context));
+        Assert.Equal(2, GlobalStates.Remove(context));
 
         Assert.Empty(context.OfClass("env_global"));
         Assert.Equal(branches, context.OfClass("logic_branch").Count());
-        Assert.False(EntityReview.Analyze(context).HasMissingRequiredFixes);
+        EntityReview after = EntityReview.Analyze(context);
+        Assert.False(after.HasMissingRequiredFixes, string.Join(Environment.NewLine, after.Lines()));
+    }
+
+    // BSPConvert's GoldSrc entity conversion as it runs on a map's entities, dropping the ones Source has no use for
+    private static void ConvertWithBspConvert(List<Entity> entities)
+    {
+        var converter = new GoldSrcEntityConverter(new NoBspConvertLog());
+        converter.ConvertTargets(entities, _ => false);
+        entities.RemoveAll(x => !converter.Convert(x));
+    }
+
+    private sealed class NoBspConvertLog : BSPConvert.Lib.ILogger
+    {
+        public void Log(string message)
+        {
+        }
     }
 
     [Fact]

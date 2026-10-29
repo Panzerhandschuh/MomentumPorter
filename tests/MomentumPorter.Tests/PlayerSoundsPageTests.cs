@@ -7,6 +7,7 @@ using MomentumPorter.UI.Services;
 using MomentumPorter.UI.ViewModels.Pages;
 using Xunit;
 
+[Collection(SoundPreviewCollection.Name)]
 public class PlayerSoundsPageTests
 {
     private static PlayerSoundsPageViewModel CreatePage()

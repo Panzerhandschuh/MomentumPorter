@@ -5,8 +5,19 @@ using MomentumPorter.UI.Services;
 using Xunit;
 
 /// <summary>
+/// The sound preview is one player for the whole app, so tests that play or stop it (the Player Sounds page stops it
+/// when the game changes) can't run in parallel.
+/// </summary>
+[CollectionDefinition(Name)]
+public sealed class SoundPreviewCollection
+{
+    public const string Name = "Sound preview";
+}
+
+/// <summary>
 /// The Sounds review's preview through Windows' MCI, on a silent WAV at no volume. Does nothing elsewhere.
 /// </summary>
+[Collection(SoundPreviewCollection.Name)]
 public class SoundPreviewPlayerTests
 {
     [Fact]
