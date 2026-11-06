@@ -68,7 +68,7 @@ public sealed class UpdateService(
             return;
         }
 
-        if (release is null || !await dialogs.ConfirmAsync("Update available", Describe(release)))
+        if (release is null || !await dialogs.ConfirmAsync("Update available", $"Momentum Porter {release.Version} is available. Download it and restart?"))
             return;
 
         await UpdateAsync(release);
@@ -147,20 +147,5 @@ public sealed class UpdateService(
         }
 
         restart(Path.Combine(InstallDirectory, AppUpdater.UiExecutableName));
-    }
-
-    private string Describe(AppRelease release)
-    {
-        string notes = release.Notes.Trim();
-        const int maxNotes = 1200;
-        if (notes.Length > maxNotes)
-            notes = notes[..maxNotes].TrimEnd() + "...";
-
-        string title = release.Name == release.Version.ToString() || release.Name == $"v{release.Version}"
-            ? $"Momentum Porter {release.Version}"
-            : $"Momentum Porter {release.Version} ({release.Name})";
-        return $"{title} is available. You have {CurrentVersion}.\n\n" +
-               (notes.Length > 0 ? notes + "\n\n" : "") +
-               "Download it and restart?";
     }
 }

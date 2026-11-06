@@ -57,6 +57,6 @@ powershell -File tools/publish-release.ps1 -Version 0.2.0 -Output C:\temp\feed
 ```
 
 In `C:\temp\feed`, write `latest.json` with the fields the updater reads, such as
-`{"tag_name": "v0.2.0", "html_url": "...", "body": "...", "assets": [{"name": "MomentumPorter-win-x64-v0.2.0.zip", "size": <bytes>, "browser_download_url": "http://127.0.0.1:8765/MomentumPorter-win-x64-v0.2.0.zip"}]}`.
+`{"tag_name": "v0.2.0", "html_url": "...", "assets": [{"name": "MomentumPorter-win-x64-v0.2.0.zip", "size": <bytes>, "browser_download_url": "http://127.0.0.1:8765/MomentumPorter-win-x64-v0.2.0.zip"}]}`.
 Then run `python -m http.server 8765 --bind 127.0.0.1 --directory C:\temp\feed`, set
-`MOMENTUMPORTER_UPDATE_FEED=http://127.0.0.1:8765/latest.json` and start `C:\temp\v010\MomentumPorter\MomentumPorter-UI.exe`.
+`MOMENTUMPORTER_UPDATE_FEED=http://127.0.0.1:8765/latest.json` and start `C:\temp\v010\MomentumPorter-win-x64\MomentumPorter-UI.exe`.

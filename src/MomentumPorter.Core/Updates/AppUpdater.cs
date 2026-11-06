@@ -11,8 +11,6 @@ using SharpCompress.Common;
 /// <param name="Sha256">The archive's SHA-256 as GitHub reports it (lowercase hex), or null if it doesn't</param>
 public sealed record AppRelease(
     Version Version,
-    string Name,
-    string Notes,
     string PageUrl,
     string AssetName,
     Uri DownloadUrl,
@@ -111,8 +109,6 @@ public static class AppUpdater
 
             return new AppRelease(
                 version,
-                String(release, "name") is { Length: > 0 } title ? title : version.ToString(),
-                String(release, "body") ?? "",
                 String(release, "html_url") ?? "",
                 name,
                 new Uri(url),

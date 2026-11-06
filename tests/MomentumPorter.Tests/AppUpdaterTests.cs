@@ -15,10 +15,8 @@ public class AppUpdaterTests
         {
           "html_url": "https://github.com/Panzerhandschuh/MomentumPorter/releases/tag/v1.2.0",
           "tag_name": "v1.2.0",
-          "name": "Better weapons",
           "draft": false,
           "prerelease": false,
-          "body": "- Fixed things",
           "assets": [
             {
               "name": "MomentumPorter-linux-x64-v1.2.0.7z",
@@ -63,8 +61,6 @@ public class AppUpdaterTests
         AppRelease release = AppUpdater.ParseRelease(ReleaseJson)!;
 
         Assert.Equal(new Version(1, 2, 0), release.Version);
-        Assert.Equal("Better weapons", release.Name);
-        Assert.Equal("- Fixed things", release.Notes);
         Assert.Equal("MomentumPorter-win-x64-v1.2.0.7z", release.AssetName);
         Assert.Equal(new Uri("https://example.com/win.7z"), release.DownloadUrl);
         Assert.Equal(1234, release.Size);
@@ -107,7 +103,7 @@ public class AppUpdaterTests
         using var temp = new TempFolder();
         byte[] content = Encoding.UTF8.GetBytes("pretend this is an archive");
         using var client = new HttpClient(new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(content) }));
-        var release = new AppRelease(new Version(1, 2, 0), "1.2.0", "", "", "a.7z", new Uri("https://example.com/a.7z"), content.Length,
+        var release = new AppRelease(new Version(1, 2, 0), "", "a.7z", new Uri("https://example.com/a.7z"), content.Length,
             Convert.ToHexStringLower(SHA256.HashData(content)));
         var reported = new List<double>();
 
