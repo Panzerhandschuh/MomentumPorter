@@ -10,10 +10,7 @@ using SharpCompress.Archives.Zip;
 
 public enum MusicGuess
 {
-    /// <summary>Long enough that it's music (or a long ambient track, which the slider may as well control).</summary>
-    Music,
-
-    /// <summary>Could be either; someone has to listen.</summary>
+    /// <summary>Could be music or ambience; someone has to listen.</summary>
     Maybe,
 
     /// <summary>Short: a sound effect, most likely.</summary>
@@ -45,8 +42,6 @@ public sealed record PackedSound(string Path, long Size, TimeSpan? Length, IRead
 /// </summary>
 public sealed record MapSounds(IReadOnlyList<PackedSound> Sounds, int InMusicFolder)
 {
-    public IEnumerable<PackedSound> Music => Sounds.Where(x => x.Guess == MusicGuess.Music);
-
     public IEnumerable<PackedSound> Maybe => Sounds.Where(x => x.Guess == MusicGuess.Maybe);
 
     public PackedSound? Find(string path) => Sounds.FirstOrDefault(x => x.Path.Equals(path, StringComparison.OrdinalIgnoreCase));
@@ -61,23 +56,20 @@ public sealed record MusicChanges(IReadOnlyList<(string From, string To)> Moved,
 /// <summary>
 /// Momentum's music volume slider (snd_volume_music) only controls sounds whose path has "music/" in it: the "Music"
 /// rule in scripts/soundmixers.txt, which the engine matches anywhere in the name. The submission docs have porters
-/// move a map's music into sound/music/ in Lumper; this finds the music and does the move, rewriting every path the
-/// map plays it by (entities, outputs, soundscapes, soundscripts, VScript).
+/// move a map's music into sound/music/ in Lumper; this lists the sounds and does the move, rewriting every path the
+/// map plays them by (entities, outputs, soundscapes, soundscripts, VScript).
 /// </summary>
 /// <remarks>
-/// Only the length tells music apart from the files: short music loops and sound effects are packed side by side and
-/// played the same way. So only sounds of <see cref="MusicLength"/> or longer move on their own; the rest are a
-/// guess for someone to listen to (the app's Sounds review), whose picks come in as a <see cref="MapMusicChoice"/>.
+/// A map's files can't tell music apart: long ambient tracks, short music loops and sound effects are packed side by
+/// side and played the same way. So only what someone ticks in the app's Sounds review moves, whose picks come in as
+/// a <see cref="MapMusicChoice"/>; length only decides which sounds are flagged to listen to.
 /// </remarks>
 public static class MapMusic
 {
     public const string SoundFolder = "sound/";
     public const string MusicFolder = "sound/music/";
 
-    /// <summary>Sounds this long are music. Across the CS:S and Momentum maps checked, nearly all were.</summary>
-    public static readonly TimeSpan MusicLength = TimeSpan.FromMinutes(2);
-
-    /// <summary>Between this and <see cref="MusicLength"/> they're music loops and ambience alike.</summary>
+    /// <summary>Sounds this long could be music or ambience.</summary>
     public static readonly TimeSpan MaybeLength = TimeSpan.FromSeconds(30);
 
     /// <summary>Shorter sounds count as maybes only next to music (surf_christmas's 7-23 second carol loops).</summary>
@@ -115,7 +107,7 @@ public static class MapMusic
     }
 
     /// <summary>
-    /// Lists the map's packed sounds outside sound/music/ with what plays them and a guess at which are music.
+    /// Lists the map's packed sounds outside sound/music/ with what plays them and a guess at which to listen to.
     /// </summary>
     public static MapSounds Scan(PortContext context)
     {
@@ -161,7 +153,7 @@ public static class MapMusic
             .Select(x =>
             {
                 IReadOnlyList<string> used = uses[x.Path];
-                (MusicGuess guess, string reason) = Guess(x.Length, used.Count > 0, musicFolders.Contains(FolderOf(x.Path)));
+                (MusicGuess guess, string reason) = Guess(x.Length, musicFolders.Contains(FolderOf(x.Path)));
                 return new PackedSound(x.Path, x.Size, x.Length, used, guess, reason);
             })
             .OrderBy(x => x.Guess)
@@ -172,20 +164,12 @@ public static class MapMusic
         return new MapSounds(sounds, inMusicFolder);
     }
 
-    private static (MusicGuess Guess, string Reason) Guess(TimeSpan? length, bool referenced, bool besideMusic)
+    private static (MusicGuess Guess, string Reason) Guess(TimeSpan? length, bool besideMusic)
     {
         if (length is not { } value)
             return (MusicGuess.Maybe, "couldn't read how long it is");
 
         string text = FormatLength(value);
-        if (value >= MusicLength)
-        {
-            // A long sound nothing plays may replace one of the game's own (moving it would undo that), or be unused
-            return referenced
-                ? (MusicGuess.Music, $"{text} long")
-                : (MusicGuess.Maybe, $"{text} long, but nothing in the map plays it (it may replace a game sound)");
-        }
-
         if (value >= MaybeLength)
             return (MusicGuess.Maybe, $"{text} long, could be music or ambience");
 
@@ -196,8 +180,7 @@ public static class MapMusic
     }
 
     /// <summary>
-    /// What the map moves and removes: what's ticked in its Sounds review, which (for sounds the review hasn't saved a
-    /// pick for) is the ones long enough to be music.
+    /// What the map moves and removes: what's picked in its Sounds review.
     /// </summary>
     public static (List<string> Move, List<string> Remove) Decide(MapSounds sounds, MapMusicChoice? choice)
     {
@@ -207,22 +190,11 @@ public static class MapMusic
         {
             if (choice?.IsRemoved(sound.Path) == true)
                 remove.Add(sound.Path);
-            else if (IsTicked(sound, choice))
+            else if (choice?.IsMusic(sound.Path) == true)
                 move.Add(sound.Path);
         }
 
         return (move, remove);
-    }
-
-    /// <summary>
-    /// Whether the Sounds review shows a sound ticked as music: as picked, or (with no pick) when it's long enough.
-    /// </summary>
-    public static bool IsTicked(PackedSound sound, MapMusicChoice? choice)
-    {
-        if (choice?.IsRemoved(sound.Path) == true || choice?.IsNotMusic(sound.Path) == true)
-            return false;
-
-        return choice?.IsMusic(sound.Path) == true || sound.Guess == MusicGuess.Music;
     }
 
     /// <summary>

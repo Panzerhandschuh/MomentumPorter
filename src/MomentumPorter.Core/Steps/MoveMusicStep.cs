@@ -8,7 +8,7 @@ using MomentumPorter.Settings;
 /// <summary>
 /// The submission docs' Sounds step: the map's music goes into sound/music/ so Momentum's music volume slider controls
 /// it (see <see cref="MapMusic"/>). Moves what's ticked in the map's Sounds review (a <see cref="MapMusicChoice"/> in
-/// the job's context; without one, the sounds long enough to be music) and removes what the review took out.
+/// the job's context; without one, nothing) and removes what the review took out.
 /// </summary>
 public sealed class MoveMusicStep : IPortStep
 {

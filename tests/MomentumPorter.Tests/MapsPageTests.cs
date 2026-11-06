@@ -279,17 +279,18 @@ public class MapsPageTests
 
         MapQueueItemViewModel item = Assert.Single(page.AddFiles([map]));
         await item.DetectGameAsync(Inline);
-        Assert.Equal("Sounds: 12 music", item.SoundsSummary);
+        Assert.Equal("Sounds: 12, none ticked as music", item.SoundsSummary);
 
-        // Untick one track and take another out
+        // Tick all but one track and take another out
         dialogs.SoundsReview = review =>
         {
-            Assert.Equal(12, review.Rows.Count(x => x.IsMusic));
+            Assert.DoesNotContain(review.Rows, x => x.IsMusic);
             // One list, longest first
             Assert.Equal(review.Rows.OrderByDescending(x => x.Sound.Length).Select(x => x.Path), review.Rows.Select(x => x.Path));
             Assert.Equal(50, review.Volume);
             review.Volume = 20;
-            review.Rows.Single(x => x.Name == "badges/underwater1.mp3").IsMusic = false;
+            foreach (MapSoundRowViewModel row in review.Rows)
+                row.IsMusic = row.Name != "badges/underwater1.mp3";
             review.Rows.Single(x => x.Name == "badges/rush_hour.mp3").IsRemoved = true;
             return true;
         };
@@ -319,7 +320,7 @@ public class MapsPageTests
     public async Task TheSoundsPreviewTimelineFollowsAndSeeks()
     {
         // The header guessed the length a little short, as it can for a VBR MP3
-        var sound = new PackedSound("sound/map/track.mp3", 1000, TimeSpan.FromSeconds(170), ["ambient_generic, plays everywhere"], MusicGuess.Music, "long");
+        var sound = new PackedSound("sound/map/track.mp3", 1000, TimeSpan.FromSeconds(170), ["ambient_generic, plays everywhere"], MusicGuess.Maybe, "long");
         var preview = new FakeSoundPreview();
         var scheduler = new System.Reactive.Concurrency.HistoricalScheduler();
         var review = new MapSoundsViewModel("map", new MapSounds([sound], 0), null, false, _ => [1, 2, 3], preview, 0.5, scheduler);
@@ -361,7 +362,7 @@ public class MapsPageTests
     [Fact]
     public async Task TheSoundsPreviewMutesAndUnmutes()
     {
-        var sound = new PackedSound("sound/map/track.mp3", 1000, TimeSpan.FromMinutes(3), [], MusicGuess.Music, "long");
+        var sound = new PackedSound("sound/map/track.mp3", 1000, TimeSpan.FromMinutes(3), [], MusicGuess.Maybe, "long");
         var preview = new FakeSoundPreview();
         var review = new MapSoundsViewModel("map", new MapSounds([sound], 0), null, false, _ => [1], preview, 0.3, new System.Reactive.Concurrency.HistoricalScheduler());
 

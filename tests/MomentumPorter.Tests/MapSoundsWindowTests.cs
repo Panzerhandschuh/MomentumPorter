@@ -29,7 +29,7 @@ public class MapSoundsWindowTests
             1000,
             TimeSpan.FromMinutes(3),
             ["ambient_generic, plays everywhere"],
-            MusicGuess.Music,
+            MusicGuess.Maybe,
             "long");
         var review = new MapSoundsViewModel("map", new MapSounds([sound], 0), null, false, _ => [1, 2, 3], new FakeSoundPreview(), 0.5, new HistoricalScheduler());
 
@@ -73,7 +73,7 @@ public class MapSoundsWindowTests
     [AvaloniaFact]
     public async Task TheVolumeOpensOnHoverAndItsIconMutes()
     {
-        var sound = new PackedSound("sound/map/track.mp3", 1000, TimeSpan.FromMinutes(3), [], MusicGuess.Music, "long");
+        var sound = new PackedSound("sound/map/track.mp3", 1000, TimeSpan.FromMinutes(3), [], MusicGuess.Maybe, "long");
         var review = new MapSoundsViewModel("map", new MapSounds([sound], 0), null, false, _ => [1], new FakeSoundPreview(), 0.4, new HistoricalScheduler());
         var window = new MapSoundsWindow { DataContext = review };
         window.Show();

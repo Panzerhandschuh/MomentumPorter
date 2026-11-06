@@ -80,10 +80,14 @@ public class MapMusicTests
         MapSounds sounds = MapMusic.Scan(context);
 
         // All twelve tracks are minutes long and played by the map's soundscapes
-        Assert.Equal(12, sounds.Music.Count());
+        Assert.Equal(12, sounds.Maybe.Count());
         Assert.All(sounds.Sounds, x => Assert.Contains(x.Uses, use => use.StartsWith("soundscape badges.", StringComparison.Ordinal)));
 
-        (List<string> move, List<string> remove) = MapMusic.Decide(sounds, choice: null);
+        // Length alone moves nothing
+        (List<string> unpicked, List<string> _) = MapMusic.Decide(sounds, choice: null);
+        Assert.Empty(unpicked);
+
+        (List<string> move, List<string> remove) = MapMusic.Decide(sounds, new MapMusicChoice { Music = sounds.Sounds.Select(x => x.Path).ToList() });
         MusicChanges changes = MapMusic.Apply(context, move, remove);
         Assert.Equal(12, changes.Moved.Count);
         Assert.Empty(changes.Skipped);
@@ -106,8 +110,8 @@ public class MapMusicTests
         PortContext context = Open(path);
         MapSounds sounds = MapMusic.Scan(context);
 
-        Assert.Equal(["sound/xmas/christmasbestsong.mp3"], sounds.Music.Select(x => x.Path));
-        // The carol loops next to it are maybes, not moved on their own
+        // The long song and the carol loops next to it are all maybes
+        Assert.Contains("sound/xmas/christmasbestsong.mp3", sounds.Maybe.Select(x => x.Path));
         Assert.Contains("sound/xmas/christmas1.wav", sounds.Maybe.Select(x => x.Path));
         Assert.Contains("sound/white_christmas.wav", sounds.Maybe.Select(x => x.Path));
         Assert.Contains(sounds.Find("sound/xmas/christmas1.wav")!.Uses, x => x.StartsWith("ambient_generic", StringComparison.Ordinal) && x.EndsWith("positional, looping", StringComparison.Ordinal));
@@ -175,7 +179,7 @@ public class MapMusicTests
     }
 
     [Fact]
-    public void TheReviewFlagsMusicLeftOutsideTheMusicFolder()
+    public void TheReviewFlagsSoundsNobodyHasListenedTo()
     {
         if (FindCssMap("bhop_badges") is not { } path)
             return;
@@ -207,14 +211,16 @@ public class MapMusicTests
         Assert.True(result.Succeeded, result.Error);
 
         PortContext ported = Open(output);
-        Assert.True(ported.HasPakFile("sound/music/xmas/christmasbestsong.mp3"));
+        // Only what was picked moves, however long the rest are
+        Assert.True(ported.HasPakFile("sound/xmas/christmasbestsong.mp3"));
+        Assert.False(ported.HasPakFile("sound/music/xmas/christmasbestsong.mp3"));
         Assert.True(ported.HasPakFile("sound/music/xmas/christmas1.wav"));
         Assert.False(ported.HasPakFile("sound/xmas/christmas1.wav"));
         Assert.False(ported.HasPakFile("sound/ducks.wav"));
         Assert.Contains(ported.OfClass("ambient_generic"), x => x["message"].Replace('\\', '/').Equals("music/xmas/christmas1.wav", StringComparison.OrdinalIgnoreCase));
 
         // What's left for the review: the maybes nobody listened to, not the picked ones
-        ReviewItem maybe = context.Get<EntityReview>().Items.Single(x => x.Tool == "Possible music");
+        ReviewItem maybe = context.Get<EntityReview>().Items.Single(x => x.Tool == "Music");
         Assert.True(maybe.IsPending);
         Assert.DoesNotContain("xmas/christmas1.wav", maybe.Message);
     }

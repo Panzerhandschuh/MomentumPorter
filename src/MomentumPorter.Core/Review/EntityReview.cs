@@ -496,33 +496,21 @@ public sealed class EntityReview
             DocsLinks.FuncButton);
     }
 
-    // Music outside sound/music/ isn't on the music volume slider (Fixes.MapMusic). A port moves the long sounds itself,
-    // so what's left is what its Sounds review didn't settle: long sounds it kept out, and the ones that might be music
+    // Music outside sound/music/ isn't on the music volume slider (Fixes.MapMusic), so what's pending is what the
+    // Sounds review hasn't settled
     private static IEnumerable<ReviewItem> ReviewMusic(PortContext context, MapMusicChoice? choice)
     {
         MapSounds sounds = MapMusic.Scan(context);
-        List<PackedSound> music = sounds.Music.Where(x => choice?.Decided(x.Path) != true).ToList();
         List<PackedSound> maybe = sounds.Maybe.Where(x => choice?.Decided(x.Path) != true).ToList();
-        static string Files(List<PackedSound> list) =>
-            string.Join(", ", list.Take(5).Select(x => x.Name)) + (list.Count > 5 ? $" and {list.Count - 5} more" : "");
+        string files = string.Join(", ", maybe.Take(5).Select(x => x.Name)) + (maybe.Count > 5 ? $" and {maybe.Count - 5} more" : "");
 
         yield return new ReviewItem(
             "Music",
             ReviewSeverity.Review,
-            "long sounds outside sound/music/",
-            music.Count + sounds.InMusicFolder,
-            sounds.InMusicFolder,
-            $"they're 2 minutes or longer, so most likely music, which Momentum's music volume slider only controls in sound/music/; port the map with the porter, which moves what's ticked in its Sounds review, or move them in Lumper ({Files(music)})",
-            DocsLinks.Sounds,
-            Singular: "long sound outside sound/music/");
-
-        yield return new ReviewItem(
-            "Possible music",
-            ReviewSeverity.Note,
             "sounds that might be music",
-            maybe.Count,
-            0,
-            $"listen to them in the map's Sounds review on the porter's Maps page and tick the music, then port the map again so the music volume slider controls it ({Files(maybe)})",
+            maybe.Count + sounds.InMusicFolder,
+            sounds.InMusicFolder,
+            $"Momentum's music volume slider only controls music in sound/music/; listen to them in the map's Sounds review on the porter's Maps page and tick the music, then port the map again, or move it in Lumper ({files})",
             DocsLinks.Sounds,
             Singular: "sound that might be music");
 

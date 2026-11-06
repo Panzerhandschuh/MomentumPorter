@@ -76,8 +76,8 @@ public sealed class MapSoundRowViewModel : ReactiveObject
 
 /// <summary>
 /// A map's Sounds review: its packed sounds outside sound/music/ in one list, longest first, each with a preview and a
-/// Music box. The ones that look like music (2 minutes or longer) start ticked; porting the map moves what's ticked.
-/// Saving keeps the picks as the map's <see cref="MapMusicChoice"/>, which the next port applies.
+/// Music box. Porting the map moves what's ticked. Saving keeps the picks as the map's <see cref="MapMusicChoice"/>,
+/// which the next port applies.
 /// </summary>
 public sealed class MapSoundsViewModel : ReactiveObject
 {
@@ -122,7 +122,6 @@ public sealed class MapSoundsViewModel : ReactiveObject
         InMusicFolder = sounds.InMusicFolder;
         Volume = volume * 100;
 
-        // One list, longest first: the music is at the top whatever was guessed
         Rows = sounds.Sounds
             .OrderByDescending(x => x.Length ?? TimeSpan.MinValue)
             .ThenBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
@@ -147,7 +146,7 @@ public sealed class MapSoundsViewModel : ReactiveObject
 
     public string Intro =>
         "Momentum's music volume slider only controls sounds in sound/music/. Tick the map's music and the porter moves it there when it ports the map, updating the paths the map plays it by. "
-        + "Sounds that look like music (2 minutes or longer) start ticked; listen for shorter music loops. "
+        + "Nothing is ticked for you: long sounds can be ambience, and short ones can be music loops, so listen to them. "
         + "The docs also ask for copyrighted music to be removed."
         + (InMusicFolder > 0 ? $" {InMusicFolder} sound{(InMusicFolder == 1 ? " is" : "s are")} already in a music folder." : "");
 
@@ -263,14 +262,12 @@ public sealed class MapSoundsViewModel : ReactiveObject
         _unmutedVolume = volume;
     }
 
-    // The saved picks, or (with none) the suggestion: long sounds ticked
     private void Apply(MapMusicChoice? choice)
     {
         foreach (MapSoundRowViewModel row in Rows)
         {
             row.IsRemoved = choice?.IsRemoved(row.Path) == true;
-            row.IsMusic = !row.IsRemoved
-                && MapMusic.IsTicked(row.Sound, choice);
+            row.IsMusic = !row.IsRemoved && choice?.IsMusic(row.Path) == true;
         }
     }
 

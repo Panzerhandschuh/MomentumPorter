@@ -74,8 +74,8 @@
     <!-- Above the list, which the volume slider opens over -->
     <DockPanel Name="PreviewBar" DockPanel.Dock="Bottom" Margin="0 10 0 0" ZIndex="1">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
-        <Button Command="{Binding ResetCommand}" ToolTip.Tip="Untick everything but the sounds of 2 minutes or longer, and remove nothing">
-          <TextBlock Text="Reset to suggested" />
+        <Button Command="{Binding ResetCommand}" ToolTip.Tip="Untick everything and remove nothing">
+          <TextBlock Text="Untick all" />
         </Button>
         <Button Name="CancelButton" Content="Cancel" />
         <Button Name="SaveButton" Classes="accent" ToolTip.Tip="Keep these picks for the map; porting it applies them">
