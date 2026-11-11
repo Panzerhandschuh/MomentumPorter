@@ -22,6 +22,9 @@ internal sealed partial class CliOptions
 
     [Option("game-dir", HelpText = "The game's folder holding gameinfo.txt, for game files the map uses (e.g. shared soundscapes). Defaults to the folder above the input's maps folder.")]
     public string? GameDirectory { get; set; }
+
+    [Option("momentum-dir", HelpText = "Momentum Mod's install folder, for what it loads (e.g. its particle manifest). Defaults to the app's setting, then the Steam install.")]
+    public string? MomentumDirectory { get; set; }
 }
 
 internal static class Program
@@ -67,6 +70,10 @@ internal static class Program
         {
             var context = new PortJobContext { Log = new CliLog(), WorkDirectory = workDirectory };
             context.Set(state);
+            Settings.PorterSettings settings = BspConvertCommand.LoadSettings(context.Log) ?? new Settings.PorterSettings();
+            if (cli.MomentumDirectory is not null)
+                settings.MomentumDirectory = cli.MomentumDirectory;
+            context.Set(settings);
             // Nobody to ask on the command line: steps that would prompt (e.g. overwriting an installed map) decline
             context.Set<IUserPrompts>(new DeclinePrompts());
             // The map's Sounds review from the app, if it had one

@@ -24,6 +24,7 @@ public static class PortJobFactory
             new RemoveMountedAssetsStep(),
             new MoveMusicStep(),
             new FixMaterialsStep(),
+            new PackParticlesStep(),
             new ReviewEntitiesStep(),
             new WriteBspStep(),
         };

@@ -79,8 +79,8 @@ internal static class BspConvertCommand
         }
     }
 
-    // The app's settings, for the Quake 3 folder set on its Settings page
-    private static PorterSettings? LoadSettings(IPortLog log)
+    // The app's settings, for the folders set on its Settings page
+    internal static PorterSettings? LoadSettings(IPortLog log)
     {
         try
         {

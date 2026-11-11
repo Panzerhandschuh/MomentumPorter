@@ -7,7 +7,7 @@ Porting maps made for other games: Source maps (Kreedz Climbing Mod, CS:GO with 
 The verbs `sounds` and `weapon` build asset packs (see [weapons.md](weapons.md) and [player-sounds.md](player-sounds.md)), and `review` checks a map against Momentum's entity tools (see [Entity review](#entity-review-and-next-steps)). Without a verb, the arguments are a map to port:
 
 ```
-MomentumPorter-CLI <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--nozones] [--game-dir <folder>]
+MomentumPorter-CLI <input.bsp> <output.bsp> [--game kzmod|gokz|css] [--compress] [--nozones] [--game-dir <folder>] [--momentum-dir <folder>]
 MomentumPorter-CLI review <map.bsp> [--steps]
 ```
 
@@ -18,6 +18,9 @@ one; Quake 3 maps have BSPConvert's own **No zones**.
 `--game-dir` is the source game's folder (the one with `gameinfo.txt`), for game files the map relies on, such as
 shared soundscapes. It defaults to the folder above the input's `maps` folder, or for KZ maps from elsewhere, Kreedz
 Climbing's folder in your Steam libraries.
+
+`--momentum-dir` is the Momentum Mod install to check the map against (what it mounts and the particles it loads).
+It defaults to the folders set in the app's Settings page, then the Steam install.
 
 The output is written as a new file, uncompressed unless `--compress` is given, and the tool prints what it converted
 and anything it couldn't, then the entity review and the steps left to submit the map. It doesn't pack assets; the
@@ -304,9 +307,9 @@ Everything else needs someone in game and is left to the entity review below.
 
 ## Automatic fixes
 
-After the game profile, `ApplyProfileStep` applies the bhop block fix, and `FixEntitiesStep`, `RemoveMountedAssetsStep`
-and `FixMaterialsStep` (`src/MomentumPorter.Core/Fixes/`) apply what Lumper's Entity Review tab and Pakfile Explorer
-would otherwise ask for by hand, where the answer is the same for every map. GoldSrc maps converted with BSPConvert get the entity fixes too
+After the game profile, `ApplyProfileStep` applies the bhop block fix, and `FixEntitiesStep`, `RemoveMountedAssetsStep`,
+`FixMaterialsStep` and `PackParticlesStep` (`src/MomentumPorter.Core/Fixes/`) apply what Lumper's Entity Review tab and Pakfile Explorer
+would otherwise ask for by hand, or what would otherwise go unnoticed, where the answer is the same for every map. GoldSrc maps converted with BSPConvert get the entity fixes too
 (`GoldSrcEntityFixStep`).
 
 - **Bhop blocks** (`BhopBlocks`, Source maps named `bhop_*` or `kz_*`, the ones Momentum's runtime block fix runs
@@ -339,6 +342,19 @@ would otherwise ask for by hand, where the answer is the same for every map. Gol
   the `Sky` shader as `Sky_HDR` whenever HDR is on, which only samples `$hdrbasetexture` or `$hdrcompressedtexture`,
   so a packed `materials/skybox/*.vmt` with `Sky` (or `Sky_HDR_DX9`) and nothing but a `$basetexture` shows the error
   texture (surf_vale2). Those switch to `Sky_SDR`, which draws `$basetexture`; the rest of the file is kept as written.
+- **Particle manifest** (`MapParticles`, in `PackParticlesStep`): Momentum only loads the particle files its own
+  `particles/particles_manifest.txt` lists, plus the map's `maps/<map>_particles.txt`, so a TF2 map's
+  `info_particle_system`s using TF2 effects Momentum doesn't list draw nothing (sj_bright's torches use
+  `buildingdamage_fire3` from TF2's `buildingdamage.pcf`). The step reads the particle systems the map's entities name
+  (`effect_name`, `particle_name`) and drops the ones Momentum's manifest already loads. It reads that manifest
+  through Momentum's search paths, as the game does: its own folder and the `mount/` VPKs its `gameinfo.txt` mounts,
+  then TF2, CS:S, CS:GO and Portal 2. For each remaining system it finds the file that defines it, in the map's pak
+  file first and then the same search paths. Within a game, the file the game's own manifest lists wins over fallbacks
+  such as `_dx80` copies, and only files directly in `particles/` count, since the game reads no others. Those files
+  are added to the map's packed manifest, keeping what it lists (also under the map's old name when it's renamed).
+  A file whose path Momentum would load from somewhere earlier is left out with a warning (TF2's `explosion.pcf`
+  loses to EP2's), as are systems no installed game defines. The games a map's particles come from need to be under
+  required games on the submission form like the rest of its mounted assets.
 
 Not automated, because each needs a look at the map: teleport velocity modes (Reset, Keep Negative Z), boost trigger
 fixes (which scenario a boost is), landmark teleport angles, jail `logic_timer`s, weapons and `game_player_equip` in
