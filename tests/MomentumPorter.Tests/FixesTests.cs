@@ -275,6 +275,46 @@ public class FixesTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void RefractEnvmapTintIsDividedBy16()
+    {
+        // Above 1 the tint is linear and can stay linear; at or below 1 it's gamma encoded
+        Assert.Equal("[1.25 1.25 1.25]", RefractEnvmaps.ScaleTint("[20 20 20]"));
+        Assert.Equal("[0.8076 0.8076 0.8076]", RefractEnvmaps.ScaleTint("[10 10 10]"));
+        Assert.Equal("[0.2836 0.2836 0.2836]", RefractEnvmaps.ScaleTint("1"));
+        Assert.Equal("[0.2836 0.2836 0.2836]", RefractEnvmaps.ScaleTint("{255 255 255}"));
+
+        static bool Float(string envmap) => envmap != "maps/a/ldr";
+
+        string? fixedVmt = RefractEnvmaps.Fix("\"Refract\" { \"$envmap\" \"env_cubemap\" \"$envmaptint\" \"[10 10 10]\" }", Float);
+        Assert.Contains("\"$envmaptint\"\t\"[0.8076 0.8076 0.8076]\"", fixedVmt);
+        Assert.Null(RefractEnvmaps.Fix(fixedVmt!, Float));
+
+        // No tint means 1; a fallback block's own tint is scaled too
+        fixedVmt = RefractEnvmaps.Fix("Refract_DX90 { $envmap env_cubemap Refract_DX90 { $envmaptint \"[2 2 2]\" } }", Float);
+        Assert.Contains("\"$envmaptint\"\t\"[0.2836 0.2836 0.2836]\"", fixedVmt);
+        Assert.Contains("\"$envmaptint\"\t\"[0.3886 0.3886 0.3886]\"", fixedVmt);
+
+        // Integer HDR left these alone: no envmap, an 8-bit cubemap, or another shader
+        Assert.Null(RefractEnvmaps.Fix("Refract { $envmaptint \"[10 10 10]\" }", Float));
+        Assert.Null(RefractEnvmaps.Fix("Refract { $envmap maps/a/ldr $envmaptint \"[10 10 10]\" }", Float));
+        Assert.Null(RefractEnvmaps.Fix("VertexLitGeneric { $envmap env_cubemap $envmaptint \"[10 10 10]\" }", Float));
+    }
+
+    [Fact]
+    public void SurfSurrealsIslandWaterReflectsLikeCss()
+    {
+        if (FindCssMap("surf_surreal") is not { } path)
+            return;
+
+        var context = new PortContext(new BSP(new FileInfo(path)), "surf_surreal", null);
+
+        Assert.Equal(2, RefractEnvmaps.Apply(context));
+        Assert.Contains("[0.8076 0.8076 0.8076]", context.ReadPakFile("materials/surreal/fakewater2.vmt"));
+        Assert.Contains("[0.2836 0.2836 0.2836]", context.ReadPakFile("materials/models/surreal/blobgroup/surreal/fakewater2.vmt"));
+        Assert.Equal(0, RefractEnvmaps.Apply(context));
+    }
+
+    [Fact]
     public async Task ThePortJobRunsTheFixes()
     {
         if (FindCssMap("bhop_monster_jam") is not { } input)
