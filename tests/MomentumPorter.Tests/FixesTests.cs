@@ -182,7 +182,7 @@ public class FixesTests(ITestOutputHelper output)
     // BSPConvert's GoldSrc entity conversion as it runs on a map's entities, dropping the ones Source has no use for
     private static void ConvertWithBspConvert(List<Entity> entities)
     {
-        var converter = new GoldSrcEntityConverter(new NoBspConvertLog());
+        var converter = new GoldSrcEntityConverter(new NoBspConvertLog(), _ => true);
         converter.ConvertTargets(entities, _ => false);
         entities.RemoveAll(x => !converter.Convert(x));
     }
