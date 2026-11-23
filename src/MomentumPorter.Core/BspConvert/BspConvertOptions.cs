@@ -3,6 +3,7 @@ namespace MomentumPorter.BspConvert;
 using System.Globalization;
 using BSPConvert.Lib;
 using BSPConvert.Lib.GoldSrc;
+using BSPConvert.Lib.Vis;
 using MomentumPorter.Options;
 
 public enum OffModeEntities
@@ -93,6 +94,14 @@ public sealed class BspConvertOptions
     // --mapoverbrightbits
     [PortOption("Map overbright bits", BspConvertHelp.MapOverBrightBits, Group = Quake3Group, Order = 71, Min = 0, Max = Q3Brightness.MaxMapOverBrightBits)]
     public int MapOverBrightBits { get; set; } = 2;
+
+    // --vis
+    [PortOption("Visibility", BspConvertHelp.Vis, Group = Quake3Group, Order = 80)]
+    public VisMode Vis { get; set; } = VisMode.Auto;
+
+    // --vvis; filled from Momentum's install instead of showing it
+    [PortOption("vvis.exe", BspConvertHelp.Vvis, Group = Quake3Group, Order = 81, Path = PathKind.File)]
+    public string? Vvis { get; set; }
 
     // --mindmg
     [PortOption("Respawn damage", BspConvertHelp.MinDmg, Group = Quake3Group, Order = 100, Advanced = true, Min = 0)]
@@ -217,6 +226,8 @@ public sealed class BspConvertOptions
             errors.Add($"Map overbright bits must be between 0 and {Q3Brightness.MaxMapOverBrightBits}.");
         if (!Enum.IsDefined(OffModeEntities))
             errors.Add("Entities outside Defrag modes must be cpm or vq3.");
+        if (!Enum.IsDefined(Vis))
+            errors.Add("Visibility must be auto, full, fast or none.");
 
         return errors;
     }
@@ -272,6 +283,8 @@ public sealed class BspConvertOptions
                     minLight = MinLight,
                 },
                 mod =string.IsNullOrWhiteSpace(Quake3Mod) ? null : Quake3Mod.Trim(),
+                vis = Vis,
+                vvisPath = string.IsNullOrWhiteSpace(Vvis) ? null : Vvis,
                 flipbook = new FlipbookOptions
                 {
                     enabled = !NoAnim,
@@ -339,6 +352,8 @@ public sealed class BspConvertOptions
         Value(Quake3Gamma, defaults.Quake3Gamma, "--q3gamma");
         Value(MapOverBrightBits, defaults.MapOverBrightBits, "--mapoverbrightbits");
         Text(Quake3Mod, "--q3mod");
+        Value(Vis, defaults.Vis, "--vis");
+        Text(Vvis, "--vvis");
         Flag(NoAnim, "--noanim");
         Value(AnimBudget, defaults.AnimBudget, "--animbudget");
         Value(AnimMaxRes, defaults.AnimMaxRes, "--animmaxres");

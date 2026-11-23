@@ -28,7 +28,7 @@ public sealed class MapsPageViewModel : PageViewModel
     public static readonly FileFilter PresetFilter = new("Momentum Porter preset", "*" + OptionsPreset.Extension);
 
     /// <summary>BSPConvert options the page fills in itself (from the map options, the settings or Momentum's install), so they aren't in its form.</summary>
-    private static readonly string[] SharedBspConvertOptions = [nameof(BspConvertOptions.OutputDirectory), nameof(BspConvertOptions.Compress), nameof(BspConvertOptions.Overwrite), nameof(BspConvertOptions.Studiomdl)];
+    private static readonly string[] SharedBspConvertOptions = [nameof(BspConvertOptions.OutputDirectory), nameof(BspConvertOptions.Compress), nameof(BspConvertOptions.Overwrite), nameof(BspConvertOptions.Studiomdl), nameof(BspConvertOptions.Vvis)];
 
     private readonly SettingsService _settings;
     private readonly MusicChoicesService _music;
@@ -465,9 +465,11 @@ public sealed class MapsPageViewModel : PageViewModel
         options.OutputDirectory = target;
 
         var steam = new SteamLocator();
-        // The Settings page's studiomdl (or Momentum's own, through its folder override) before BSPConvert's own search
+        // The Settings page's studiomdl, and Momentum's own tools through its folder override, before BSPConvert's own search
         if (settings.ResolveStudiomdlPath(steam) is { } studiomdl)
             options.Studiomdl = studiomdl;
+        if (settings.ResolveVvisPath(steam) is { } vvis)
+            options.Vvis = vvis;
 
         foreach (string filled in BspConvertDefaults.Fill(options, steam, item.InputPath, output: false, settings))
             item.Log.Add(LogLevel.Info, filled);

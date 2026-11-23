@@ -131,10 +131,21 @@ public sealed class PorterSettings
         if (!string.IsNullOrWhiteSpace(StudiomdlPath))
             return StudiomdlPath.Trim();
 
+        return ResolveMomentumTool("studiomdl.exe", steam);
+    }
+
+    /// <summary>
+    /// Momentum's <c>bin/win64/vvis.exe</c>, which computes the visibility of Quake 3 maps compiled without it, or
+    /// null when neither Momentum nor the file is found.
+    /// </summary>
+    public string? ResolveVvisPath(SteamLocator? steam = null) => ResolveMomentumTool("vvis.exe", steam);
+
+    private string? ResolveMomentumTool(string exe, SteamLocator? steam)
+    {
         if (ResolveMomentumContentDirectory(steam) is not { } content || Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(content)) is not { } install)
             return null;
 
-        string path = Path.Combine(install, "bin", "win64", "studiomdl.exe");
+        string path = Path.Combine(install, "bin", "win64", exe);
         return File.Exists(path) ? path : null;
     }
 

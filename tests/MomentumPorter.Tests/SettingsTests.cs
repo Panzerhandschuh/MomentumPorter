@@ -72,6 +72,20 @@ public class SettingsTests
     }
 
     [Fact]
+    public void VvisIsMomentums()
+    {
+        using var temp = new TempFolder();
+        string install = temp.CreateMomentumInstall();
+        string vvis = Path.Combine(install, "bin", "win64", "vvis.exe");
+
+        Assert.Null(new PorterSettings { MomentumDirectory = install }.ResolveVvisPath());
+
+        Directory.CreateDirectory(Path.GetDirectoryName(vvis)!);
+        File.WriteAllBytes(vvis, []);
+        Assert.Equal(vvis, new PorterSettings { MomentumDirectory = Path.Combine(install, "momentum") }.ResolveVvisPath());
+    }
+
+    [Fact]
     public void AGamesFolderMayBeItsInstallOrContentFolder()
     {
         using var temp = new TempFolder();

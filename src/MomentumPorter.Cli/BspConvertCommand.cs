@@ -1,6 +1,7 @@
 namespace MomentumPorter.Cli;
 
 using System.Text.Json;
+using BSPConvert.Lib.Vis;
 using MomentumPorter.BspConvert;
 using MomentumPorter.Detection;
 using MomentumPorter.Pipeline;
@@ -114,6 +115,7 @@ internal static class BspConvertCommand
             ClampDarkShadows = cli.ClampDarkShadows,
             SetUpQuake3Content = !cli.NoQ3Content,
             Quake3Mod = cli.Q3Mod,
+            Vvis = cli.Vvis,
             NoAnim = cli.NoAnim,
             Wads = cli.Wads,
             Studiomdl = cli.Studiomdl,
@@ -147,6 +149,14 @@ internal static class BspConvertCommand
                 "vq3" => OffModeEntities.VQ3,
                 _ => throw new ArgumentException("Default entity state must be either 'cpm' or 'vq3'."),
             };
+        }
+
+        if (cli.Vis is not null)
+        {
+            if (!Enum.TryParse(cli.Vis, ignoreCase: true, out VisMode vis) || !Enum.IsDefined(vis))
+                throw new ArgumentException("Visibility must be auto, full, fast or none.");
+
+            options.Vis = vis;
         }
 
         return options;

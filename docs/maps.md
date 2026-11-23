@@ -103,6 +103,10 @@ What BSPConvert would otherwise need to be told is filled in from Steam:
   each followed by its `_downloads` folder.
 - `--studiomdl`: Momentum Mod's `bin/win64/studiomdl.exe`, which compiles the models GoldSrc entities use. The app
   takes the Settings page's studiomdl instead when one is set there.
+- `--vvis`: Momentum Mod's `bin/win64/vvis.exe`, which computes the visibility of Quake 3 maps compiled without it
+  (often because they leak), so they don't draw the whole map from everywhere. `--vis` (**Visibility** in the app's
+  Quake 3 options) picks how: `auto` (the default) runs the full computation unless a quick fast pass shows it would
+  take too long, as it does on maps with large open areas; `full`, `fast` and `none` force one.
 - Quake 3's base content: BSPConvert reads the textures, shaders and sounds maps share with the base game from a
   `Q3Content` folder next to the program, and mods' and expansions' from `Q3Mods/<mod folder>`, and packs what a map
   uses from them into the map. The porter extracts Quake 3's `baseq3/pak*.pk3` into `Q3Content` first (about 700 MB,

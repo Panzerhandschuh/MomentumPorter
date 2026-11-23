@@ -1,6 +1,7 @@
 namespace MomentumPorter.Tests;
 
 using BSPConvert.Lib;
+using BSPConvert.Lib.Vis;
 using MomentumPorter.BspConvert;
 using MomentumPorter.Options;
 using Xunit;
@@ -47,6 +48,8 @@ public class BspConvertOptionsTests
         Assert.Equal(0, q3.brightness.minLight);
         Assert.Equal(0, converter.goldSrc.brightness.minLight);
         Assert.Null(q3.mod);
+        Assert.Equal(VisMode.Auto, q3.vis);
+        Assert.Null(q3.vvisPath);
 
         FlipbookOptions flipbook = q3.flipbook;
         Assert.True(flipbook.enabled);
@@ -226,5 +229,11 @@ public class BspConvertOptionsTests
         Assert.Equal(["--q3mod", "missionpack"], mod.ToCommandLine());
         Assert.Equal("missionpack", mod.ToConverterOptions("in.pk3", "out").q3.mod);
         Assert.Null(new BspConvertOptions { Quake3Mod = " " }.ToConverterOptions("in.pk3", "out").q3.mod);
+
+        var vis = new BspConvertOptions { Vis = VisMode.Fast, Vvis = @"C:\momentum\bin\win64\vvis.exe" };
+        Assert.Equal(["--vis", "fast", "--vvis", @"C:\momentum\bin\win64\vvis.exe"], vis.ToCommandLine());
+        Q3ConverterOptions visConverter = vis.ToConverterOptions("in.pk3", "out").q3;
+        Assert.Equal(VisMode.Fast, visConverter.vis);
+        Assert.Equal(@"C:\momentum\bin\win64\vvis.exe", visConverter.vvisPath);
     }
 }

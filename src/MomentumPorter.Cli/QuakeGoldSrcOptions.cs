@@ -67,6 +67,12 @@ internal sealed partial class CliOptions
     [Option("q3mod", HelpText = BspConvertHelp.Q3Mod + " Takes the mod's folder name (missionpack...) or baseq3.")]
     public string? Q3Mod { get; set; }
 
+    [Option("vis", HelpText = "(Default: auto) " + BspConvertHelp.Vis)]
+    public string? Vis { get; set; }
+
+    [Option("vvis", HelpText = BspConvertHelp.Vvis)]
+    public string? Vvis { get; set; }
+
     [Option("noq3content", HelpText = "Don't set up the Q3Content and Q3Mods folders from Quake 3's install. " + BspConvertHelp.Q3Content)]
     public bool NoQ3Content { get; set; }
 
