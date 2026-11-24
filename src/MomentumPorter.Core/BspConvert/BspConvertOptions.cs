@@ -73,7 +73,7 @@ public sealed class BspConvertOptions
 
     // --offmodeents
     [PortOption("Entities outside Defrag modes", BspConvertHelp.OffModeEnts, Group = Quake3Group, Order = 30)]
-    public OffModeEntities OffModeEntities { get; set; } = OffModeEntities.CPM;
+    public OffModeEntities OffModeEntities { get; set; } = OffModeEntities.VQ3;
 
     // --scale
     [PortOption("Scale", BspConvertHelp.Scale, Group = Quake3Group, Order = 40, Min = 0.01, Max = 100)]

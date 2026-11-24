@@ -40,7 +40,7 @@ internal sealed partial class CliOptions
     [Option("nozones", HelpText = BspConvertHelp.NoZones + " Also for GOKZ maps.")]
     public bool NoZones { get; set; }
 
-    [Option("offmodeents", HelpText = "(Default: cpm) " + BspConvertHelp.OffModeEnts)]
+    [Option("offmodeents", HelpText = "(Default: vq3) " + BspConvertHelp.OffModeEnts)]
     public string? OffModeEnts { get; set; }
 
     [Option("scale", HelpText = "(Default: 1) " + BspConvertHelp.Scale)]

@@ -41,7 +41,7 @@ public class BspConvertOptionsTests
         Assert.False(q3.useObbFog);
         Assert.Equal(256f, q3.fogMinHeight);
         Assert.False(q3.noFogOverlay);
-        Assert.Equal("cpm", q3.offModeEntityFallback);
+        Assert.Equal("vq3", q3.offModeEntityFallback);
         Assert.False(q3.clampOverbright);
         Assert.Equal(1f, q3.brightness.gamma);
         Assert.Equal(2, q3.brightness.mapOverBrightBits);
@@ -113,7 +113,7 @@ public class BspConvertOptionsTests
             Scale = 2,
             Subdiv = 4,
             LavaTriggers = true,
-            OffModeEntities = OffModeEntities.VQ3,
+            OffModeEntities = OffModeEntities.CPM,
             NoAnim = true,
             AnimBudget = 8,
             Wads = @"C:\wads, D:\more wads",
@@ -136,7 +136,7 @@ public class BspConvertOptionsTests
         Assert.Equal(2f, converter.scale);
         Assert.Equal(4, converter.q3.DisplacementPower);
         Assert.True(converter.q3.lavaTriggers);
-        Assert.Equal("vq3", converter.q3.offModeEntityFallback);
+        Assert.Equal("cpm", converter.q3.offModeEntityFallback);
         Assert.False(converter.q3.flipbook.enabled);
         Assert.Equal(8L * 1024 * 1024, converter.q3.flipbook.byteBudget);
         Assert.Equal([@"C:\wads", @"D:\more wads"], converter.goldSrc.wadDirs);
@@ -209,8 +209,8 @@ public class BspConvertOptionsTests
     {
         Assert.Empty(new BspConvertOptions().ToCommandLine());
 
-        var options = new BspConvertOptions { Subdiv = 2, NoPak = true, OffModeEntities = OffModeEntities.VQ3, Scale = 1.5f, Maps = "a,b" };
-        Assert.Equal(["--nopak", "--maps", "a,b", "--subdiv", "2", "--offmodeents", "vq3", "--scale", "1.5"], options.ToCommandLine());
+        var options = new BspConvertOptions { Subdiv = 2, NoPak = true, OffModeEntities = OffModeEntities.CPM, Scale = 1.5f, Maps = "a,b" };
+        Assert.Equal(["--nopak", "--maps", "a,b", "--subdiv", "2", "--offmodeents", "cpm", "--scale", "1.5"], options.ToCommandLine());
 
         var brightness = new BspConvertOptions { Quake3Gamma = 1.3f, MapOverBrightBits = 3 };
         Assert.Equal(["--q3gamma", "1.3", "--mapoverbrightbits", "3"], brightness.ToCommandLine());
